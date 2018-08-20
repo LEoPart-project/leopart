@@ -1,0 +1,8 @@
+# Directories
+build/
+results/
+deprecate/
+
+# Files
+*.pyc
+
