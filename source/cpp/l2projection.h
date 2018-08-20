@@ -5,7 +5,7 @@
 #define L2PROJECTION_H
 
 #include <iostream>
-#include <particles.h>
+
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/function/FunctionSpace.h>
@@ -19,10 +19,13 @@
 #include <dolfin/la/Vector.h>
 #include "dolfin/la/solve.h"
 
-#include <eigquadprog.h>
 #include <Eigen/Core>
 #include <Eigen/SparseCore>
 #include <Eigen/Dense>
+
+#include "particles.h"
+#include "eigquadprog.h"
+
 
 namespace dolfin{
     class l2projection
