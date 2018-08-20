@@ -44,7 +44,7 @@ void l2projection::project(Function& u){
     for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
-        ArrayView<const dolfin::la_index> celldofs = _dofmap->cell_dofs(i);
+        Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
 
         // Initialize the cell matrix and cell vector
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> q;
@@ -69,7 +69,7 @@ void l2projection::project(Function& u){
         }
 
         // Insert in vector
-        u.vector()->set_local(&u_i[0],u_i.size(),&celldofs[0]);
+        u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
     }
 }
 //-----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ void l2projection::project(Function& u, const double lb, const double ub){
     for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
-        ArrayView<const dolfin::la_index> celldofs = _dofmap->cell_dofs(i);
+        Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
 
         // Initialize the cell matrix and cell vector
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> q;
@@ -119,7 +119,7 @@ void l2projection::project(Function& u, const double lb, const double ub){
         Eigen::VectorXd Atf = - _Nixp[i]*f;
         Eigen::VectorXd u_i;
         solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
-        u.vector()->set_local(&u_i[0],u_i.size(),&celldofs[0]);
+        u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
     }
 }
 //-----------------------------------------------------------------------------
@@ -141,7 +141,7 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
     for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
-        ArrayView<const dolfin::la_index> celldofs = _dofmap->cell_dofs(i);
+        Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
 
         // Initialize the cell matrix and cell vector
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> q;

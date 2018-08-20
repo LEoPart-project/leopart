@@ -5,8 +5,8 @@
 #define ADVECT_PARTICLES_H
 
 #include <ufc.h>
-#include <particle.h>
-#include <particles.h>
+#include "particle.h"
+#include "particles.h"
 #include "utils.h"
 
 #include <dolfin/function/Function.h>

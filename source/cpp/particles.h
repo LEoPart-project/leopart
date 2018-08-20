@@ -19,7 +19,7 @@
 #include <Eigen/Dense>
 
 namespace dolfin{
-    class particles
+  class particles
     {
     friend class l2projection;
 

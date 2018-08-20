@@ -40,9 +40,11 @@ namespace dolfin{
         static void test_rank(const Form &a, const std::size_t rank);
 
         // Get local tensor info
-        static void local_tensor_info(const Form& a, const Cell& cell,
-                                      std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
-                                      std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols);
+        //        static void local_tensor_info(const Form& a, const Cell& cell,
+        //                                      std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
+        //                                      std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols);
+
+        static std::pair<std::size_t, std::size_t> local_tensor_size(const Form& a, const Cell& cell);
 
         // Local assembler
         static void local_assembler(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& A_e,
@@ -51,8 +53,8 @@ namespace dolfin{
         // Apply Dirichlet BC to element contributions, so as to maintain symmetry
         static void apply_boundary_symmetric(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& LHS_e,
                                              Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
-                                             const ArrayView<const dolfin::la_index>& cdof_rows,
-                                             const ArrayView<const dolfin::la_index>& cdof_cols,
+                                             Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> cdof_rows,
+                                             Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> cdof_cols,
                                              const std::vector<DirichletBC::Map>& boundary_values,
                                              const bool active_bcs);
     };

@@ -3,6 +3,7 @@
 
 #include <ufc.h>
 #include <dolfin/fem/FiniteElement.h>
+#include <dolfin/function/Function.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/function/FunctionSpace.h>
 

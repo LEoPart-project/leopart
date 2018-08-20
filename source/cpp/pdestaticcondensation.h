@@ -37,7 +37,7 @@ namespace dolfin{
     template<typename T> class Array;
 
     class PDEStaticCondensation
-    { 
+    {
     // Class providing functionality for PDE constrained projection using static condensation.
     // Expect the dolfin Forms to comply with the algebraic form:
     //
