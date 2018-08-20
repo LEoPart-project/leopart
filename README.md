@@ -38,7 +38,7 @@ directory ./tests.
 ## Installation and executing the code
 1. Clone the repo via
     
-    git clone https://jakob_maljaars@bitbucket.org/jakob_maljaars/dolfin_particles.git
+    git clone git clone https://jakob_maljaars@bitbucket.org/jakob_maljaars/dolfinparticles.git
 
 2. IF you want to use FEniCS using Docker, run 
    
