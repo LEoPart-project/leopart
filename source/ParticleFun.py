@@ -1,6 +1,3 @@
-from dolfin import *
-#from numpy import zeros, array, squeeze, reshape 
-import numpy as np
 # __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
 # __date__   = '2018-08'
 # __copyright__ = 'Copyright (C) 2011' + __author__
@@ -10,12 +7,11 @@ import numpy as np
     SWIG wrapper for the CPP functionalities
 """
 
-__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
-
+from dolfin import *
 import os, inspect
-from mpi4py.MPI import COMM_WORLD as comm
-import cPickle as pickle
-import matplotlib.pyplot as plt
+import numpy as np
+
+__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
 
 # Compile C++ code
 def strip_essential_code(filenames):

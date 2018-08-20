@@ -1,4 +1,4 @@
-## LEoPART -- FEniCS functionality for scattered particle advection and projecion
+## DolfinParticles -- FEniCS functionality for scattered particle advection and projecion
 
 Main purpose of this library is to advect and project scattered particle data onto a mesh in 
 a (locally) conservative manner. By making use of a combination of a finite element mesh and 
