@@ -22,9 +22,7 @@ def strip_essential_code(filenames):
     code = ""
     for name in filenames:
         f = open(name, 'r').read()
-        #code += f[f.find("namespace dolfin\n{\n"):f.find("#endif")]
         code += f
-        #code += f[f.find("#ifndef"):f.find("#endif")]
     return code
 
 dolfin_folder = os.path.abspath(os.path.join(inspect.getfile(inspect.currentframe()), "../cpp"))
@@ -33,8 +31,7 @@ sources =['particles.cpp', 'advect_particles.cpp',
 headers = map(lambda x: os.path.join(dolfin_folder, x),['utils.h','particle.h','particles.h','advect_particles.h',
                                                         'l2projection.h', 'pdestaticcondensation.h', 'formutils.h'] )
 code = strip_essential_code(headers)
-
-  #'/usr/local/include/OOQPEI/include','/usr/local/lib'   
+  
 include_dirs=[".", os.path.abspath(dolfin_folder)]
 library_dirs=[".", "/usr/local/lib"]
 libraries=[]
@@ -75,12 +72,6 @@ class particles(compiled_module.particles):
         return self.eval(*args)
    
     def return_property(self,mesh, index):
-        #assert(index == 1 or index == 2), 'Incorrect index, must be 1 or 2'
-        #if index == 0:
-            #Ndim = mesh.geometry().dim()
-            #pproperty = self.get_property(index)
-            #pproperty = pproperty.reshape((-1, Ndim))
-        #else:
         pproperty = self.get_property(index)
         if self.ptemplate[index] > 1:
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
