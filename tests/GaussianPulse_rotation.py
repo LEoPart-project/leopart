@@ -9,8 +9,6 @@
 """
 
 from dolfin import *
-import pygmsh
-from mshr import Circle, generate_mesh
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
@@ -26,7 +24,7 @@ comm = pyMPI.COMM_WORLD
 # Geometric properties
 x0,y0   = 0., 0.        # Center of domain
 xc,yc   = -0.15, 0.     # Center of Gaussian
-r       = .5            # Radius of domain
+r       = 0.5            # Radius of domain
 sigma   = Constant(0.1) # stdev of Gaussian
 
 # Mesh/particle properties, use safe number of particles
@@ -73,8 +71,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         num_steps = np.rint(Tend/float(dt))
 
         # Generate mesh
-        domain = Circle(Point(x0,y0),r,nx*4)
-        mesh = generate_mesh(domain,nx)
+        mesh = Mesh('circle.xml')
         bmesh= BoundaryMesh(mesh, 'exterior')
 
         # Velocity and initial condition
@@ -101,7 +98,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         property_idx = 1 # Scalar quantity is stored at slot 1
 
         # Initialize advection class, use RK3 scheme
-        ap  = advect_rk3(p, V, uh, bmesh, 'open')
+        ap  = advect_rk3(p, V, uh, bmesh, 'open', 'none')
 
         # Define the variational (projection problem)
         W_e    = FiniteElement("DG", mesh.ufl_cell(), k)
@@ -129,8 +126,8 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
                                                                                             [],property_idx)
 
         # Set initial condition at mesh and particles
-        psi0_h.assign(psi0_expression)
-        p.interpolate(psi0_h, property_idx)
+        psi0_h.interpolate(psi0_expression)
+        p.interpolate(psi0_h.cpp_object(), property_idx)
 
         step = 0
         area_0   = assemble(psi0_h*dx)
@@ -144,9 +141,11 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
 
             # Advect particle, assemble and solve pde projection
             ap.do_step(float(dt))
-            pde_projection.assemble()
+            pde_projection.assemble(True, True)
             pde_projection.apply_boundary(bc)
-            pde_projection.solve_problem(psibar_h, psi_h, lambda_h)
+            pde_projection.solve_problem(psibar_h.cpp_object(),
+                                         psi_h.cpp_object(), lambda_h.cpp_object(),
+                                         'none', 'default')
             # Update old solution
             assign(psi0_h, psi_h)
 
@@ -176,7 +175,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
             print("l2 error "+str(l2_error))
 
             # Store in error error table
-            num_cells_t   = mesh.size_global(2)
+            num_cells_t   = mesh.num_entities_global(2)
             num_particles = len(x)
             try:
                 area_error_half = np.float64((area_half-area_0))

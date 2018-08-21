@@ -37,7 +37,7 @@ class particles(compiled_module.particles):
         p_array = np.asarray(p_array, dtype = np.float_)
         particle_template = np.asarray(particle_template,dtype=np.intc)
 
-        compiled_module.particles.__init__(self,p_array, particle_template,
+        compiled_module.particles.__init__(self, p_array, particle_template,
                                            num_particles, mesh)
         self.ptemplate = particle_template
         return
@@ -63,18 +63,28 @@ class advect_particles(compiled_module.advect_particles):
         a = list(args)
         a[1] = a[1]._cpp_object
         a[2] = a[2]._cpp_object
-        print(a)
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
-        print('Args = ', args)
         return self.eval(*args)
 
 class advect_rk2(compiled_module.advect_rk2):
+    def __init__(self, *args):
+        a = list(args)
+        a[1] = a[1]._cpp_object
+        a[2] = a[2]._cpp_object
+        super().__init__(*tuple(a))
+
     def __call__(self, *args):
         return self.eval(*args)
 
 class advect_rk3(compiled_module.advect_rk3):
+    def __init__(self, *args):
+        a = list(args)
+        a[1] = a[1]._cpp_object
+        a[2] = a[2]._cpp_object
+        super().__init__(*tuple(a))
+
     def __call__(self, *args):
         return self.eval(*args)
 

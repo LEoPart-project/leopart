@@ -59,7 +59,7 @@ class RandomGenerator(object):
                 points = (np.array(point) for point in product(*points_i))
 
             # Use rule to see which points are inside
-            points_inside = np.array(filter(self.rule, points))
+            points_inside = np.array(list(filter(self.rule, points)))
         else:
             points_inside = None
 
