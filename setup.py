@@ -21,5 +21,5 @@ setup(name = "DolfinParticles",
           ],
       packages=['DolfinParticles'],
       package_dir={'DolfinParticles': './source'},
-      package_data={'DolfinParticles': ["cpp/*.h", "cpp/*.cpp"]},
+      package_data={'DolfinParticles': ["cpp/*.h", "cpp/*.cpp", "cpp/*.so"]},
 )

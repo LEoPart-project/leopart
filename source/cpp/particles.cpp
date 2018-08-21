@@ -8,8 +8,9 @@ using namespace dolfin;
 particles::~particles(){
 }
 
-particles::particles(const Array<double> &p_array, const Array<int> &p_template,
-                     const int p_num, const Mesh &mesh)
+particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
+                     Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
+                     int p_num, const Mesh &mesh)
     :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()), _num_processes(MPI::size(mesh.mpi_comm()))
 {
     // Note: p_array is structured as:
@@ -25,7 +26,7 @@ particles::particles(const Array<double> &p_array, const Array<int> &p_template,
 
     // Initialize particle template and _plen
     _plen = 0;
-    for(std::size_t i = 0; i<p_template.size(); i++){
+    for(std::size_t i = 0; i < p_template.size(); i++){
         _ptemplate.push_back(p_template[i]);
         _plen += p_template[i];
     }
@@ -36,7 +37,7 @@ particles::particles(const Array<double> &p_array, const Array<int> &p_template,
     // Loop over particles:
     for(std::size_t i=0; i<_Np; i++){
         // Position and get hosting cell
-        Point xp(_Ndim, &p_array[i*_Ndim]);
+        Point xp(_Ndim, p_array.data() + i*_Ndim);
         unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
         if (cell_id != std::numeric_limits<unsigned int>::max())
         {
@@ -51,8 +52,8 @@ particles::particles(const Array<double> &p_array, const Array<int> &p_template,
             if(_ptemplate.size() > 1)
                 idx = _Np*_Ndim + i * _ptemplate[1];
 
-            for(std::size_t j=1; j<_ptemplate.size(); j++){
-                Point property(_ptemplate[j], &p_array[idx]);
+            for(std::size_t j=1; j < _ptemplate.size(); j++){
+                Point property(_ptemplate[j], p_array.data() + idx);
                 //idx += j * _Np * _ptemplate[j];
                 // New formulation: second part guarantees to jump
                 // at proper positions if ranks between properties vary
@@ -337,4 +338,3 @@ void particles::get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,
                      "Cells without particle not yet handled, empty cell (%d)", cidx);
     }
 }
-

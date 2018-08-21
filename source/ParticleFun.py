@@ -12,33 +12,7 @@ import numpy as np
 
 __all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
 
-import os, inspect
-from mpi4py.MPI import COMM_WORLD as comm
-import pickle
-import matplotlib.pyplot as plt
-
-# Compile C++ code
-def strip_essential_code(filenames):
-    code = ""
-    for name in filenames:
-        f = open(name, 'r').read()
-        code += f
-    return code
-
-dolfin_folder = os.path.abspath(os.path.join(inspect.getfile(inspect.currentframe()), "../cpp"))
-sources =['particles.cpp', 'advect_particles.cpp',
-          'l2projection.cpp', 'pdestaticcondensation.cpp', 'formutils.cpp']
-headers = map(lambda x: os.path.join(dolfin_folder, x),['utils.h','particle.h','particles.h','advect_particles.h',
-                                                        'l2projection.h', 'pdestaticcondensation.h', 'formutils.h'] )
-code = strip_essential_code(headers)
-
-include_dirs=[".", os.path.abspath(dolfin_folder)]
-library_dirs=[".", "/usr/local/lib"]
-libraries=[]
-
-compiled_module = compile_extension_module(code=code, source_directory=os.path.abspath(dolfin_folder),
-                                           sources=sources, include_dirs=include_dirs,
-                                           library_dirs=library_dirs, libraries=[])
+from .cpp import particle_wrapper as compiled_module
 
 class particles(compiled_module.particles):
     def __init__(self,xp,particle_properties, mesh):
@@ -85,7 +59,15 @@ class particles(compiled_module.particles):
         return xp
 
 class advect_particles(compiled_module.advect_particles):
+    def __init__(self, *args):
+        a = list(args)
+        a[1] = a[1]._cpp_object
+        a[2] = a[2]._cpp_object
+        print(a)
+        super().__init__(*tuple(a))
+
     def __call__(self, *args):
+        print('Args = ', args)
         return self.eval(*args)
 
 class advect_rk2(compiled_module.advect_rk2):

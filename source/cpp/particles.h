@@ -29,8 +29,9 @@ namespace dolfin{
     friend class PDEStaticCondensation;
 
     public:
-        particles(const Array<double>& p_array, const Array<int>& p_template, const int p_num,
-                  const Mesh& mesh);
+    particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
+              Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
+              int p_num, const Mesh& mesh);
 
         ~particles();
 

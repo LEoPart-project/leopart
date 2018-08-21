@@ -14,7 +14,7 @@ __all__ = ['RandomRectangle', 'RandomCircle', 'RegularRectangle']
 comm = pyMPI.COMM_WORLD
 
 '''
-Classes for particle generation, either on regular lattice (RegularRectangle), 
+Classes for particle generation, either on regular lattice (RegularRectangle),
 or randomly placed (RandomRectangle/RandomCircle)
 '''
 
@@ -84,7 +84,7 @@ class RandomCircle(RandomGenerator):
                                  lambda x: sqrt((x[0]-center[0])**2 +
                                                 (x[1]-center[1])**2) < radius
                                  )
-                                 
+
 class RegularRectangle(RandomGenerator):
     def __init__(self, ll, ur):
         # ll is Point(lower left coordinate), ur is Point(upper right coordinate)
@@ -96,6 +96,7 @@ class RegularRectangle(RandomGenerator):
     def generate(self, N, method = 'open'):
         'Genererate points.'
         assert len(N) == self.dim
+
         if self.rank == 0:
            if method == 'closed':
                endpoint = True
@@ -115,12 +116,12 @@ class RegularRectangle(RandomGenerator):
            coords = []
            for i, (a,b) in enumerate(self.domain):
                coords.append(np.linspace(a,b,N[i],endpoint = endpoint))
-           
+
            X,Y =  np.meshgrid(coords[0], coords[1])
            points = np.vstack((np.hstack(X),np.hstack(Y))).T
-           assert np.product(N) == len(points)  
-           points_inside = np.array(filter(self.rule, points))         
+           assert np.product(N) == len(points)
+           points_inside = np.array(list(filter(self.rule, points)))
         else:
            points_inside = None
-           
-        return points_inside                                 
+
+        return points_inside

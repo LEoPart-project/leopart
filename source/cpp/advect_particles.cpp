@@ -40,7 +40,7 @@ advect_particles::advect_particles( particles& P, FunctionSpace& U, Function& uh
 // Using delegate constructors here
 advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                                    const BoundaryMesh& bmesh, const std::string type1,
-                                   const Array<double>& pbc_limits,
+                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                                    const std::string update_particle)
     : advect_particles::advect_particles(P, U, uhi, bmesh, type1, update_particle)
 {
@@ -66,8 +66,9 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
     }
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                                   const std::string type2, const Array<std::size_t>& indices2,
+advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+                                   const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                                   const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                                    const std::string update_particle)
     : _P(&P), uh(&uhi), _element( U.element() ), update_particle(update_particle)
 {
@@ -106,8 +107,11 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
         dolfin_error("advect_particles.cpp::advect_particles","could not set particle property updater","Provide any of: none, scalar, vector, both");
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                                   const std::string type2, const Array<std::size_t>& indices2, const Array<double>& pbc_limits,
+advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+                                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                                   const std::string type2,
+                                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                                    const std::string update_particle)
     : advect_particles::advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, update_particle)
 {
@@ -253,7 +257,7 @@ void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string 
     }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype, const Array<std::size_t>& bidcs){
+void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs){
     if(btype == "closed"){
         cbc_facets = boundary_facets(bmesh, bidcs);
     }else if(btype == "open"){
@@ -296,7 +300,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
     return bfacet_idcs;
 }
 //-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh, const Array<std::size_t>& bidcs){
+std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs){
     // This method is not yet tested!
     std::size_t d = _P->_Ndim-1;
     MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
@@ -548,7 +552,7 @@ void advect_particles::do_step(double dt){
             _P->_cell2part[reloc_local_c[i]].push_back( reloc_local_p[i] );
         }else{
             dolfin_error("advection.cpp::do_step", "find a hosting cell on local process", "Unknown");
-        }        
+        }
     }
 
     // Debug only
@@ -1242,7 +1246,7 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const Boun
 }
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                        const BoundaryMesh& bmesh, const std::string type1, const Array<double>& pbc_limits,
+                       const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                         const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, pbc_limits, update_particle)
 {
@@ -1251,8 +1255,8 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
 }
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                        const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                        const std::string type2, const Array<std::size_t>& indices2,
+                       const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                        const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                         const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, update_particle)
 {
@@ -1260,8 +1264,10 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
     init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                       const std::string type2, const Array<std::size_t>& indices2, const Array<double>& pbc_limits,
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+                       const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                       const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                        const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, pbc_limits, update_particle)
 {
@@ -1354,7 +1360,7 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const Boun
 }
 //-----------------------------------------------------------------------------
 advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-                        const BoundaryMesh& bmesh, const std::string type1, const Array<double>& pbc_limits,
+                       const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                         const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, pbc_limits, update_particle)
 {
@@ -1363,8 +1369,8 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
 }
 //-----------------------------------------------------------------------------
 advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-                        const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                        const std::string type2, const Array<std::size_t>& indices2,
+                       const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                        const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                         const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, update_particle)
 {
@@ -1372,8 +1378,10 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
     init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                       const std::string type2, const Array<std::size_t>& indices2, const Array<double>& pbc_limits,
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+                       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                       const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                        const std::string update_particle)
         : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, pbc_limits, update_particle )
 {

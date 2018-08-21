@@ -44,16 +44,18 @@ namespace dolfin{
                          const std::string update_particle = "none");
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const BoundaryMesh& bmesh, const std::string type1,
-                         const Array<double>& pbc_limits,
+                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                          const std::string update_particle = "none");
 
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                         const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                         const std::string type2, const Array<std::size_t>& indices2,
+                         const BoundaryMesh& bmesh, const std::string type1,
+                         Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                         const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                          const std::string update_particle = "none");
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                         const BoundaryMesh& bmesh, const std::string type1, const Array<std::size_t>& indices1,
-                         const std::string type2, const Array<std::size_t>& indices2, const Array<double>& pbc_limits,
+                         const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                         const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                          const std::string update_particle = "none" );
 
         void do_step(double dt);
@@ -66,13 +68,13 @@ namespace dolfin{
 
         void set_facets_info();
         void set_bfacets(const BoundaryMesh& bmesh, const std::string btype);
-        void set_bfacets(const BoundaryMesh& bmesh, const std::string btype, const Array<std::size_t>& bidcs);
+        void set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
 
         // TODO: void update_facet_info() (moving meshes)
         std::vector<double> subtract(std::vector<double>& u, std::vector<double>& v);
 
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh);
-        std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, const Array<std::size_t>& bidcs);
+        std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
         std::vector<std::size_t> interior_facets();
 
         // Initialize interior, open, closed and periodic facets
@@ -127,15 +129,17 @@ namespace dolfin{
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    const std::string update_particle = "none" );
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<double>& pbc_limits,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<std::size_t>& indices1, const std::string type2, const Array<std::size_t>& indices2,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1, const std::string type2,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                    const std::string update_particle = "none" );
 
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<std::size_t>& indices1, const std::string type2, const Array<std::size_t>& indices2,
-                   const Array<double>& pbc_limits,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1, const std::string type2,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
 
         // Destructor
@@ -185,15 +189,17 @@ namespace dolfin{
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    const std::string update_particle = "none" );
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<double>& pbc_limits,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<std::size_t>& indices1, const std::string type2, const Array<std::size_t>& indices2,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                   const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                    const std::string update_particle = "none" );
 
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
-                   const Array<std::size_t>& indices1, const std::string type2, const Array<std::size_t>& indices2,
-                   const Array<double>& pbc_limits,
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+                   const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
 
         // Destructor
