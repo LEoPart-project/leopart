@@ -48,15 +48,6 @@ class SlottedDisk(UserExpression):
         self.center = center
         self.lb     = lb
         self.ub     = ub
-        #if 'lb' in kwargs:
-            #self.lb = kwargs['lb']
-        #else:
-            #self.lb = 0.
-        
-        #if 'ub' in kwargs:
-            #self.ub = kwargs['ub']
-        #else:
-            #self.ub = 1.
         super().__init__(self, **kwargs)
         
     def eval(self, value, x):

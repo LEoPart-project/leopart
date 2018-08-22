@@ -82,7 +82,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         psi0_expression = GaussianPulse( center = (xc, yc), sigma = float(sigma),
                                         U = [Uh, Uh], time = 0., height = 1., degree = 3 )
 
-                # Generate particles
+        # Generate particles
         if comm.Get_rank() == 0:
             x    =  RandomCircle(Point(x0, y0), r).generate([pres, pres])
             s    =  np.zeros(len(x), dtype = np.float_)
