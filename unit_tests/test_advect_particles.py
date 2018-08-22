@@ -49,7 +49,7 @@ def decorate_advect_particle(my_func):
 
         vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
         V = VectorFunctionSpace(mesh,"CG", 1)
-        x = np.array([[0.25, 0.25]])
+        x = np.array([[0.25, 0.25], [0.15, 0.15]])
         dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
         return my_func(mesh,bmesh, V, vexpr,x,dt_list)
     return wrapper
@@ -65,7 +65,7 @@ def advect_particle(mesh,bmesh, V, vexpr,x, dt_list):
 
     for dt in dt_list:
         p = particles(x, [x,x], mesh)
-        ap= advect_particles(p, V, v, bmesh, 'closed')
+        ap= advect_particles(p, V, v, bmesh, 'closed', 'none')
         xp_0 = p.positions(mesh)
 
         t = 0.
@@ -93,7 +93,7 @@ def advect_particle_rk2(mesh,bmesh, V, vexpr,x, dt_list):
 
     for dt in dt_list:
         p = particles(x, [x,x], mesh)
-        ap= advect_rk2(p, V, v, bmesh, 'closed')
+        ap= advect_rk2(p, V, v, bmesh, 'closed', 'none')
         xp_0 = p.positions(mesh)
 
         t = 0.
@@ -123,7 +123,7 @@ def advect_particle_rk3(mesh,bmesh, V, vexpr,x, dt_list):
 
     for dt in dt_list:
         p = particles(x, [x,x], mesh)
-        ap= advect_rk3(p, V, v, bmesh, 'closed')
+        ap= advect_rk3(p, V, v, bmesh, 'closed', 'none')
         xp_0 = p.positions(mesh)
 
         t = 0.
@@ -180,7 +180,7 @@ def advect_particle_periodic(mesh,bmesh,lims,V, vexpr,x,dt):
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap= advect_particles(p, V, v, bmesh, 'periodic', lims.flatten())
+    ap= advect_particles(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
 
     xp_0 = p.positions(mesh)
     t  = 0.
@@ -196,7 +196,7 @@ def advect_particle_periodic_rk2(mesh,bmesh,lims,V, vexpr,x,dt):
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten())
+    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
 
     xp_0 = p.positions(mesh)
     t  = 0.
@@ -212,7 +212,7 @@ def advect_particle_periodic_rk3(mesh,bmesh,lims,V, vexpr,x,dt):
     v.assign(vexpr)
 
     p = particles(x, [x[:,0]*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten())
+    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
 
     xp_0 = p.positions(mesh)
     t  = 0.

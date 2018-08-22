@@ -40,22 +40,24 @@ class PeriodicBoundary(SubDomain):
             y[0] = x[0]
             y[1] = x[1] - 1.
 
-class SlottedDisk(Expression):
-    def __init__(self,radius, center, width, depth, **kwargs):
+class SlottedDisk(UserExpression):
+    def __init__(self,radius, center, width, depth, lb = 0., ub = 1., **kwargs):
         self.r      = radius
         self.width  = width
         self.depth  = depth
         self.center = center
-        if 'lb' in kwargs:
-            self.lb = kwargs['lb']
-        else:
-            self.lb = 0.
+        self.lb     = lb
+        self.ub     = ub
+        #if 'lb' in kwargs:
+            #self.lb = kwargs['lb']
+        #else:
+            #self.lb = 0.
         
-        if 'ub' in kwargs:
-            self.ub = kwargs['ub']
-        else:
-            self.ub = 1.
-            
+        #if 'ub' in kwargs:
+            #self.ub = kwargs['ub']
+        #else:
+            #self.ub = 1.
+        super().__init__(self, **kwargs)
         
     def eval(self, value, x):
         xc = self.center[0]
@@ -87,7 +89,7 @@ def decorate_projection_test(my_projection_test):
             V = VectorFunctionSpace(mesh,"DG", polynomial_order)
             
         v_exact = Function(V)
-        v_exact.assign(interpolate_expression)
+        v_exact.interpolate(interpolate_expression)
         
         x = RandomRectangle(Point(xmin, ymin), Point(xmax,ymax)).generate([500, 500])
         s = assign_particle_values(x,interpolate_expression)
@@ -106,8 +108,8 @@ def decorate_projection_test(my_projection_test):
                     raise Exception("Function should be reconstructed exactly")
         
         if my_projection_test.__name__ == "l2projection_bounded_test":
-            if np.any(vh.vector().array() > kwargs["ub"] + 1e-12) or \
-                np.any(vh.vector().array() < kwargs["lb"] - 1e-12) :
+            if np.any(vh.vector().vec().array > kwargs["ub"] + 1e-12) or \
+                np.any(vh.vector().vec().array < kwargs["lb"] - 1e-12) :
                 raise Exception("Violated bounds in box constrained projection")    
         return
     return wrapper
@@ -116,7 +118,7 @@ def decorate_projection_test(my_projection_test):
 def l2projection_test(mesh, bmesh, V,p, property_idx):
     phih = Function(V)
     lstsq_rho = l2projection(p,V,property_idx)
-    lstsq_rho.project(phih)
+    lstsq_rho.project(phih.cpp_object())
     return phih
 
 @decorate_projection_test
@@ -133,7 +135,7 @@ def l2projection_bounded_test(mesh, bmesh, V,p, property_idx, **kwargs):
     
     phih = Function(V)
     lstsq_rho = l2projection(p,V,property_idx)
-    lstsq_rho.project(phih, lb, ub)
+    lstsq_rho.project(phih.cpp_object(), lb, ub)
     return phih
 
 def pde_constrained_test(polynomial_order, interpolate_expression):
@@ -172,7 +174,7 @@ def pde_constrained_test(polynomial_order, interpolate_expression):
     
     # Just make a complicated particle, possibly with scalars and vectors mixed 
     p = particles(x, [s], mesh)
-    p.interpolate(psi0_h, 1)
+    p.interpolate(psi0_h.cpp_object(), 1)
     
     # Initialize forms
     FuncSpace_adv = {'FuncSpace_local': W, 'FuncSpace_lambda': T, 'FuncSpace_bar': Wbar}
@@ -183,8 +185,9 @@ def pde_constrained_test(polynomial_order, interpolate_expression):
                                                     forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
                                                                                                   [],property_idx)
     # Assemble and solve
-    pde_projection.assemble()
-    pde_projection.solve_problem(psibar_h, psi_h, lambda_h)
+    pde_projection.assemble(True, True)
+    pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(), lambda_h.cpp_object(),
+                                 'none', 'default')
     
     error_psih   = abs(assemble( (psi_h - psi0_h) * (psi_h - psi0_h) *dx ) )   
     error_lamb = abs(assemble( lambda_h * lambda_h *dx ) )

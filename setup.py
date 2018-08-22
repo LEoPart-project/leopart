@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from distutils.core import setup
 
@@ -8,7 +8,7 @@ minor = 1
 
 setup(name = "DolfinParticles",
       version = "%d.%d" % (major, minor),
-      description = "LEoPART -- FEniCS functionality for advecting and projecting " \
+      description = "DolfinParticles -- FEniCS functionality for advecting and projecting " \
                     "scattered particle data onto a finite element mesh",
       author = "Jakob Maljaars",
       author_email = "j.m.maljaars@tudelft.nl",

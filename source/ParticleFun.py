@@ -1,13 +1,13 @@
 from dolfin import *
-#from numpy import zeros, array, squeeze, reshape
 import numpy as np
+
 # __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
 # __date__   = '2018-08'
 # __copyright__ = 'Copyright (C) 2011' + __author__
 # __license__  = 'GNU Lesser GPL version 3 or any later version'
 
 """
-    SWIG wrapper for the CPP functionalities
+    Wrapper for the CPP functionalities
 """
 
 __all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
@@ -46,15 +46,14 @@ class particles(compiled_module.particles):
         return self.eval(*args)
 
     def return_property(self,mesh, index):
-        pproperty = self.get_property(index)
+        pproperty = np.asarray(self.get_property(index))
         if self.ptemplate[index] > 1:
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
-
     def positions(self,mesh):
         Ndim = mesh.geometry().dim()
-        xp = self.get_positions()
+        xp = np.asarray(self.get_positions())
         xp = xp.reshape((-1, Ndim))
         return xp
 
@@ -89,6 +88,11 @@ class advect_rk3(compiled_module.advect_rk3):
         return self.eval(*args)
 
 class l2projection(compiled_module.l2projection):
+    def __init__(self, *args):
+        a = list(args)
+        a[1] = a[1]._cpp_object
+        super().__init__(*tuple(a))
+    
     def __call__(self, *args):
         return self.eval(*args)
 
