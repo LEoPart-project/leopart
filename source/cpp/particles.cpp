@@ -268,7 +268,7 @@ void particles::update_bounding_boxes(){
 std::vector<double> particles::unpack_particle(const particle part){
     // Unpack particle into std::vector<double>
     std::vector<double> part_unpacked;
-    for(std::size_t i; i<_ptemplate.size(); i++)
+    for(std::size_t i = 0; i<_ptemplate.size(); i++)
         part_unpacked.insert(part_unpacked.end(),
                             part[i].coordinates(), part[i].coordinates()+_ptemplate[i]);
     return part_unpacked;

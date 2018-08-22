@@ -63,8 +63,8 @@ lb      = -1.           # Lower value in slotted disk
 ub      = 3.            # Upper value in slotted disk
 
 # Mesh/particle resolution
-nx  = 32
-pres= 500
+nx  = 64
+pres= 800
 
 # Polynomial order for bounded l2 map
 k   = 1
@@ -73,7 +73,7 @@ k   = 1
 Uh = np.pi
 
 # Timestepping
-Tend = 0.06
+Tend = 2.
 dt = Constant(0.02)
 num_steps = np.rint(Tend/float(dt))
 
@@ -130,10 +130,7 @@ while step < num_steps:
     
     if comm.Get_rank() == 0:
         print("Step "+str(step))
-   
-    # Print number of particles
-    p.number_of_particles(mesh)
-    
+      
     ap.do_step(float(dt))
     lstsq_psi.project(psi_h.cpp_object(),lb, ub)
 
