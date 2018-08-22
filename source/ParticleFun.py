@@ -1,5 +1,6 @@
 from dolfin import *
 import numpy as np
+from mpi4py import MPI as pyMPI
 
 # __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
 # __date__   = '2018-08'
@@ -13,6 +14,8 @@ import numpy as np
 __all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
 
 from .cpp import particle_wrapper as compiled_module
+
+comm = pyMPI.COMM_WORLD
 
 class particles(compiled_module.particles):
     def __init__(self,xp,particle_properties, mesh):
@@ -56,6 +59,13 @@ class particles(compiled_module.particles):
         xp = np.asarray(self.get_positions())
         xp = xp.reshape((-1, Ndim))
         return xp
+    
+    def number_of_particles(self,mesh):
+        xp_root = comm.gather( self.positions(mesh), root = 0)
+        if comm.Get_rank() == 0: 
+            xp_root = np.float16( np.vstack(xp_root) )
+            print("Number of particles is "+str(len(xp_root)))
+        return
 
 class advect_particles(compiled_module.advect_particles):
     def __init__(self, *args):

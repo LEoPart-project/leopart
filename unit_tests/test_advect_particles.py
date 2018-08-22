@@ -49,7 +49,7 @@ def decorate_advect_particle(my_func):
 
         vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
         V = VectorFunctionSpace(mesh,"CG", 1)
-        x = np.array([[0.25, 0.25], [0.15, 0.15]])
+        x = np.array([[0.25, 0.25]])
         dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
         return my_func(mesh,bmesh, V, vexpr,x,dt_list)
     return wrapper
@@ -67,12 +67,13 @@ def advect_particle(mesh,bmesh, V, vexpr,x, dt_list):
         p = particles(x, [x,x], mesh)
         ap= advect_particles(p, V, v, bmesh, 'closed', 'none')
         xp_0 = p.positions(mesh)
-
+        #print(xp_0)
+        #quit()
         t = 0.
         while t<2.-1e-12:
             ap.do_step(dt)
             t += dt
-
+        
         xp_end = p.positions(mesh)
         error_list.append( np.linalg.norm(xp_0 - xp_end) )
 
@@ -155,8 +156,9 @@ def decorate_periodic_tests(my_func):
 
         vexpr = Constant((1.,1.))
         V = VectorFunctionSpace(mesh,"CG", 1)
-
-        x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
+        
+        x = np.array([[0.25, 0.25],[0.2, 0.2]])
+        #x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([1, 1])
         x = comm.bcast(x, root=0)
         dt= 0.05
 
@@ -185,6 +187,8 @@ def advect_particle_periodic(mesh,bmesh,lims,V, vexpr,x,dt):
     xp_0 = p.positions(mesh)
     t  = 0.
     while t<1.-1e-12:
+        # Print number of particles
+        p.number_of_particles(mesh)
         ap.do_step(dt)
         t += dt
     xp_end = p.positions(mesh)
@@ -224,13 +228,13 @@ def advect_particle_periodic_rk3(mesh,bmesh,lims,V, vexpr,x,dt):
 
 def main():
     # One particle tests
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Run single particle tests'))
-    advect_particle()
-    advect_particle_rk2()
-    advect_particle_rk3()
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Passed single particle tests'))
+    #if comm.Get_rank() == 0:
+        #print ('{:=^72}'.format('Run single particle tests'))
+    #advect_particle()
+    #advect_particle_rk2()
+    #advect_particle_rk3()
+    #if comm.Get_rank() == 0:
+        #print ('{:=^72}'.format('Passed single particle tests'))
 
     # Periodic domain particle tests
     if comm.Get_rank() == 0:
