@@ -2,8 +2,13 @@
 build/
 results/
 deprecate/
+CMakeFiles/
 
 # Files
 *.pyc
 *.py~
+*.so
+cmake_install.cmake
+Makefile
+CMakeCache.txt
 

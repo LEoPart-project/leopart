@@ -85,9 +85,6 @@ namespace dolfin{
         const std::size_t _num_processes;
         std::vector<std::vector<double>> _bounding_boxes;
 
-        // TO REMOVE
-        int dummy, dummy2, dummy3, dummy4, dummy5;
-
     };
 }
 
