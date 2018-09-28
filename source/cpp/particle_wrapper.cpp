@@ -12,7 +12,7 @@ namespace py = pybind11;
 #include "l2projection.h"
 #include "pdestaticcondensation.h"
 #include "formutils.h"
-
+#include "adddelete.h"
 
 PYBIND11_MODULE(particle_wrapper, m)
 {
@@ -92,5 +92,11 @@ PYBIND11_MODULE(particle_wrapper, m)
     &dolfin::PDEStaticCondensation::solve_problem)
     .def("apply_boundary", &dolfin::PDEStaticCondensation::apply_boundary);
 
-
+    py::class_<dolfin::AddDelete>(m, "AddDelete")
+     .def(py::init<std::vector<std::shared_ptr<const dolfin::Function>>>())
+     .def(py::init<dolfin::particles&, std::size_t, std::size_t, std::vector<std::shared_ptr<const dolfin::Function>>>())
+     .def(py::init<dolfin::particles&, std::size_t, std::size_t, std::vector<std::shared_ptr<const dolfin::Function>>, std::vector<std::size_t>, std::vector<double>>())
+     .def("do_sweep",  &dolfin::AddDelete::do_sweep)
+     .def("do_sweep_weighted",  &dolfin::AddDelete::do_sweep_weighted)
+     .def("do_sweep_failsafe",  &dolfin::AddDelete::do_sweep_failsafe);
 }

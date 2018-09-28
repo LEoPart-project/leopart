@@ -144,7 +144,6 @@ void particles::push_particle(const double dt, const Point& up, const std::size_
 
 void particles::make_bounding_boxes(){
     std::size_t _gdim = _Ndim;
-    //std::size_t _gdim = _mesh->topology().dim();
 
     // Create bounding boxes of mesh
     std::vector<double> x_min_max(2*_gdim);

@@ -16,7 +16,8 @@ pybind11_add_module(particle_wrapper SHARED
   advect_particles.cpp
   formutils.cpp
   particles.cpp
-  pdestaticcondensation.cpp)
+  pdestaticcondensation.cpp
+  adddelete.cpp)
 
 
 # Add DOLFIN libraries and other config

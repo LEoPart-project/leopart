@@ -11,7 +11,7 @@ from mpi4py import MPI as pyMPI
     Wrapper for the CPP functionalities
 """
 
-__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation']
+__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection', 'PDEStaticCondensation', 'AddDelete']
 
 from .cpp import particle_wrapper as compiled_module
 
@@ -107,5 +107,15 @@ class l2projection(compiled_module.l2projection):
         return self.eval(*args)
 
 class PDEStaticCondensation(compiled_module.PDEStaticCondensation):
+    def __call__(self, *args):
+        return self.eval(*args)
+
+class AddDelete(compiled_module.AddDelete):
+    def __init__(self, *args):
+        a = list(args)
+        for i,func in enumerate(a[3]):
+            a[3][i] = func._cpp_object
+        super().__init__(*tuple(a))
+    
     def __call__(self, *args):
         return self.eval(*args)

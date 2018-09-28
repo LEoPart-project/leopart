@@ -11,3 +11,7 @@ Makefile
 *.so
 CMakeCache.txt
 cmake_install.cmake
+*.pvd
+*.pvtu
+*.vtu
+*.png
