@@ -1,14 +1,18 @@
 # Directories
 build/
 results/
+results_fenics2017/
 deprecate/
 CMakeFiles/
 
 # Files
 *.pyc
 *.py~
-*.so
-cmake_install.cmake
 Makefile
+*.so
 CMakeCache.txt
-
+cmake_install.cmake
+*.pvd
+*.pvtu
+*.vtu
+*.png

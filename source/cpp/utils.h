@@ -3,6 +3,7 @@
 
 #include <ufc.h>
 #include <dolfin/fem/FiniteElement.h>
+#include <dolfin/function/Function.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/function/FunctionSpace.h>
 
@@ -16,7 +17,7 @@ namespace dolfin{
         ~Utils(){}
 
         static void return_expansion_coeffs(std::vector<double>& coeffs,
-                                            Cell& dolfin_cell, const Function* phih)
+                                            const Cell& dolfin_cell, const Function* phih)
         {
             // Get expansion coefficients phi_i in N_i . phi_i
             std::vector<double> vertex_coordinates;
@@ -43,6 +44,26 @@ namespace dolfin{
             element->evaluate_basis_all(basis_matrix.data(), xp.coordinates(),
                                         vertex_coordinates.data(),
                                         ufc_cell.orientation);
+        }
+
+        static void cell_bounding_box(std::vector<double>& x_min_max, const std::vector<double>& coordinates,
+                                      const std::size_t gdim)
+        {
+            // Consider merging with make_bounding_boxes in particles class?!
+            x_min_max.resize(2*gdim);
+            for (std::size_t i = 0; i < gdim; ++i)
+            {
+              for (auto it = coordinates.begin() + i; it < coordinates.end(); it += gdim)
+              {
+                if (it == coordinates.begin() + i){
+                    x_min_max[i]         = *it;
+                    x_min_max[gdim + i] = *it;
+                }else{
+                    x_min_max[i]         = std::min(x_min_max[i], *it);
+                    x_min_max[gdim + i] = std::max(x_min_max[gdim + i], *it);
+                }
+              }
+            }
         }
     };
 }

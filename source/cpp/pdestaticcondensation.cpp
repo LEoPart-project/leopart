@@ -82,27 +82,31 @@ void PDEStaticCondensation::assemble(const bool assemble_all, const bool assembl
           }
     }
 
-    for( CellIterator cell(*(this->mesh)); !cell.end(); ++cell){
+    for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell){
         std::size_t nrowsN, ncolsN, nrowsG, ncolsG,
                     nrowsL, ncolsL, nrowsH, ncolsH,
                     nrowsB, ncolsB;
-        ArrayView<const dolfin::la_index> cdof_rowsN, cdof_colsN, cdof_rowsG, cdof_colsG,
-                                          cdof_rowsL, cdof_colsL, cdof_rowsH, cdof_colsH,
-                                          cdof_rowsB, cdof_colsB;
 
         // Get local tensor info
         // TODO: We may not need all the info...
-        FormUtils::local_tensor_info(*(this->N), *cell, &nrowsN, cdof_rowsN,
-                                             &ncolsN, cdof_colsN);
-        FormUtils::local_tensor_info(*(this->G), *cell, &nrowsG, cdof_rowsG,
-                                             &ncolsG, cdof_colsG);
-        FormUtils::local_tensor_info(*(this->L), *cell, &nrowsL, cdof_rowsL,
-                                             &ncolsL, cdof_colsL);
-        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH, cdof_rowsH,
-                                             &ncolsH, cdof_colsH);
-        FormUtils::local_tensor_info(*(this->B), *cell, &nrowsB, cdof_rowsB,
-                                             &ncolsB, cdof_colsB);
-        // Then do all the work     
+        std::tie(nrowsN, ncolsN) = FormUtils::local_tensor_size(*N, *cell);
+        std::tie(nrowsG, ncolsG) = FormUtils::local_tensor_size(*G, *cell);
+        std::tie(nrowsL, ncolsL) = FormUtils::local_tensor_size(*L, *cell);
+        std::tie(nrowsH, ncolsH) = FormUtils::local_tensor_size(*H, *cell);
+        std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*B, *cell);
+
+        //        FormUtils::local_tensor_info(*(this->N), *cell, &nrowsN, cdof_rowsN,
+        //                                             &ncolsN, cdof_colsN);
+        //        FormUtils::local_tensor_info(*(this->G), *cell, &nrowsG, cdof_rowsG,
+        //                                             &ncolsG, cdof_colsG);
+        //        FormUtils::local_tensor_info(*(this->L), *cell, &nrowsL, cdof_rowsL,
+        //                                             &ncolsL, cdof_colsL);
+        //        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH, cdof_rowsH,
+        //                                             &ncolsH, cdof_colsH);
+        //        FormUtils::local_tensor_info(*(this->B), *cell, &nrowsB, cdof_rowsB,
+        //                                             &ncolsB, cdof_colsB);
+
+        // Then do all the work
         if(assemble_all){
             Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> G_e, L_e,
                                                                                    H_e, B_e;
@@ -113,7 +117,7 @@ void PDEStaticCondensation::assemble(const bool assemble_all, const bool assembl
             FormUtils::local_assembler(B_e, *(this->B), *cell, nrowsB, ncolsB);
 
             Eigen::MatrixXd LH(nrowsN + nrowsH, ncolsB);
-            LH << L_e , H_e;
+            LH << L_e, H_e;
             LHe_list[cell->index()]   = LH;
             Ge_list[cell->index()]    = G_e;
             Be_list[cell->index()]    = B_e;
@@ -174,6 +178,9 @@ void PDEStaticCondensation::assemble(const bool assemble_all, const bool assembl
         LHS_e = LHe_list[cell->index()].transpose() * invKS * LHe_list[cell->index()] - Be_list[cell->index()];
         RHS_e = -S_e + LHe_list[cell->index()].transpose() * invKS * QR;
 
+        auto cdof_rowsB = B->function_space(0)->dofmap()->cell_dofs(cell->index());
+        auto cdof_colsB = B->function_space(1)->dofmap()->cell_dofs(cell->index());
+
         // Apply BC's here (maintaining symmetry)
         if (active_bcs){
             FormUtils::apply_boundary_symmetric(LHS_e, RHS_e, cdof_rowsB, cdof_colsB,
@@ -196,10 +203,11 @@ void PDEStaticCondensation::assemble(const bool assemble_all, const bool assembl
 void PDEStaticCondensation::assemble_state_rhs(){
     for( CellIterator cell(*(this->mesh)); !cell.end(); ++cell){
         std::size_t nrowsH, ncolsH;
-        ArrayView<const dolfin::la_index> cdof_rowsH, cdof_colsH;
+        //        ArrayView<const dolfin::la_index> cdof_rowsH, cdof_colsH;
 
-        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH, cdof_rowsH,
-                                             &ncolsH, cdof_colsH);
+        std::tie(nrowsH, ncolsH) = FormUtils::local_tensor_size(*H, *cell);
+        //        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH, cdof_rowsH,
+        //                                             &ncolsH, cdof_colsH);
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> R_e;
         FormUtils::local_assembler(R_e, *(this->R), *cell, nrowsH, 1);
         Re_list[cell->index()] = R_e;
@@ -247,10 +255,16 @@ void PDEStaticCondensation::backsubtitute(const Function &Uglobal, Function &Ulo
     for( CellIterator cell(*(this->mesh)); !cell.end(); ++cell){
         // Backsubstitute global solution Uglobal to get local solution Ulocal
         std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
-        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ, cdof_rowsS, cdof_colsS;
+        //        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ, cdof_rowsS, cdof_colsS;
 
-        FormUtils::local_tensor_info(*(this->Q), *cell, &nrowsQ, cdof_rowsQ, &ncolsQ, cdof_colsQ);
-        FormUtils::local_tensor_info(*(this->S), *cell, &nrowsS, cdof_rowsS, &ncolsS, cdof_colsS);
+        //        FormUtils::local_tensor_info(*(this->Q), *cell, &nrowsQ, cdof_rowsQ, &ncolsQ, cdof_colsQ);
+        //        FormUtils::local_tensor_info(*(this->S), *cell, &nrowsS, cdof_rowsS, &ncolsS, cdof_colsS);
+
+        std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
+        std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);
+        auto cdof_rowsQ = Q->function_space(0)->dofmap()->cell_dofs(cell->index());
+        auto cdof_rowsS = S->function_space(0)->dofmap()->cell_dofs(cell->index());
+
         Eigen::Matrix<double, Eigen::Dynamic, 1> Uglobal_e, Ulocal_e;
         Uglobal_e.resize(nrowsS);
 
@@ -266,13 +280,19 @@ void PDEStaticCondensation::backsubtitute(const Function &Uglobal, Function &Ulo
         // Backsubstitute global solution Uglobal to get local solution Ulocal as well as Lagrange
         // multiplier Lambda
         std::size_t nrowsQ, ncolsQ, nrowsR, ncolsR, nrowsS, ncolsS ;
-        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ,
-                                          cdof_rowsR, cdof_colsR,
-                                          cdof_rowsS, cdof_colsS;
+        //        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ,
+        //                                          cdof_rowsR, cdof_colsR,
+        //                                          cdof_rowsS, cdof_colsS;
 
-        FormUtils::local_tensor_info(*(this->Q), *cell, &nrowsQ, cdof_rowsQ, &ncolsQ, cdof_colsQ);
-        FormUtils::local_tensor_info(*(this->R), *cell, &nrowsR, cdof_rowsR, &ncolsR, cdof_colsR);
-        FormUtils::local_tensor_info(*(this->S), *cell, &nrowsS, cdof_rowsS, &ncolsS, cdof_colsS);
+        std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
+        std::tie(nrowsR, ncolsR) = FormUtils::local_tensor_size(*R, *cell);
+        std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);
+        auto cdof_rowsQ = Q->function_space(0)->dofmap()->cell_dofs(cell->index());
+        auto cdof_rowsR = R->function_space(0)->dofmap()->cell_dofs(cell->index());
+        auto cdof_rowsS = S->function_space(0)->dofmap()->cell_dofs(cell->index());
+        //        FormUtils::local_tensor_info(*(this->Q), *cell, &nrowsQ, cdof_rowsQ, &ncolsQ, cdof_colsQ);
+        //        FormUtils::local_tensor_info(*(this->R), *cell, &nrowsR, cdof_rowsR, &ncolsR, cdof_colsR);
+        //        FormUtils::local_tensor_info(*(this->S), *cell, &nrowsS, cdof_rowsS, &ncolsS, cdof_colsS);
         Eigen::Matrix<double, Eigen::Dynamic, 1> Uglobal_e, Ulocal_e;
         Uglobal_e.resize(nrowsS);
 

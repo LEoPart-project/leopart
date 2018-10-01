@@ -27,6 +27,7 @@ namespace dolfin{
     friend class advect_rk2;
     friend class advect_rk3;
     friend class PDEStaticCondensation;
+    friend class AddDelete;
 
     public:
         particles(const Array<double>& p_array, const Array<int>& p_template, const int p_num,

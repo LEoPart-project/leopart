@@ -12,30 +12,41 @@ void FormUtils::test_rank(const Form &a, const std::size_t rank){
                      "Proper forms specified?");
 }
 //-----------------------------------------------------------------------------
-void FormUtils::local_tensor_info(const Form& a, const Cell& cell,
-                                  std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
-                                  std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols)
+std::pair<std::size_t, std::size_t> FormUtils::local_tensor_size(const Form& a, const Cell& cell)
 {
-    if (a.rank() == 0)
-    {
-        *nrows = 1;
-        *ncols = 1;
-    }
-    else if (a.rank() == 1)
-    {
-        cdof_rows = a.function_space(0)->dofmap()->cell_dofs(cell.index());
-        *nrows = cdof_rows.size();
-        *ncols = 1;
-    }
-    else
-    {
-        cdof_rows = a.function_space(0)->dofmap()->cell_dofs(cell.index());
-        cdof_cols = a.function_space(1)->dofmap()->cell_dofs(cell.index());
-        *nrows = cdof_rows.size();
-        *ncols = cdof_cols.size();
-    }
+  if (a.rank() == 0)
+    return std::make_pair(1, 1);
+  else if (a.rank() == 1)
+    return std::make_pair(a.function_space(0)->dofmap()->cell_dofs(cell.index()).size(), 1);
+  else
+    return std::make_pair(a.function_space(0)->dofmap()->cell_dofs(cell.index()).size(),
+                          a.function_space(1)->dofmap()->cell_dofs(cell.index()).size());
 }
 //-----------------------------------------------------------------------------
+// void FormUtils::local_tensor_info(const Form& a, const Cell& cell,
+//                                   std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
+//                                   std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols)
+// {
+//     if (a.rank() == 0)
+//     {
+//         *nrows = 1;
+//         *ncols = 1;
+//     }
+//     else if (a.rank() == 1)
+//     {
+//         cdof_rows = a.function_space(0)->dofmap()->cell_dofs(cell.index());
+//         *nrows = cdof_rows.size();
+//         *ncols = 1;
+//     }
+//     else
+//     {
+//         cdof_rows = a.function_space(0)->dofmap()->cell_dofs(cell.index());
+//         cdof_cols = a.function_space(1)->dofmap()->cell_dofs(cell.index());
+//         *nrows = cdof_rows.size();
+//         *ncols = cdof_cols.size();
+//     }
+// }
+// //-----------------------------------------------------------------------------
 void FormUtils::local_assembler(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> &A_e,
                                 const Form &a, const Cell &cell, const std::size_t nrows, const std::size_t ncols)
 {
@@ -64,8 +75,8 @@ void FormUtils::apply_boundary_symmetric(Eigen::Matrix<double, Eigen::Dynamic, E
                                          Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
                                          const ArrayView<const dolfin::la_index>& cdof_rows,
                                          const ArrayView<const dolfin::la_index>& cdof_cols,
-                                        const std::vector<DirichletBC::Map>& boundary_values,
-                                        const bool active_bcs)
+                                         const std::vector<DirichletBC::Map>& boundary_values,
+                                         const bool active_bcs)
 {
     if (active_bcs)
     {
