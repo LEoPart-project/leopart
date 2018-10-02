@@ -55,8 +55,7 @@ class SlottedDisk(Expression):
             self.ub = kwargs['ub']
         else:
             self.ub = 1.
-            
-        
+
     def eval(self, value, x):
         xc = self.center[0]
         yc = self.center[1]
@@ -113,7 +112,7 @@ def decorate_projection_test(my_projection_test):
     return wrapper
           
 @decorate_projection_test
-def l2projection_test(mesh, bmesh, V,p, property_idx):
+def l2projection_test(mesh, bmesh, V, p, property_idx):
     phih = Function(V)
     lstsq_rho = l2projection(p,V,property_idx)
     lstsq_rho.project(phih)
