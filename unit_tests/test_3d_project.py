@@ -105,8 +105,6 @@ def l2projection_test(mesh, V, p, property_idx):
     lstsq_phi = l2projection(p,V,property_idx)
     lstsq_phi.project(phih)
     
-    outfile = File("initial_field.pvd")
-    outfile << phih
     return phih
 
 @decorate_projection_test
@@ -124,9 +122,6 @@ def l2projection_bounded_test(mesh, V, p, property_idx, **kwargs):
     phih = Function(V)
     lstsq_rho = l2projection(p,V,property_idx)
     lstsq_rho.project(phih, lb, ub)
-    
-    outfile = File("initial_field.pvd")
-    outfile << phih
     return phih
 
 def main():
