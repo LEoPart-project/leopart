@@ -85,7 +85,6 @@ namespace dolfin{
         const MPI_Comm _mpi_comm;
         const std::size_t _num_processes;
         std::vector<std::vector<double>> _bounding_boxes;
-
     };
 }
 

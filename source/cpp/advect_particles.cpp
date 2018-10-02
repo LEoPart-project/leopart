@@ -50,14 +50,20 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
         // TODO: Perform a check if it has the right size, always has to come in pairs
         // TODO: do provided values make sense?
         if( (pbc_limits.size() % ( _P->_Ndim * 4) ) != 0 )
+            // Check makes sense for mesh dimension 2 and 3
             dolfin_error("advect_particles.cpp::advect_particles","construct periodic boundary information", "Incorrect shape of pbc_limits provided?");
 
+        // TODO: short documentation
         std::size_t num_rows = pbc_limits.size()/( _P->_Ndim * 2);
         for(std::size_t i = 0; i < num_rows ; i++ ){
             std::vector<double> pbc_helper( _P->_Ndim * 2 );
             for(std::size_t j = 0; j < _P->_Ndim * 2; j++){
                 pbc_helper[j] = pbc_limits[i * _P->_Ndim * 2 + j];
             }
+            // FIXME: debug only
+            // std::cout<<"PBC helper will be"<<std::endl;
+            // for (auto val: pbc_helper) std::cout<<val<<std::endl;
+
             pbc_lims.push_back( pbc_helper );
         }
         pbc_active = true;
@@ -524,7 +530,14 @@ void advect_particles::do_step(double dt){
                                 _P->particle_communicator_collect(comm_snd, ci->index(), i);
                             }else{
                                 // Behavior in serial
+                                // DEBUG:
+                                //std::cout<<"Received back: "<<_P->_cell2part[ci->index()][i][0][0]<<" "<<
+                                //                             _P->_cell2part[ci->index()][i][0][1]<<" "<<
+                                //                             _P->_cell2part[ci->index()][i][0][2]<<std::endl;
+
                                 std::size_t cell_id = _P->_mesh->bounding_box_tree()->compute_first_entity_collision( _P->_cell2part[ci->index()][i][0]);
+                                //std::cout<<"Found in cell_id "<<cell_id<<std::endl;
+
                                 reloc_local_c.push_back(cell_id);
                                 reloc_local_p.push_back(_P->_cell2part[ci->index()][i]);
                                 _P->_cell2part[ci->index()].erase(_P->_cell2part[ci->index()].begin() + i);
@@ -914,7 +927,7 @@ std::tuple<std::size_t, double> advect_particles::time2intersect(std::size_t cid
             if(!outward_normal) normal *= -1.;
         }
 
-        // Compute distance to point. For procedure, see Haworth (2010). Though it is slightly modified
+        // Compute distance facet to point. For procedure, see Haworth (2010). Though it is slightly modified
         double h = (std::get<0>(facets_info[fidx])).distance(xp);
 
         //double dtintd = std::max(0., h / (up.dot(normal)) ); //See Haworth
@@ -957,21 +970,30 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
     bool hit = false;
     for(std::size_t i = 0; i < pbc_lims.size(); i++){
         for(std::size_t j = 0; j < _P->_Ndim; j++){
-            if( std::abs(midpoint[j] - pbc_lims[i][ j*_P->_Ndim ]) < 1E-10
+            // FIXME: BUG?!
+            // if( std::abs(midpoint[j] - pbc_lims[i][ j*_P->_Ndim ]) < 1E-10
+            //        &&
+            //    std::abs(midpoint[j] - pbc_lims[i][ j * _P->_Ndim + 1 ]) < 1E-10 ){
+            // DONE: new formulation
+            if( std::abs(midpoint[j] - pbc_lims[i][ j*2 ]) < 1E-10
                     &&
-                std::abs(midpoint[j] - pbc_lims[i][ j * _P->_Ndim + 1 ]) < 1E-10 ){
-                // Then we most likely found a match, but check if midpoint coordinates are in between specified limits
+                std::abs(midpoint[j] - pbc_lims[i][ j*2  + 1 ]) < 1E-10 ){
+                // Then we most likely found a match, but check if midpoint coordinates are in between the limits
+                // for the other coordinate directions
                 hit = true;
                 for(std::size_t k = 0; k < _P->_Ndim; k++){
                     if( k == j ) continue;
-                    if( midpoint[k] <= pbc_lims[i][k * _P->_Ndim]  || midpoint[k] >= pbc_lims[i][k * _P->_Ndim + 1] ){
+                    // FIXME: BUG?!
+                    //if( midpoint[k] <= pbc_lims[i][k * _P->_Ndim]  || midpoint[k] >= pbc_lims[i][k * _P->_Ndim + 1] ){
+                    //    hit = false;
+                    //}
+                    // New formulation
+                    if( midpoint[k] <= pbc_lims[i][ k*2 ]  || midpoint[k] >= pbc_lims[i][ k*2 + 1 ] )
                         hit = false;
-                    }
                 }
                 if(hit){
                     row_match = i ;
                     component = j;
-                    // Break out of multiple loops
                     goto break_me;
                 }
             }
@@ -995,21 +1017,45 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
     _P->push_particle(dt, up, cidx, pidx);
 
     // Point formulation
+    // TODO: FIXED BUG!?
+    //_P->_cell2part[cidx][pidx][0][component] +=
+    //            (pbc_lims[row_friend][component * _P->_Ndim] - pbc_lims[row_match][component * _P->_Ndim]);
+
     _P->_cell2part[cidx][pidx][0][component] +=
-                (pbc_lims[row_friend][component * _P->_Ndim] - pbc_lims[row_match][component * _P->_Ndim]);
+                (pbc_lims[row_friend][ component*2 ] - pbc_lims[row_match][ component*2 ]);
+
+    // DEBUG: new position:
+    // std::cout<<"x "<<_P->_cell2part[cidx][pidx][0][0]<<std::endl;
+    // std::cout<<"y "<<_P->_cell2part[cidx][pidx][0][1]<<std::endl;
+    // std::cout<<"z "<<_P->_cell2part[cidx][pidx][0][2]<<std::endl;
 
     // Corners can be tricky, therefore include this test
+    // FIXED: BUG IN OLD FORMULATION!?
+    //for(std::size_t i = 0; i < _P->_Ndim; i++){
+    //    if( i == component ) continue; // Skip this
+    //    if( _P->_cell2part[cidx][pidx][0][i] < pbc_lims[row_match][i * _P->_Ndim] ){
+    //        // Then we push the particle to the other end of domain
+    //        _P->_cell2part[cidx][pidx][0][i] +=
+    //            (pbc_lims[row_friend][i * _P->_Ndim + 1 ] - pbc_lims[row_match][i * _P->_Ndim]);
+    //    }else if( _P->_cell2part[cidx][pidx][0][i] > pbc_lims[row_match][i * _P->_Ndim + 1] ){
+    //        _P->_cell2part[cidx][pidx][0][i] -=
+    //            (pbc_lims[row_match][i * _P->_Ndim + 1 ] - pbc_lims[row_friend][i * _P->_Ndim ]);
+    //    }
+    //}
+
     for(std::size_t i = 0; i < _P->_Ndim; i++){
         if( i == component ) continue; // Skip this
-        if( _P->_cell2part[cidx][pidx][0][i] < pbc_lims[row_match][i * _P->_Ndim] ){
+        if( _P->_cell2part[cidx][pidx][0][i] < pbc_lims[row_match][ i*2 ] ){
             // Then we push the particle to the other end of domain
             _P->_cell2part[cidx][pidx][0][i] +=
-                (pbc_lims[row_friend][i * _P->_Ndim + 1 ] - pbc_lims[row_match][i * _P->_Ndim]);
-        }else if( _P->_cell2part[cidx][pidx][0][i] > pbc_lims[row_match][i * _P->_Ndim + 1] ){
+                (pbc_lims[row_friend][ i*2 + 1 ] - pbc_lims[row_match][ i*2 ]);
+        }else if( _P->_cell2part[cidx][pidx][0][i] > pbc_lims[row_match][ i*2 + 1] ){
             _P->_cell2part[cidx][pidx][0][i] -=
-                (pbc_lims[row_match][i * _P->_Ndim + 1 ] - pbc_lims[row_friend][i * _P->_Ndim ]);
+                (pbc_lims[row_match][ i*2 + 1 ] - pbc_lims[row_friend][ i*2 ]);
         }
     }
+
+
 }
 //-----------------------------------------------------------------------------
 void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx){
