@@ -11,8 +11,8 @@ from dolfin import *
 import os, inspect
 import numpy as np
 
-__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 
-           'l2projection', 'PDEStaticCondensation', 'AddDelete']
+__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection',
+           'StokesStaticCondensation', 'PDEStaticCondensation', 'AddDelete']
 
 # Compile C++ code
 def strip_essential_code(filenames):
@@ -23,11 +23,13 @@ def strip_essential_code(filenames):
     return code
 
 dolfin_folder = os.path.abspath(os.path.join(inspect.getfile(inspect.currentframe()), "../cpp"))
-sources =['particles.cpp', 'advect_particles.cpp', 'l2projection.cpp',
-          'pdestaticcondensation.cpp', 'formutils.cpp', 'adddelete.cpp']
+sources =['particles.cpp', 'advect_particles.cpp', 'l2projection.cpp', 
+          'stokesstaticcondensation.cpp', 'pdestaticcondensation.cpp', 
+          'formutils.cpp', 'adddelete.cpp']
 headers = map(lambda x: os.path.join(dolfin_folder, x),['utils.h','particle.h','particles.h','advect_particles.h',
-                                                        'l2projection.h', 'pdestaticcondensation.h', 'formutils.h',
-                                                        'adddelete.h'] )
+                                                        'l2projection.h', 
+                                                        'pdestaticcondensation.h', 'stokesstaticcondensation.h',
+                                                        'formutils.h', 'adddelete.h'] )
 code = strip_essential_code(headers)
   
 include_dirs=[".", os.path.abspath(dolfin_folder)]
@@ -83,17 +85,21 @@ class particles(compiled_module.particles):
 
 class advect_particles(compiled_module.advect_particles):
     def __call__(self, *args):
-        return self.eval(*args)     
+        return self.eval(*args)
 
 class advect_rk2(compiled_module.advect_rk2):
     def __call__(self, *args):
-        return self.eval(*args) 
+        return self.eval(*args)
 
 class advect_rk3(compiled_module.advect_rk3):
     def __call__(self, *args):
-        return self.eval(*args) 
+        return self.eval(*args)
 
 class l2projection(compiled_module.l2projection):
+    def __call__(self, *args):
+        return self.eval(*args)
+
+class StokesStaticCondensation(compiled_module.StokesStaticCondensation):
     def __call__(self, *args):
         return self.eval(*args)    
 
