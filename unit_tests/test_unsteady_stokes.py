@@ -19,13 +19,13 @@ comm = pyMPI.COMM_WORLD
 
 xmin = 0.; xmax = 1.
 ymin = 0.; ymax = 1.
-nx = 20 ; ny = 20
-k  = 2
+nx = 40 ; ny = 40
+k  = 3
 nu = Constant(1.E-0) 
-dt = Constant(2.e-2)
-num_steps = 5
+dt = Constant(2.5e-2)
+num_steps = 40
 theta0 = 1.0    # Initial theta value
-theta1 = 0.5  # Theta after step_change_theta
+theta1 = 1.0  # Theta after step_change_theta
 theta  = Constant(theta0)
 step_change_theta = 1 # After step_change_theta we change from theta0 to theta1
 
@@ -93,7 +93,6 @@ sin_ext = Expression("sin(t)", t=0, degree = 7, domain = mesh ) #element = P2e)
 
 f  = du_exact + sin_ext * div( px_exact*Identity(2) - 2*sym(grad(ux_exact)))
 
-
 Vhigh = VectorFunctionSpace(mesh,"DG",7)
 Phigh = FunctionSpace(mesh,"DG",7)
 
@@ -110,10 +109,10 @@ mixedL = FunctionSpace(mesh, MixedElement([V,Q]))
 mixedG = FunctionSpace(mesh, MixedElement([Vbar,Qbar]))
 
 v, q = TestFunctions(mixedL)
-u, pt = TrialFunctions(mixedL)
+u, p = TrialFunctions(mixedL)
 
 vbar, qbar = TestFunctions(mixedG)
-ubar, pbart = TrialFunctions(mixedG)
+ubar, pbar = TrialFunctions(mixedG)
 
 Uh    = Function(mixedL)
 Uhbar = Function(mixedG)
@@ -131,8 +130,8 @@ n  = FacetNormal(mesh)
 he = CellSize(mesh)
 
 # Just to test scaling
-p       = Constant(1000)*pt
-pbar    = Constant(1000)*pbart
+#p       = Constant(1000)*pt
+#pbar    = Constant(1000)*pbart
 
 
 pI = p*Identity(V.cell().topological_dimension())
@@ -154,7 +153,7 @@ AB = dot(u,v)/dt * dx \
      + theta * facet_integral( dot(-2*nu*sym(grad(u))*n + (2*nu*alpha/he)*u,v) ) \
      + theta*facet_integral( dot(-2*nu*u,sym(grad(v))*n) ) \
      - theta * inner(pI,grad(v))*dx
-BtF= -theta*dot(q,div(u))*dx - theta * facet_integral(beta*he/(nu+1)*dot(p,q))
+BtF= -dot(q,div(u))*dx - facet_integral(beta*he/(nu+1)*dot(p,q))
 A  = AB + BtF
 A  = Form(A)
 
@@ -162,15 +161,23 @@ A  = Form(A)
 CD= theta   * facet_integral(-alpha/he*2*nu*inner( ubar,v ) ) \
     + theta * facet_integral( 2*nu*inner(ubar, sym(grad(v))*n) ) \
     + theta * facet_integral(dot(pbI*n,v))   
-H = theta * facet_integral(beta*he/(nu+1)*dot(pbar,q))
+H = facet_integral(beta*he/(nu+1)*dot(pbar,q))
 
 G = CD + H
 G = Form(G)
 
+CDT = theta * facet_integral(- alpha/he*2*nu*inner( vbar, u ) ) \
+      + theta * facet_integral( 2*nu*inner(vbar, sym(grad(u))*n) ) \
+      + facet_integral( qbar * dot(u,n)) 
+HT   = theta * facet_integral(beta*he/(nu+1)*dot(p,qbar))
+
+GT   = CDT + HT
+GT   = Form(GT)
+
 # Lower right block B
 KL = theta * facet_integral( alpha/he * 2*nu*dot(ubar,vbar)) - theta * facet_integral( dot(pbar*n,vbar) )
 #LtP= -facet_integral(dot(ubar,n)*qbar) -facet_integral( beta*he/(nu+1) * pbar * qbar ) 
-LtP= -theta*facet_integral(dot(ubar,n)*qbar) - theta*facet_integral( beta*he/(nu+1) * pbar * qbar ) 
+LtP= -facet_integral(dot(ubar,n)*qbar) - facet_integral( beta*he/(nu+1) * pbar * qbar ) 
 B = KL + LtP
 B = Form(B)
 
@@ -183,8 +190,9 @@ Q = dot(f,v)*dx + dot(u0,v)/dt * dx \
     - (1-theta) * facet_integral(-alpha/he*2*nu*inner( ubar0,v ) ) \
     - (1-theta) * facet_integral( 2*nu*inner(ubar0, sym(grad(v))*n) ) \
     - (1-theta) * facet_integral(dot(pb0I*n,v))   
-S = facet_integral( dot( Constant((0,0)), vbar) )
-    #- (1-theta) * facet_integral(-alpha/he*2*nu*inner( u0,vbar ) ) #\
+S = facet_integral( dot( Constant((0,0)), vbar) ) #\
+    #- (1-theta) * facet_integral(-alpha/he*2*nu*inner( u0,vbar ) ) \
+    #+ (1-theta) * facet_integral( dot(pb0I*n,vbar) ) 
     #- (1-theta) * facet_integral( 2*nu*inner(u0, sym(grad(vbar))*n) ) \
     #- (1-theta) * facet_integral( alpha/he * 2*nu*dot(ubar0,vbar)) \
     #+ (1-theta) * facet_integral( dot(pb0I*n,vbar) ) \
@@ -212,7 +220,7 @@ solvertime = 0.
 
 reassemble_lhs = True
 
-ssc = StokesStaticCondensation(mesh, A, G, B, Q, S, bcs)
+ssc = StokesStaticCondensation(mesh, A, G, GT, B, Q, S)
 #ssc.assemble_global_lhs()
 for step in range(num_steps):
     step += 1
@@ -229,12 +237,12 @@ for step in range(num_steps):
     du_exact.t= t - (1-float(theta))*float(dt)
     sin_ext.t = t - (1-float(theta))*float(dt)
     
-    ssc.assemble_global_system(reassemble_lhs)
-    reassemble_lhs = False
-    
-    #ssc.assemble_global_rhs()
-    #for bc in bcs:
-        #ssc.apply_boundary(bc)
+    #ssc.assemble_global_system(reassemble_lhs)
+    #reassemble_lhs = False
+    ssc.assemble_global_lhs()
+    ssc.assemble_global_rhs()
+    for bc in bcs:
+        ssc.apply_boundary(bc)
     #[bc.apply(Uhbar.vector()) for bc in bcs ]    
 
     #if step == 1:
@@ -245,6 +253,8 @@ for step in range(num_steps):
     
     assign(U0, Uh)
     assign(Uhbar0, Uhbar)
+    if step == 1:
+        theta.assign(theta1)
     
     udiv_e = sqrt(assemble(div(Uh.sub(0)) * div(Uh.sub(0))*dx))
     

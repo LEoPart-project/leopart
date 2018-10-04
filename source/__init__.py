@@ -1,6 +1,7 @@
 import warnings
 
-__all__ = ['ParticleFun', 'FormsPDEMap', 'InitialConditions', 'ParticleGenerator']
+__all__ = ['ParticleFun', 'FormsPDEMap', 'FormsStokes',
+           'InitialConditions', 'ParticleGenerator']
 
 try:
     from ParticleFun import *
@@ -22,3 +23,7 @@ try:
 except:
     warnings.warn("ParticleGenerator not installed")
  
+try:
+    from FormsStokes import *
+except:
+    warnings.warn("FormsStokes not installed") 

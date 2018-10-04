@@ -1,3 +1,7 @@
+// Author: Jakob Maljaars
+// Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+// !!! PLEASE DO NOT SHARE WITHOUT CONSENT OF AUTHOR !!!
+
 #ifndef STOKESSTATICCONDENSATION_H
 #define STOKESSTATICCONDENSATION_H
 
@@ -61,20 +65,8 @@ namespace dolfin{
 
     private:
         // Private Methods
-//        void local_tensor_info(const Form& a, const Cell& cell,
-//                               std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
-//                               std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols);
-//        void local_assembler(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& A_e,
-//                        const Form& a, const Cell& cell, const std::size_t nrows, const std::size_t ncols);
-
         void backsubtitute(const Function& Uglobal, Function& Ulocal);
         void test_rank(const Form& a, const std::size_t rank);
-        void apply_boundary_symmetric(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& LHS_e,
-                                      Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
-                                      const ArrayView<const dolfin::la_index>& cdof_rows,
-                                      const ArrayView<const dolfin::la_index>& cdof_cols,
-                                      const std::vector<DirichletBC::Map>& boundary_values,
-                                      const bool active_bcs);
 
         // Private Attributes
         const Form* A;
