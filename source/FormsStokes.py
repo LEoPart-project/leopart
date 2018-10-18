@@ -32,14 +32,15 @@ class FormsStokes:
     from global momentum and global mass conservation statement.    
     """
     
-    def __init__(self, mesh,FuncSpaces_L, FuncSpaces_G, k, beta_stab = Constant(0.), ds = ds):
+    def __init__(self, mesh,FuncSpaces_L, FuncSpaces_G, alpha, beta_stab = Constant(0.), ds = ds):
         self.mixedL     = FuncSpaces_L
         self.mixedG     = FuncSpaces_G
         self.n          = FacetNormal(mesh)
         self.beta_stab  = beta_stab
-        self.alpha      = Constant(6*k*k)
+        self.alpha      = alpha
         self.he         = CellSize(mesh)
         self.ds         = ds 
+        self.gdim       = mesh.geometry().dim()
         
     def forms_steady(self,nu,f):
         '''
@@ -50,6 +51,9 @@ class FormsStokes:
         u, p = TrialFunctions(self.mixedL)
         wbar, qbar = TestFunctions(self.mixedG)
         ubar, pbar = TrialFunctions(self.mixedG)
+         
+        # Infer geometric dimension
+        zero_vec = np.zeros(self.gdim)
         
         n = self.n; he = self.he;
         alpha = self.alpha; beta_stab = self.beta_stab
@@ -87,7 +91,7 @@ class FormsStokes:
         
         #Righthandside
         Q_S = dot(f,w)*dx 
-        S_S = facet_integral( dot( Constant((0,0)), wbar))
+        S_S = facet_integral( dot( Constant(zero_vec), wbar))
         return self.__get_form_dict(A_S, G_S, G_ST, B_S, Q_S, S_S)
             
     def forms_unsteady(self,ustar,dt,nu,f):
@@ -99,6 +103,9 @@ class FormsStokes:
         u, p = TrialFunctions(self.mixedL)
         wbar, qbar = TestFunctions(self.mixedG)
         ubar, pbar = TrialFunctions(self.mixedG)
+        
+        # Infer geometric dimension
+        zero_vec = np.zeros(self.gdim)
         
         n = self.n; he = self.he;
         alpha = self.alpha; beta_stab = self.beta_stab
@@ -140,7 +147,7 @@ class FormsStokes:
         
         #Righthandside
         Q_S = dot(f,w)*dx + dot(ustar,w)/dt * dx
-        S_S = facet_integral( dot( Constant((0,0)), wbar))
+        S_S = facet_integral( dot( Constant(zero_vec), wbar))
         return self.__get_form_dict(A_S, G_S, G_ST, B_S, Q_S, S_S)
    
     def facet_integral(self, integrand):

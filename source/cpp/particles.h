@@ -38,6 +38,13 @@ namespace dolfin{
         // Interpolate function to particles
         void interpolate(const Function& phih, const std::size_t property_idx);
 
+        // Increment!?
+        void increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx);
+
+        // Increment using theta --> Consider replacing property_idcs
+        void increment(const Function& phih_new, const Function& phih_old, const Array<std::size_t>& property_idcs,
+                       const double theta, const std::size_t step);
+
         std::vector<double> get_positions();
         std::vector<double> get_property(const std::size_t idx);
 
@@ -49,6 +56,7 @@ namespace dolfin{
         void make_bounding_boxes();
         // Update bounding boxes (on moving mesh)
         void update_bounding_boxes();
+
         // Check if point in bounding box
         static bool in_bounding_box(const std::vector<double>& point,
                                     const std::vector<double>& bounding_box,
@@ -85,6 +93,8 @@ namespace dolfin{
         const MPI_Comm _mpi_comm;
         const std::size_t _num_processes;
         std::vector<std::vector<double>> _bounding_boxes;
+
+        int dummy, dummy2;
     };
 }
 

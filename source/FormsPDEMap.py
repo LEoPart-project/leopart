@@ -12,6 +12,7 @@ class FormsPDEMap:
         self.beta_map  = beta_map
         self.ds        = ds
         self.form_dict = None
+        self.gdim      = mesh.geometry().dim()
        
     def forms_theta_linear(self,psih0, uh, dt, theta_map, \
                         theta_L = Constant(1.0), dpsi0 = Constant(0.), dpsi00 = Constant(0.),
@@ -68,7 +69,7 @@ class FormsPDEMap:
         return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
             
     #FIXME: will be replaced by the following. Needs close review!
-    def forms_theta_nlinear(self, v0, Ubar0, dt, theta_map, 
+    def forms_theta_nlinear(self, v0, Ubar0, dt, theta_map = Constant(1.0), 
                             theta_L = Constant(1.0), duh0 = Constant((0.,0.)), duh00 = Constant((0.,0)),
                             h = Constant((0.,0.)), neumann_idx = 99):  
         
@@ -76,6 +77,20 @@ class FormsPDEMap:
         v, w        = TrialFunction(self.W), TestFunction(self.W)
         lamb, tau   = TrialFunction(self.T), TestFunction(self.T)
         vbar, wbar  = TrialFunction(self.Wbar), TestFunction(self.Wbar)
+        
+        # infer geometric dimension
+        zero_vec = np.zeros(self.gdim)
+        
+        
+        # Fix to get size of constants ligned up in 3D
+        if self.gdim > 2 and h.value_size() <= 2:
+            h = Constant(zero_vec)
+        
+        if self.gdim > 2 and duh0.value_size() <= 2:
+            duh0  = Constant(zero_vec)
+            
+        if self.gdim > 2 and duh00.value_size() <= 2:
+            duh00 = Constant(zero_vec)
         
         beta_map = self.beta_map; n = self.n 
         facet_integral = self.facet_integral
@@ -101,12 +116,12 @@ class FormsPDEMap:
                - dot(outer_ubar_a*n,tau) * self.ds(neumann_idx)
         B_a  = facet_integral(beta_map * dot(vbar ,wbar))
         
-        # RHS contributions
-        Q_a = dot( Constant((0,0)), w) * dx 
+        # RHS contributions        
+        Q_a = dot( Constant(zero_vec), w) * dx 
         R_a = dot(v_star, tau)/dt * dx \
                 + (1-theta_map)*inner(outer_v_a_o, grad(tau))*dx \
                 - gamma * dot(h,tau) * self.ds(neumann_idx)    
-        S_a = facet_integral( dot( Constant((0,0)), wbar))
+        S_a = facet_integral( dot( Constant(zero_vec), wbar))
                 
         return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
         

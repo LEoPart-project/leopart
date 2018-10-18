@@ -1,7 +1,3 @@
-import sys, os
-home_dir = os.path.dirname(os.getcwd())
-sys.path.append(home_dir)
-
 from dolfin import *
 import numpy as np
 import time 

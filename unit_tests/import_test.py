@@ -1,6 +1,6 @@
 from dolfin import *
 
-from DolfinParticles import StokesStaticCondensation
+from DolfinParticles import * 
 
 #import LEoPART as LP
 

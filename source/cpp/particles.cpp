@@ -100,6 +100,114 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
     }
 }
 
+void particles::increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx){
+    if ( !phih_new.in(*(phih_old.function_space())) )
+    {
+        dolfin_error("particles.cpp::incrment",
+                     "Compute increment",
+                     "Expected Functions to be in the same FunctionSpace");
+    }
+
+    std::size_t space_dimension, value_size_loc;
+    space_dimension = phih_new.function_space()->element()->space_dimension();
+
+    value_size_loc  = 1;
+    for (std::size_t i = 0; i < phih_new.function_space()->element()->value_rank(); i++)
+      value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
+
+    if(value_size_loc != _ptemplate[property_idx])
+        dolfin_error("particles::get_particle_contributions","get property idx",
+                     "Local value size mismatches particle template property");
+
+    for( CellIterator cell(*(_mesh)); !cell.end(); ++cell){
+        std::vector<double> coeffs_new, coeffs_old, coeffs;
+        Utils::return_expansion_coeffs(coeffs_new, *cell, &phih_new);
+        Utils::return_expansion_coeffs(coeffs_old, *cell, &phih_old);
+
+        // Just average to get the coefficients
+        for(std::size_t i = 0; i<coeffs_new.size(); i++)
+            coeffs.push_back( coeffs_new[i] - coeffs_old[i] );
+
+        for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
+        {
+            std::vector<double> basis_matrix(space_dimension * value_size_loc);
+            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+                    phih_new.function_space()->element());
+
+            Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
+            Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), space_dimension);
+            Eigen::VectorXd delta_phi =  basis_mat * exp_coeffs ;
+
+            // Then update
+            Point delta_phi_p(_ptemplate[property_idx], delta_phi.data());
+            _cell2part[cell->index()][pidx][property_idx] += delta_phi_p;
+        }
+    }
+}
+
+void particles::increment(const Function& phih_new, const Function& phih_old, const Array<std::size_t>& property_idcs,
+               const double theta, const std::size_t step){
+    if ( !phih_new.in(*(phih_old.function_space())) )
+    {
+        dolfin_error("particles.cpp::increment",
+                     "Compute increment",
+                     "Expected Functions to be in the same FunctionSpace");
+    }
+
+    // Check if size =2 and
+    if(property_idcs.size() != 2 )
+        dolfin_error("particles.cpp::increment", "Set property array", "Property indices must come in pairs");
+    if(property_idcs[1] <= property_idcs[0])
+        dolfin_error("particles.cpp::increment", "Set property array", "Property must be sorted in ascending order");
+
+    // Check if length of slots matches
+    if(_ptemplate[property_idcs[0]] != _ptemplate[property_idcs[1]] )
+        dolfin_error("particles.cpp::increment", "Set property array", "Found none ore incorrect size at particle slot");
+
+    std::size_t space_dimension, value_size_loc;
+    space_dimension = phih_new.function_space()->element()->space_dimension();
+
+    value_size_loc  = 1;
+    for (std::size_t i = 0; i < phih_new.function_space()->element()->value_rank(); i++)
+      value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
+
+    if(value_size_loc != _ptemplate[property_idcs[0]])
+        dolfin_error("particles::get_particle_contributions","get property idx",
+                     "Local value size mismatches particle template property");
+
+    for( CellIterator cell(*(_mesh)); !cell.end(); ++cell){
+        std::vector<double> coeffs_new, coeffs_old, coeffs;
+        Utils::return_expansion_coeffs(coeffs_new, *cell, &phih_new);
+        Utils::return_expansion_coeffs(coeffs_old, *cell, &phih_old);
+
+        // Just average to get the coefficients
+        for(std::size_t i = 0; i<coeffs_new.size(); i++)
+            coeffs.push_back( coeffs_new[i] - coeffs_old[i] );
+
+        for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
+        {
+            std::vector<double> basis_matrix(space_dimension * value_size_loc);
+            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+                    phih_new.function_space()->element());
+
+            Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
+            Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), space_dimension);
+            Eigen::VectorXd delta_phi =  basis_mat * exp_coeffs ;
+
+            Point delta_phi_p(_ptemplate[property_idcs[0]], delta_phi.data());
+            // Do the update
+            if(step == 1){
+                _cell2part[cell->index()][pidx][property_idcs[0]] += delta_phi_p;
+            }
+            if(step != 1){
+                _cell2part[cell->index()][pidx][property_idcs[0]] +=
+                        theta * delta_phi_p + (1. - theta) * _cell2part[cell->index()][pidx][property_idcs[1]];
+            }
+            _cell2part[cell->index()][pidx][property_idcs[1]] = delta_phi_p;
+        }
+    }
+}
+
 std::vector<double> particles::get_positions(){
     std::vector<double> xp;
     for(std::size_t i =0; i < _cell2part.size() ; i++){
