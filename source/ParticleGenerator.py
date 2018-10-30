@@ -9,8 +9,8 @@ from math import pi, sqrt
 from itertools import product
 from mpi4py import MPI as pyMPI
 
-__all__ = ['RandomRectangle', 'RandomCircle', 'RegularRectangle', 'RandomBox', 'RandomSphere',
-           'RegularBox']
+__all__ = ['RandomRectangle', 'RandomCircle', 'RandomBox', 'RandomSphere',
+           'RegularRectangle', 'RegularBox']
 
 comm = pyMPI.COMM_WORLD
 
@@ -188,7 +188,7 @@ class RegularBox(RandomGenerator):
            Z_unf = np.hstack(np.hstack(Z))
            points = np.vstack((X_unf,Y_unf, Z_unf)).T
            assert np.product(N) == len(points)  
-           points_inside = np.array(filter(self.rule, points))         
+           points_inside = np.array(list(filter(self.rule, points))) 
         else:
            points_inside = None
            
