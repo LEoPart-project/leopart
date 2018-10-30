@@ -13,6 +13,6 @@ pipelines:
         script:
           - cd source/cpp && cmake . && make
           - cd ../.. && sudo python3 setup.py install
-	  - cd unit_tests
-	  - python3 -m pytest test_project2.py
+          - cd unit_tests
+          - python3 -m pytest test_project2.py
   
