@@ -83,6 +83,9 @@ def decorate_projection_test(my_projection_test):
         v_exact.interpolate(interpolate_expression)
         
         x = RandomRectangle(Point(xmin, ymin), Point(xmax,ymax)).generate([500, 500])
+        print(x)
+        print(len(x))
+        quit()
         s = assign_particle_values(x,interpolate_expression)
         x = comm.bcast(x, root=0)
         s = comm.bcast(s, root=0)

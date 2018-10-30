@@ -961,6 +961,125 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
     bool hit = false;
     for(std::size_t i = 0; i < pbc_lims.size(); i++){
         for(std::size_t j = 0; j < _P->_Ndim; j++){
+            if( std::abs(midpoint[j] - pbc_lims[i][ j*2 ]) < 1E-10
+                    &&
+                std::abs(midpoint[j] - pbc_lims[i][ j*2  + 1 ]) < 1E-10 ){
+                // Then we most likely found a match, but check if midpoint coordinates are in between the limits
+                // for the other coordinate directions
+                hit = true;
+                for(std::size_t k = 0; k < _P->_Ndim; k++){
+                    if( k == j ) continue;
+                    // New formulation
+                    if( midpoint[k] <= pbc_lims[i][ k*2 ]  || midpoint[k] >= pbc_lims[i][ k*2 + 1 ] )
+                        hit = false;
+                }
+                if(hit){
+                    row_match = i ;
+                    component = j;
+                    goto break_me;
+                }
+            }
+        }
+    }
+
+    break_me:
+    // Throw an error if rowmatch not set at this point
+    if( row_match == std::numeric_limits<std::size_t>::max() )
+        dolfin_error("advect_particles.cpp::apply_periodic_bc", "find matching periodic boundary info", "Unknown");
+    // Column and matchin column come in pairs
+    if( row_match % 2 == 0 ){
+        // Find the uneven friend
+        row_friend = row_match + 1;
+    }else{
+        // Find the even friend
+        row_friend = row_match - 1;
+    }
+
+    // For multistep/multistage (!?) schemes, you may need to copy the old position before doing the actual push
+    _P->push_particle(dt, up, cidx, pidx);
+
+    // Point formulation
+    _P->_cell2part[cidx][pidx][0][component] +=
+                (pbc_lims[row_friend][ component*2 ] - pbc_lims[row_match][ component*2 ]);
+
+    // Corners can be tricky, therefore include this test
+    for(std::size_t i = 0; i < _P->_Ndim; i++){
+        if( i == component ) continue; // Skip this
+        if( _P->_cell2part[cidx][pidx][0][i] < pbc_lims[row_match][ i*2 ] ){
+            // Then we push the particle to the other end of domain
+            _P->_cell2part[cidx][pidx][0][i] +=
+                (pbc_lims[row_friend][ i*2 + 1 ] - pbc_lims[row_match][ i*2 ]);
+        }else if( _P->_cell2part[cidx][pidx][0][i] > pbc_lims[row_match][ i*2 + 1] ){
+            _P->_cell2part[cidx][pidx][0][i] -=
+                (pbc_lims[row_match][ i*2 + 1 ] - pbc_lims[row_friend][ i*2 ]);
+        }
+    }
+}
+//-----------------------------------------------------------------------------
+void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx){
+    // This method guarantees that particles can cross internal bc -> periodic bc in one
+    // time step without being deleted.
+    // FIXME: more efficient implementation??
+    // FIXME: can give troubles when domain decomposition results in one cell in domain corner
+    // Check if periodic bcs are violated somewhere, if so, modify particle position
+    for(std::size_t i = 0; i < pbc_lims.size()/2; i++){
+        for(std::size_t j = 0; j<_P->_Ndim; j++){
+            if( std::abs(pbc_lims[2*i][2*j] - pbc_lims[2*i][2*j+1]) < 1E-13 ){
+                if( _P->_cell2part[cidx][pidx][0][j]  >  pbc_lims[2*i][2*j]
+                        &&
+                    _P->_cell2part[cidx][pidx][0][j]  >  pbc_lims[2*i+1][2*j]   )
+                {
+                    _P->_cell2part[cidx][pidx][0][j] -=
+                            (std::max(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) -
+                             std::min(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) );
+                    // Check whether the other bounds are violated, to handle corners
+                    // FIXME: cannot handle cases where domain of friend in one direction is different from
+                    // match, reason: looping over periodic bc pairs
+                    for(std::size_t k = 0; k<_P->_Ndim; k++){
+                        if( k == j ) continue;
+                        if( _P->_cell2part[cidx][pidx][0][k] < pbc_lims[2*i][2*k]  ){
+                            _P->_cell2part[cidx][pidx][0][k]  +=
+                                 ( pbc_lims[2*i + 1][2*k + 1]  - pbc_lims[2*i][2*k]);
+                        }else if( _P->_cell2part[cidx][pidx][0][k] > pbc_lims[2*i][2*k + 1] ){
+                            _P->_cell2part[cidx][pidx][0][k]  -=
+                                 ( pbc_lims[2*i][2*k + 1] - pbc_lims[2*i + 1][2*k]);
+                        }
+                    }
+                }else if(_P->_cell2part[cidx][pidx][0][j]  <  pbc_lims[2*i][2*j]
+                            &&
+                         _P->_cell2part[cidx][pidx][0][j]  <  pbc_lims[2*i+1][2*j]
+                         )
+                {
+                    _P->_cell2part[cidx][pidx][0][j] +=
+                            (std::max(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) -
+                             std::min(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) );
+                    // Check wheter the other bounds are violated, to handle corners
+                    for(std::size_t k = 0; k<_P->_Ndim; k++){
+                        if( k == j ) continue;
+                        if( _P->_cell2part[cidx][pidx][0][k] < pbc_lims[2*i][2*k]  ){
+                            _P->_cell2part[cidx][pidx][0][k]  +=
+                                 ( pbc_lims[2*i + 1][2*k + 1]  - pbc_lims[2*i][2*k]);
+                        }else if( _P->_cell2part[cidx][pidx][0][k] > pbc_lims[2*i][2*k + 1] ){
+                            _P->_cell2part[cidx][pidx][0][k]  -=
+                                 ( pbc_lims[2*i][2*k + 1] - pbc_lims[2*i + 1][2*k]);
+                        }
+                    }
+                } // else do nothing
+            }
+        }
+    }
+}
+//-----------------------------------------------------------------------------
+/* TODO: REMOVE OLD 2D FORMULATION
+//-----------------------------------------------------------------------------
+void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,  std::size_t pidx, std::size_t fidx){
+    Point midpoint = std::get<1>(facets_info[fidx]);
+    std::size_t row_match = std::numeric_limits<std::size_t>::max();
+    std::size_t row_friend;
+    std::size_t component;
+    bool hit = false;
+    for(std::size_t i = 0; i < pbc_lims.size(); i++){
+        for(std::size_t j = 0; j < _P->_Ndim; j++){
             if( std::abs(midpoint[j] - pbc_lims[i][ j*_P->_Ndim ]) < 1E-10
                     &&
                 std::abs(midpoint[j] - pbc_lims[i][ j * _P->_Ndim + 1 ]) < 1E-10 ){
@@ -1069,6 +1188,7 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx){
         }
     }
 }
+*/
 //-----------------------------------------------------------------------------
 void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, std::size_t* pidx,
                                   const std::size_t step, const std::size_t num_steps,
