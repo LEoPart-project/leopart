@@ -15,3 +15,8 @@ cmake_install.cmake
 *.pvtu
 *.vtu
 *.png
+
+.cache/
+htmlcov/
+unit_tests/.coverage
+unit_tests/htmlcov/
