@@ -4,7 +4,7 @@
 # __license__  = 'GNU Lesser GPL version 3 or any later version'
 
 """
-Unit tests for the least squares and PDE-constrained projection. For further reading
+Unit tests for the least squares and PDE-constrained projection.
 """
 
 from dolfin import *
@@ -21,25 +21,6 @@ def assign_particle_values(x, u_exact):
     else:
         s = None
     return s
-
-class PeriodicBoundary(SubDomain):
-    # Left boundary is "target domain" G
-    def inside(self, x, on_boundary):
-        # return True if on left or bottom boundary AND NOT on one of the two corners (0, 1) and (1, 0)
-        return bool((near(x[0], 0) or near(x[1], 0)) and\
-                (not ((near(x[0], 0) and near(x[1], 1)) or 
-                (near(x[0], 1) and near(x[1], 0)))) and on_boundary)
-
-    def map(self, x, y):
-        if near(x[0], 1) and near(x[1], 1):
-            y[0] = x[0] - 1.
-            y[1] = x[1] - 1.
-        elif near(x[0], 1):
-            y[0] = x[0] - 1.
-            y[1] = x[1]
-        else:   # near(x[1], 1)
-            y[0] = x[0]
-            y[1] = x[1] - 1.
 
 class SlottedDisk(UserExpression):
     def __init__(self,radius, center, width, depth, lb = 0., ub = 1., **kwargs):
@@ -64,79 +45,75 @@ class SlottedDisk(UserExpression):
     def value_shape(self):
         return ()
 
-def decorate_projection_test(my_projection_test):
-    # I want to provide the  function space
-    def wrapper(polynomial_order, interpolate_expression, **kwargs):
-        xmin = 0.; xmax = 1.
-        ymin = 0.; ymax = 1.
-        
-        property_idx = 5
+@pytest.mark.parametrize('polynomial_order, in_expression', [(2, "pow(x[0], 2)"),                                                                                                                           
+                                                             (2, ("pow(x[0], 2)", "pow(x[1], 2)"))])
+def test_l2projection(polynomial_order, in_expression):
+    # Test l2 projection for scalar and vector valued expression
+    interpolate_expression = Expression(in_expression, degree = 3)
     
-        mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 40,40)
-        bmesh  = BoundaryMesh(mesh,'exterior')
-        
-        if len(interpolate_expression.ufl_shape) == 0:
-            V = FunctionSpace(mesh,"DG", polynomial_order)
-        elif len(interpolate_expression.ufl_shape) == 1:
-            V = VectorFunctionSpace(mesh,"DG", polynomial_order)
-            
-        v_exact = Function(V)
-        v_exact.interpolate(interpolate_expression)
-        
-        x = RandomRectangle(Point(xmin, ymin), Point(xmax,ymax)).generate([500, 500])
-        s = assign_particle_values(x,interpolate_expression)
-        x = comm.bcast(x, root=0)
-        s = comm.bcast(s, root=0)
-        
-        # Just make a complicated particle, possibly with scalars and vectors mixed 
-        p = particles(x, [x,s,x,x,s], mesh)
-                
-        vh = my_projection_test(mesh,bmesh,V,p, property_idx, **kwargs)
-                
-        if my_projection_test.__name__ == "l2projection_test":
-            error_sq = abs(assemble( dot(v_exact - vh, v_exact - vh)*dx ))
-            if comm.Get_rank() == 0:
-                if error_sq > 1e-15:
-                    raise Exception("Function should be reconstructed exactly")
-        
-        if my_projection_test.__name__ == "l2projection_bounded_test":
-            if np.any(vh.vector().vec().array > kwargs["ub"] + 1e-12) or \
-                np.any(vh.vector().vec().array < kwargs["lb"] - 1e-12) :
-                raise Exception("Violated bounds in box constrained projection")    
-        return
-    return wrapper
-          
-@decorate_projection_test
-def l2projection_test(mesh, bmesh, V,p, property_idx):
-    phih = Function(V)
-    lstsq_rho = l2projection(p,V,property_idx)
-    lstsq_rho.project(phih.cpp_object())
-    return phih
+    xmin = 0.; xmax = 1.
+    ymin = 0.; ymax = 1.
 
-@decorate_projection_test
-def l2projection_bounded_test(mesh, bmesh, V,p, property_idx, **kwargs):
-    if 'lb' in kwargs:
-        lb = kwargs['lb']
-    else:
-        raise Exception('Lowerbound needs to be provided!')
-    
-    if 'ub' in kwargs:
-        ub = kwargs['ub']
-    else:
-        raise Exception('Lowerbound needs to be provided!')
-    
-    phih = Function(V)
-    lstsq_rho = l2projection(p,V,property_idx)
-    lstsq_rho.project(phih.cpp_object(), lb, ub)
-    return phih
+    property_idx = 5
 
-@pytest.fixture(scope='function')
-def mesh():
-    return UnitSquareMesh(MPI.comm_world, 2, 2)
+    mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 40,40)
+    bmesh  = BoundaryMesh(mesh, 'exterior')
 
-def test_mesh(mesh):
-    print(mesh)
+    if len(interpolate_expression.ufl_shape) == 0:
+        V = FunctionSpace(mesh,"DG", polynomial_order)
+    elif len(interpolate_expression.ufl_shape) == 1:
+        V = VectorFunctionSpace(mesh,"DG", polynomial_order)
+
+    v_exact = Function(V)
+    v_exact.interpolate(interpolate_expression)
+
+    x = RandomRectangle(Point(xmin, ymin), Point(xmax,ymax)).generate([500, 500])
+    s = assign_particle_values(x,interpolate_expression)
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
+
+    # Just make a complicated particle, possibly with scalars and vectors mixed                                                                                                                         
+    p = particles(x, [x,s,x,x,s], mesh)
     
+    vh = Function(V)                                                                                                                                                                                     
+    lstsq_rho = l2projection(p, V, property_idx) 
+    lstsq_rho.project(vh.cpp_object())
+
+    error_sq = abs(assemble( dot(v_exact - vh, v_exact - vh)*dx ))
+    assert error_sq < 1e-15
+
+@pytest.mark.parametrize('polynomial_order, lb, ub', [(1, -3., -1.),
+                                                      (2, -3., -1.)])    
+def test_l2projection_bounded(polynomial_order, lb, ub):
+    # Test l2 projection if it stays within bounds given by lb and ub
+    interpolate_expression = SlottedDisk(radius = 0.15, center = [0.5, 0.5],
+                                         width = 0.05, depth = 0., degree = 3, lb =lb, ub = ub)
+
+    xmin = 0.; xmax = 1.
+    ymin = 0.; ymax = 1.
+
+    property_idx = 5
+
+    mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 40,40)
+    bmesh  = BoundaryMesh(mesh, 'exterior')
+
+    V = FunctionSpace(mesh,"DG", polynomial_order)
+
+    x = RandomRectangle(Point(xmin, ymin), Point(xmax,ymax)).generate([500, 500])
+    s = assign_particle_values(x,interpolate_expression)
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
+
+    # Just make a complicated particle, possibly with scalars and vectors mixed                                                                                                                            
+    p = particles(x, [x,s,x,x,s], mesh)
+
+    vh = Function(V)
+    lstsq_rho = l2projection(p, V, property_idx)
+    lstsq_rho.project(vh.cpp_object(), lb, ub)
+
+    # Assert if it stays within bounds
+    assert np.any(vh.vector().get_local() < ub + 1e-12)
+    assert np.any(vh.vector().get_local() > lb - 1e-12 )
 
 @pytest.mark.parametrize('polynomial_order, in_expression', [(2, "pow(x[0], 2)"),
                                                              (3, "pow(x[1], 2)")])
@@ -197,4 +174,3 @@ def test_pde_constrained(polynomial_order, in_expression):
 
     assert error_psih < 1e-15
     assert error_lamb < 1e-15
-    
