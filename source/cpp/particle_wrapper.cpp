@@ -13,6 +13,7 @@ namespace py = pybind11;
 #include "pdestaticcondensation.h"
 #include "formutils.h"
 #include "adddelete.h"
+#include "stokesstaticcondensation.h"
 
 PYBIND11_MODULE(particle_wrapper, m)
 {
@@ -77,6 +78,27 @@ PYBIND11_MODULE(particle_wrapper, m)
     .def("project", (void (dolfin::l2projection::*)(dolfin::Function&, const double, const double)) &dolfin::l2projection::project)
     .def("project_cg", &dolfin::l2projection::project_cg);
 
+  py::class_<dolfin::StokesStaticCondensation>(m, "StokesStaticCondensation")
+    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,
+                                       const dolfin::Form&, const dolfin::Form&>())
+    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,
+                                       const dolfin::Form&, const dolfin::Form&, 
+                                       std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
+    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&,
+                                       const dolfin::Form&, const dolfin::Form&,
+                                       const dolfin::Form&, const dolfin::Form&>())
+    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, 
+                                       const dolfin::Form&, const dolfin::Form&,
+                                       const dolfin::Form&, const dolfin::Form&,
+                                       std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
+    .def("assemble_global", &dolfin::StokesStaticCondensation::assemble_global)
+    .def("assemble_global_lhs", &dolfin::StokesStaticCondensation::assemble_global_lhs)
+    .def("assemble_global_rhs", &dolfin::StokesStaticCondensation::assemble_global_rhs)
+    .def("assemble_global_system", &dolfin::StokesStaticCondensation::assemble_global_system)
+    .def("apply_boundary", &dolfin::StokesStaticCondensation::apply_boundary)
+    .def("solve_problem", (void (dolfin::StokesStaticCondensation::*)(dolfin::Function&, dolfin::Function&, const std::string, const std::string))
+    &dolfin::StokesStaticCondensation::solve_problem);
+    
   py::class_<dolfin::PDEStaticCondensation>(m, "PDEStaticCondensation")
     .def(py::init<const dolfin::Mesh&, dolfin::particles&,
          const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,
