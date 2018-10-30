@@ -3,7 +3,6 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 import os
 from mshr import *
-import matplotlib.pyplot as plt 
 import pytest
 
 # Load from package
