@@ -10,12 +10,14 @@
 #include <Eigen/Dense>
 #include <dolfin/fem/Form.h>
 #include <dolfin/fem/Assembler.h>
-#include "dolfin/fem/LocalAssembler.h"
-#include "dolfin/fem/AssemblerBase.h"
+#include <dolfin/fem/LocalAssembler.h>
+#include <dolfin/fem/AssemblerBase.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/fem/DirichletBC.h>
-#include "dolfin/fem/UFC.h"
+#include <dolfin/fem/UFC.h>
+#include <dolfin/function/Function.h>
+#include <ufc.h>
 
 #include <dolfin/common/ArrayView.h>
 #include <dolfin/la/Matrix.h>

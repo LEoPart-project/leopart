@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.5.0)
 project(particle_wrappers)
 
@@ -16,6 +17,7 @@ pybind11_add_module(particle_wrapper SHARED
   advect_particles.cpp
   formutils.cpp
   particles.cpp
+  stokesstaticcondensation.cpp
   pdestaticcondensation.cpp
   adddelete.cpp)
 

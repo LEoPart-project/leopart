@@ -30,6 +30,7 @@ namespace dolfin{
     // Some utility functions for operations on dolfin Forms.
     // Should contain only static methods.
     friend class PDEStaticCondensation;
+    friend class StokesStaticCondensation;
 
     public:
         FormUtils();
