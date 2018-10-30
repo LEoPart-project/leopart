@@ -9,7 +9,6 @@ Unit tests for advection of single particle
 
 from dolfin import *
 from DolfinParticles import particles, advect_particles, advect_rk2, advect_rk3, RandomRectangle
-import matplotlib.pyplot as plt
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest
