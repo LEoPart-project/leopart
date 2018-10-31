@@ -13,11 +13,7 @@ comm = pyMPI.COMM_WORLD
 
 def Gamma(x, on_boundary):  return on_boundary
 def Corner(x, on_boundary): return x[0] < DOLFIN_EPS and x[1] < DOLFIN_EPS
-
-# Short-cut function for evaluating sum_{K} \int_{K} (integrand) ds
-def facet_integral(integrand):
-    return integrand('-')*dS + integrand('+')*dS + integrand*ds
-    
+   
 def exact_solution(domain):
     P7 = VectorElement("Lagrange", "triangle", degree = 8, dim = 2)
     P2 = FiniteElement("Lagrange", "triangle", 3)
@@ -39,19 +35,15 @@ def compute_convergence(iterator, errorlist):
 @pytest.mark.parametrize('k', [1,2,3])
 def test_steady_stokes(k):
     # Polynomial order and mesh resolution
-    #k_list  = [1,2,3] #,4]
-    nx_list = [4, 8, 16, 32] #, 64, 128]
+    nx_list = [4, 8, 16] #, 32]
     
     nu = Constant(1)
            
-    #for k in k_list:
     if comm.Get_rank() == 0:
         print('{:=^72}'.format('Computing for polynomial order '+str(k)))
     
     # Error listst
-    error_u     = []
-    error_p     = []
-    error_div   = []
+    error_u, error_p, error_div = [], [], []
     
     for nx in nx_list:
         if comm.Get_rank() == 0:
@@ -86,7 +78,7 @@ def test_steady_stokes(k):
 
         # Initialize static condensation class
         ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
-                                                                    forms_stokes['B_S'], 
+                                                                 forms_stokes['B_S'], 
                                             forms_stokes['Q_S'], forms_stokes['S_S'], bcs)                
 
         # Assemble global system and incorporates bcs

@@ -13,10 +13,6 @@ def Gamma(x, on_boundary):  return on_boundary
 def Corner(x, on_boundary):
     return near(x[0], 1.0) and near(x[1], 1.0)
 
-# Short-cut function for evaluating sum_{K} \int_{K} (integrand) ds
-def facet_integral(integrand):
-    return integrand('-')*dS + integrand('+')*dS + integrand*ds
-
 # TODO: Consider merging with test_steady_stokes.py
 def test_unsteady_stokes():
     xmin = 0.; xmax = 1.
