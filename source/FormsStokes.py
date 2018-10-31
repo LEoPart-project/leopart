@@ -38,7 +38,7 @@ class FormsStokes:
         self.n          = FacetNormal(mesh)
         self.beta_stab  = beta_stab
         self.alpha      = alpha
-        self.he         = CellSize(mesh)
+        self.he         = CellDiameter(mesh)
         self.ds         = ds 
         self.gdim       = mesh.geometry().dim()
         

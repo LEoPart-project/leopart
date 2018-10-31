@@ -15,4 +15,5 @@ pipelines:
           - cd ../.. && sudo python3 setup.py install
           - cd unit_tests
           - python3 -m pytest test_2d_project.py && python3 -m pytest test_2d_advect.py && python3 -m pytest test_3d_advect.py
+          - python3 -m pytest test_steady_stokes.py && python3 -m pytest test_unsteady_stokes.py
   
