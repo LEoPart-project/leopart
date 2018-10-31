@@ -78,7 +78,8 @@ def main():
             Uhbar = Function(mixedG)
     
             # Set forms
-            forms_stokes    = FormsStokes(mesh,mixedL,mixedG,k).forms_steady(nu,f)
+            alpha = Constant(6*k*k)
+            forms_stokes    = FormsStokes(mesh,mixedL,mixedG,alpha).forms_steady(nu,f)
     
             # No-slip boundary conditions, set pressure in one of the corners
             bc0 = DirichletBC(mixedG.sub(0), Constant((0,0)), Gamma)
