@@ -1,3 +1,4 @@
+import dolfin
 from dolfin import *
 import numpy as np 
 import warnings
