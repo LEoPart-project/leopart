@@ -68,7 +68,7 @@ ny      = 64
 pres    = 480
 
 # Time stepping
-Tend    = 2.
+Tend    = .2
 dt      = Constant(1.25e-2)
 
 # Viscosity
@@ -204,12 +204,16 @@ num_steps = np.rint(Tend/float(dt))
 step      = 0
 t         = 0.
 
+timer = Timer()
+timer.start()
+
 while step < num_steps:
     step += 1
     t    += float(dt)
     if comm.Get_rank() == 0:
         print('Step number '+str(step))
-    
+
+    t1 = Timer("[P] Sweep and step")
     # Limit number of particles 
     AD.do_sweep()
     
@@ -218,17 +222,27 @@ while step < num_steps:
     
     # Do failsafe sweep
     AD.do_sweep_failsafe(4)
+    del(t1)
     
     # Do constrained projection
+    t1 = Timer("[P] Assemble")
     pde_projection.assemble(True, True)
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'none', 'default')
-       
-    # Solve Stokes 
+    del(t1)
+    t1 = Timer("[P] Solve")
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'hypre_amg')
+    del(t1)
+    
+    # Solve Stokes
+    t1 = Timer("[P] Stokes assemble")
     ssc.assemble_global_system(True)
+    del(t1)
+    t1 = Timer("[P] Stokes solve")
     for bc in bcs:
         ssc.apply_boundary(bc)
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
-    
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "petsc_amg")
+    del(t1)
+
+    t1 = Timer("[P] Assign and output")
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
     
@@ -243,6 +257,9 @@ while step < num_steps:
     
     outfile_u << Uh.sub(0)
     outfile_p << Uh.sub(1) 
+    del(t1)
+
+timer.stop()
     
 # Compute errors    
 u_exact.t = t
@@ -257,3 +274,6 @@ if comm.Get_rank() == 0:
     print("Velocity error "+str(u_error))
     print("Pressure error "+str(p_error))
     print("Momentum "+str(momentum))
+    print('Elapsed time '+str(timer.elapsed()[0]))
+
+list_timings(TimingClear.keep, [TimingType.wall])

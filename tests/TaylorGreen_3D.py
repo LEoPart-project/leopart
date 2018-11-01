@@ -31,8 +31,8 @@ class PeriodicBoundary(SubDomain):
                           ( near(x[1], ymin) and near(x[2], zmax) ) or \
                           ( near(x[1], ymax) and near(x[2], zmin) ) or \
                           ( near(x[0], xmax) and near(x[2], zmin) ) or \
-                          ( near(x[0], xmax) and near(x[1], ymin) )    )) )    
-    
+                          ( near(x[0], xmax) and near(x[1], ymin) )    )) )
+
     def map(self, x, y):
         xmin, xmax, ymin, ymax, zmin, zmax = self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax
         # Is this corner projection really needded? 
@@ -86,13 +86,13 @@ def assign_particle_values(x, u_exact):
 geometry = {'xmin': -1., 'ymin': -1., 'zmin': -1, 'xmax': 1., 'ymax': 1., 'zmax': 1.}
 
 # Mesh resolution
-nx, ny, nz = 4, 4, 4
+nx, ny, nz = 20, 20, 20
 
 # Particle resolution
-pres    = 30
+pres    = 150
 
 # Time stepping
-Tend    = 5e-1 #3.
+Tend    = 1.
 dt      = Constant(5e-2)
 
 # Viscosity
@@ -171,6 +171,7 @@ Uh    = Function(mixedL)
 Uhbar = Function(mixedG)
 U0    = Function(mixedL)
 Uhbar0= Function(mixedG)
+lamb  = Function(T_2)
 
 u0_a.assign(u_exact)
 ubar0_a.assign(u_exact)
@@ -230,9 +231,11 @@ t         = 0.
 while step < num_steps:
     step += 1
     t    += float(dt)
-    if comm.Get_rank() == 0:
+    if comm.rank == 0:
         print('Step number '+str(step))
     
+    comm.barrier()
+
     # Limit number of particles 
     AD.do_sweep()
     
@@ -242,15 +245,27 @@ while step < num_steps:
     # Do failsafe sweep
     AD.do_sweep_failsafe(5)
     
+    comm.barrier()
+    if comm.rank == 0:
+        print('Now to projection')
+
     # Do constrained projection
     pde_projection.assemble(True, True)
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'none', 'default')
-    
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'mumps', 'default')
+
+    comm.barrier()
+    if comm.rank == 0:
+        print('To Stokes')
+   
     # Solve Stokes 
     ssc.assemble_global_system(True)
     for bc in bcs:
         ssc.apply_boundary(bc)
     ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+
+    comm.barrier()
+    if comm.rank == 0:
+        print('Solved Stokes')
     
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
@@ -265,13 +280,14 @@ while step < num_steps:
     if step == 2: theta_L.assign(theta_next)
     
     outfile_u << Uh.sub(0)
-    outfile_p << Uh.sub(1) 
+    #outfile_p << Uh.sub(1) 
     
     # Compute vorticity
-    curl_func.assign( project(curl(Uh.sub(0)), W_2) )
-    outfile_r << curl_func
+    #curl_func.assign( project(curl(Uh.sub(0)), W_2) )
+    #outfile_r << curl_func
+   
+
     
-    #quit()
     
 # Compute errors    
 ex = as_vector((1., 0., 0.))

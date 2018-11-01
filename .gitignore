@@ -20,3 +20,4 @@ cmake_install.cmake
 htmlcov/
 unit_tests/.coverage
 unit_tests/htmlcov/
+.pytest_cache/

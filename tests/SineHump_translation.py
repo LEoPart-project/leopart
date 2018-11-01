@@ -23,6 +23,7 @@ from DolfinParticles import (particles, advect_particles, PDEStaticCondensation,
 #set_log_level(PROGRESS)
 comm = pyMPI.COMM_WORLD
 
+
 # Helper classes
 class PeriodicBoundary(SubDomain):
     # Left boundary is "target domain" G
@@ -51,7 +52,7 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0. , 0.
 xmax, ymax = 1. , 1.
-nx_list = [8, 16, 32, 64, 128]
+nx_list = [8, 16, 32, 64] #, 128]
 
 lims    = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                     [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -61,7 +62,7 @@ lim_dict= {'xmin':xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 pres_list = [45 * pow(2,i) for i in range(len(nx_list)) ]
 
 # Polynomial orders: k_list --> state variable, l_list --> Lagrange multiplier
-k_list    = [1,2,3]
+k_list    = [1] #,2,3]
 l_list    = [0] * len(k_list)
 kbar_list = k_list
 
@@ -158,7 +159,7 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         step = 0
         area_0   = assemble(psi0_h*dx)
-        timer    = Timer()
+        timer    = Timer('[P] Advection loop')
         if comm.Get_rank() == 0:
             progress = Progress("Doing step...", int(num_steps))
 
@@ -167,9 +168,16 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             step += 1
 
             # Advect particle, assemble and solve pde projection
+            t2 = Timer('[P] Do step')
             ap.do_step(float(dt))
+            del(t2)
+            t2 = Timer('[P] Assemble particles')
             pde_projection.assemble(True, True)
-            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(), lambda_h.cpp_object(), 'none', 'default')
+            del(t2)
+            t3 = Timer('[P] Projection particles')
+            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(), lambda_h.cpp_object(), 'gmres', 'default')
+            del(t3)
+            t2 = Timer('[P] Assign & output')
             # Update old solution
             assign(psi0_h, psi_h)
 
@@ -179,7 +187,8 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
             if comm.Get_rank() == 0:
                 progress += 1
-
+            del(t2)
+            
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)
@@ -199,3 +208,5 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                 write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g %-20.3g \n" %
                                 (float(dt), int(num_cells_t), int(num_particles),
                                  float(l2_error), np.float64(area_error_end), np.float(timer.elapsed()[0])))
+
+list_timings(TimingClear.keep, [TimingType.wall])

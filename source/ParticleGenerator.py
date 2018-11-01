@@ -5,7 +5,7 @@
 
 from dolfin import *
 import numpy as np
-from math import pi, sqrt
+from math import sqrt
 from itertools import product
 from mpi4py import MPI as pyMPI
 
@@ -14,15 +14,21 @@ __all__ = ['RandomRectangle', 'RandomCircle', 'RandomBox', 'RandomSphere',
 
 comm = pyMPI.COMM_WORLD
 
+
 '''
 Classes for particle generation, either on regular lattice (RegularRectangle),
 or randomly placed (RandomRectangle/RandomCircle)
 '''
 
+
 class RandomGenerator(object):
+
+
     '''
     Fill object by random points.
     '''
+
+
     def __init__(self, domain, rule):
         '''
         Domain specifies bounding box for the shape and is used to generate
