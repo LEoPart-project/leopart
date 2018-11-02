@@ -198,50 +198,54 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
     }
 }
 
-std::vector<double> particles::get_positions(){
+Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+particles::positions()
+{
+  // Could just use get_property(0)
 
-    // Get total number of particles - maybe should be same as _Np?
-    std::size_t num_particles = 0;
-    for (const auto &c2p: _cell2part)
-      num_particles += c2p.size();
+  Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    xp(_Np, _Ndim);
 
-    std::vector<double> xp;
-    xp.reserve(_Np * _Ndim);
-
-    for (const auto &c2p: _cell2part)
+  // Iterate over cells and particles in each cell
+  std::size_t row = 0;
+  for (const auto &c2p: _cell2part)
+  {
+    for (const auto &p: c2p)
     {
-      for (const auto &p: c2p)
-      {
-        for (std::size_t k = 0; k < _Ndim; ++k)
-          xp.push_back(p[0][k]);
-      }
+      for (std::size_t k = 0; k < _Ndim; ++k)
+        xp(row, k) = p[0][k];
+      ++row;
     }
-    return xp;
+  }
+
+  return xp;
 }
 
 std::vector<double> particles::get_property(const std::size_t idx){
-    // Test if idx is valid:
-    if (idx > _ptemplate.size())
-        dolfin_error("particles::get_property",
-                     "return index", "Requested index exceeds particle template");
 
-    // Store property in property_vector
-    std::vector<double> property_vector;
-    for(std::size_t i = 0; i < _cell2part.size(); i++){
-       std::size_t _Npc = _cell2part[i].size();
-       // Prevent segmentation fault, check if cell contains
-       // particles, if so collect coordinates
-       if(_Npc > 0){
-           for(std::size_t j = 0; j < _Npc; ++j){
-               for(std::size_t k = 0; k < _ptemplate[idx]; k++)
-                   property_vector.push_back(_cell2part[i][j][idx][k]);
-           }
-       }
+  // Test if idx is valid
+  if (idx > _ptemplate.size())
+    dolfin_error("particles::get_property",
+                 "return index", "Requested index exceeds particle template");
+  const std::size_t property_dim = _ptemplate[idx];
+
+  std::vector<double> property_vector;
+  property_vector.reserve(_Np * property_dim);
+
+  // Iterate over cells and particles in each cell
+  for (const auto &c2p: _cell2part)
+  {
+    for (const auto &p: c2p)
+    {
+      for(std::size_t k = 0; k < property_dim; k++)
+        property_vector.push_back(p[idx][k]);
     }
-    return property_vector;
+  }
+  return property_vector;
 }
 
-void particles::push_particle(const double dt, const Point& up, const std::size_t cidx, const std::size_t pidx){
+void particles::push_particle(const double dt, const Point& up, const std::size_t cidx, const std::size_t pidx)
+{
     _cell2part[cidx][pidx][0] += up*dt;
 }
 

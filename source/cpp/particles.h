@@ -48,7 +48,8 @@ namespace dolfin{
                        Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> property_idcs,
                        const double theta, const std::size_t step);
 
-        std::vector<double> get_positions();
+        Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+          positions();
         std::vector<double> get_property(const std::size_t idx);
 
     private:

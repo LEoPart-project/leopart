@@ -54,12 +54,6 @@ class particles(compiled_module.particles):
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
-    def positions(self, mesh):
-        Ndim = mesh.geometry().dim()
-        xp = np.asarray(self.get_positions())
-        xp = xp.reshape((-1, Ndim))
-        return xp
-
     def number_of_particles(self, mesh):
         xp_root = comm.gather(self.positions(mesh), root=0)
         if comm.Get_rank() == 0:
