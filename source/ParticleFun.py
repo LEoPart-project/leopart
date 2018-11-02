@@ -30,8 +30,6 @@ class particles(compiled_module.particles):
             else:
                 particle_template.append(p.shape[1])
 
-        num_particles = xp.shape[0]
-
         p_array = xp
         for p_property in particle_properties:
             # Assert if correct size
@@ -43,7 +41,7 @@ class particles(compiled_module.particles):
                 p_array = np.append(p_array, p_property, axis=1)
 
         compiled_module.particles.__init__(self, p_array, particle_template,
-                                           num_particles, mesh)
+                                           mesh)
         self.ptemplate = particle_template
         return
 

@@ -33,7 +33,7 @@ namespace dolfin{
     particles(Eigen::Ref<const Eigen::Array<double,
               Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
               const std::vector<unsigned int>& p_template,
-              int p_num, const Mesh& mesh);
+              const Mesh& mesh);
 
         ~particles();
 
@@ -88,7 +88,7 @@ namespace dolfin{
 
         // Particle properties
         std::size_t _Np;
-        std::vector<std::size_t> _ptemplate;
+        std::vector<unsigned int> _ptemplate;
         std::size_t _plen;
 
         // Needed for parallel

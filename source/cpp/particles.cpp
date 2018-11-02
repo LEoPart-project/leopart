@@ -9,23 +9,22 @@ particles::~particles(){
 }
 
 particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
-                     const std::vector<unsigned int>& p_template,
-                     int p_num, const Mesh &mesh)
-    :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()), _num_processes(MPI::size(mesh.mpi_comm()))
+                     const std::vector<unsigned int>& p_template, const Mesh &mesh)
+  :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()),
+   _ptemplate(p_template),  _num_processes(MPI::size(mesh.mpi_comm()))
 {
     // Note: p_array is 2D [num_particles, property_data]
 
     // Get geometry dimension of mesh
     _Ndim = mesh.geometry().dim();
-    _Np   = p_num;
-    assert(p_num == p_array.rows());
+    _Np   = p_array.rows();
 
     _cell2part.resize(_num_cells);
 
     // Initialize bounding boxes
     make_bounding_boxes();
 
-    _ptemplate.assign(p_template.begin(), p_template.end());
+    // _ptemplate.assign(p_template.begin(), p_template.end());
 
     // Calculate the offset for each particle property and overall size
     std::vector<unsigned int> offset = {0};
