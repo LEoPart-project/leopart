@@ -199,36 +199,42 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
 }
 
 std::vector<double> particles::get_positions(){
+
+    // Get total number of particles - maybe should be same as _Np?
+    std::size_t num_particles = 0;
+    for (const auto &c2p: _cell2part)
+      num_particles += c2p.size();
+
     std::vector<double> xp;
-    for(std::size_t i =0; i < _cell2part.size() ; i++){
-        std::size_t _Npc = _cell2part[i].size();
-        // Prevent segmentation fault, check if cell contains
-        // particles, if so collect coordinates
-        if(_Npc > 0){
-            for(std::size_t j=0; j<_Npc; j++){
-                for(std::size_t k = 0; k<_Ndim; k++)
-                    xp.push_back( _cell2part[i][j][0][k] );
-            }
-        }
+    xp.reserve(_Np * _Ndim);
+
+    for (const auto &c2p: _cell2part)
+    {
+      for (const auto &p: c2p)
+      {
+        for (std::size_t k = 0; k < _Ndim; ++k)
+          xp.push_back(p[0][k]);
+      }
     }
     return xp;
 }
 
 std::vector<double> particles::get_property(const std::size_t idx){
     // Test if idx is valid:
-    if(idx > _ptemplate.size())
-        dolfin_error("particles::get_property","return index","Requested index exceeds particle template");
+    if (idx > _ptemplate.size())
+        dolfin_error("particles::get_property",
+                     "return index", "Requested index exceeds particle template");
 
     // Store property in property_vector
     std::vector<double> property_vector;
-    for(std::size_t i =0; i < _cell2part.size() ; i++){
+    for(std::size_t i = 0; i < _cell2part.size(); i++){
        std::size_t _Npc = _cell2part[i].size();
        // Prevent segmentation fault, check if cell contains
        // particles, if so collect coordinates
        if(_Npc > 0){
-           for(std::size_t j=0; j<_Npc; j++){
-               for(std::size_t k = 0; k< _ptemplate[idx]; k++)
-                   property_vector.push_back( _cell2part[i][j][idx][k] );
+           for(std::size_t j = 0; j < _Npc; ++j){
+               for(std::size_t k = 0; k < _ptemplate[idx]; k++)
+                   property_vector.push_back(_cell2part[i][j][idx][k]);
            }
        }
     }

@@ -33,7 +33,7 @@ class particles(compiled_module.particles):
         p_array = xp
         for p_property in particle_properties:
             # Assert if correct size
-            assert p_property.shape[0] == num_particles, \
+            assert p_property.shape[0] == xp.shape[0], \
                 "Incorrect particle property shape"
             if len(p_property.shape) == 1:
                 p_array = np.append(p_array, np.array([p_property]).T, axis=1)
