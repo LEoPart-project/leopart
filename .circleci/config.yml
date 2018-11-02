@@ -6,6 +6,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Flake8 on source
+	  python3 -m flake8 source/
+      - run:
           name: Installing DolfinParticles
           command: |
             cd source/cpp && cmake . && make
