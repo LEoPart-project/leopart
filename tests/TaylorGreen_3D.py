@@ -13,6 +13,8 @@ from DolfinParticles import (particles, advect_rk3, RandomBox,
                              FormsPDEMap, FormsStokes)
 import os
 
+#parameters["lu_solver"]["symmetric"] = True
+
 comm = pyMPI.COMM_WORLD
 
 class PeriodicBoundary(SubDomain):
@@ -92,8 +94,8 @@ nx, ny, nz = 20, 20, 20
 pres    = 150
 
 # Time stepping
-Tend    = 1.
-dt      = Constant(5e-2)
+Tend    = 3.
+dt      = Constant(2.5e-2)
 
 # Viscosity
 nu      = Constant(2e-3)
@@ -120,9 +122,9 @@ mode  = 1.
 outdir_base = './../results/TaylorGreen_3D_lores/'
 ###################################
 
-outfile_u = File(outdir_base+'u_local.pvd')
-outfile_p = File(outdir_base+'p_local.pvd')
-outfile_r = File(outdir_base+'vorticity.pvd')
+#outfile_u = File(outdir_base+'u_local.pvd')
+#outfile_p = File(outdir_base+'p_local.pvd')
+#outfile_r = File(outdir_base+'vorticity.pvd')
 
 U_exact = (' U*sin(mode*pi*(x[0])) * cos(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
            '-U*cos(mode*pi*(x[0])) * sin(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
@@ -136,14 +138,20 @@ f = Constant((0.,0.,0.))
 xmin, ymin, zmin = geometry['xmin'], geometry['ymin'], geometry['zmin']
 xmax, ymax, zmax = geometry['xmax'], geometry['ymax'], geometry['zmax']
 
-mesh = BoxMesh(Point(xmin,ymin,zmin), Point(xmax,ymax,zmax), nx, ny, nz)
+mesh = BoxMesh(MPI.comm_world, Point(xmin,ymin,zmin), Point(xmax,ymax,zmax), nx, ny, nz)
 bmesh= BoundaryMesh(mesh, 'exterior')
 pbc  = PeriodicBoundary(geometry)
+
+# xdmf output                                                                                                                                                                                               
+xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base+"u.xdmf")
+xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base+"p.xdmf")
+xdmf_curl = XDMFFile(mesh.mpi_comm(), outdir_base+"curl.xdmf")
 
 # Required elements
 W_E_2   = VectorElement("DG", mesh.ufl_cell(), k)
 T_E_2   = VectorElement("DG", mesh.ufl_cell(), 0)
 Wbar_E_2= VectorElement("DGT", mesh.ufl_cell(), kbar)
+Wbar_E_2_H12 = VectorElement("CG", mesh.ufl_cell(), kbar)["facet"]
 
 Q_E    = FiniteElement("DG", mesh.ufl_cell(), k-1)
 Qbar_E = FiniteElement("DGT", mesh.ufl_cell(), k)
@@ -152,10 +160,11 @@ Qbar_E = FiniteElement("DGT", mesh.ufl_cell(), k)
 W_2     = FunctionSpace(mesh,W_E_2)
 T_2     = FunctionSpace(mesh,T_E_2)
 Wbar_2  = FunctionSpace(mesh,Wbar_E_2, constrained_domain = pbc)
+Wbar_2_H12 = FunctionSpace(mesh, Wbar_E_2_H12, constrained_domain = pbc)
 
 # Function spaces for Stokes
 mixedL = FunctionSpace(mesh, MixedElement([W_E_2,Q_E]))
-mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2,Qbar_E]), constrained_domain = pbc)
+mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2_H12,Qbar_E]), constrained_domain = pbc)
 
 # Define functions 
 u0_a    = Function(W_2)
@@ -163,7 +172,7 @@ ustar   = Function(W_2)
 duh0    = Function(W_2)
 duh00   = Function(W_2)
 
-ubar0_a = Function(Wbar_2)
+ubar0_a = Function(Wbar_2_H12)
 ubar_a  = Function(Wbar_2)
 Udiv    = Function(W_2)
 
@@ -228,15 +237,17 @@ num_steps = np.rint(Tend/float(dt))
 step      = 0
 t         = 0.
 
+timer = Timer()
+timer.start()
+
 while step < num_steps:
     step += 1
     t    += float(dt)
     if comm.rank == 0:
         print('Step number '+str(step))
-    
-    comm.barrier()
 
     # Limit number of particles 
+    t1 = Timer("[P] advect particles")
     AD.do_sweep()
     
     # Advect particles    
@@ -244,28 +255,24 @@ while step < num_steps:
     
     # Do failsafe sweep
     AD.do_sweep_failsafe(5)
-    
-    comm.barrier()
-    if comm.rank == 0:
-        print('Now to projection')
-
+    del(t1)    
     # Do constrained projection
+    t1 = Timer("[P] assemble projection")
     pde_projection.assemble(True, True)
+    del(t1)
+    t1 = Timer("[P] solve projection")
     pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'mumps', 'default')
-
-    comm.barrier()
-    if comm.rank == 0:
-        print('To Stokes')
+    del(t1)
    
     # Solve Stokes 
+    t1 = Timer("[P] Stokes assemble ")
     ssc.assemble_global_system(True)
     for bc in bcs:
         ssc.apply_boundary(bc)
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
-
-    comm.barrier()
-    if comm.rank == 0:
-        print('Solved Stokes')
+    del(t1)
+    t1 = Timer("[P] Stokes solve")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "none")
+    del(t1)
     
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
@@ -279,15 +286,17 @@ while step < num_steps:
     
     if step == 2: theta_L.assign(theta_next)
     
-    outfile_u << Uh.sub(0)
+    #outfile_u << Uh.sub(0)
     #outfile_p << Uh.sub(1) 
-    
-    # Compute vorticity
-    #curl_func.assign( project(curl(Uh.sub(0)), W_2) )
-    #outfile_r << curl_func
-   
+    xdmf_u.write(Uh.sub(0), t)
+    xdmf_p.write(Uh.sub(1), t)
 
+    # Compute vorticity
+    curl_func.assign( project(curl(Uh.sub(0)), W_2) )
+    #outfile_r << curl_func
+    xdmf_curl.write(curl_func, t)
     
+timer.stop()
     
 # Compute errors    
 ex = as_vector((1., 0., 0.))
@@ -298,5 +307,6 @@ momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey) + + dot(Uh.sub(0),
 
 if comm.Get_rank() == 0:
     print("Momentum "+str(momentum))
+    print("Elapsed time "+str(timer.elapsed()[0]))
 
-
+list_timings(TimingClear.keep, [TimingType.wall])

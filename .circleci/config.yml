@@ -1,0 +1,16 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: quay.io/fenicsproject/stable:latest
+    steps:
+      - run:
+          name: Installing DolfinParticles
+	  command: |
+	    cd source/cpp && cmake . && make
+	    cd ../.. && sudo python3 setup.py install
+      - run:
+          name: Running unit tests
+	  command: |
+	    cd unit_tests
+	    python3 -m pytest -v -s test*

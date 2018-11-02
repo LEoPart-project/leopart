@@ -61,11 +61,11 @@ def assign_particle_values(x, u_exact):
 geometry = {'xmin': -1., 'ymin': -1., 'xmax': 1., 'ymax': 1.}
 
 # Mesh resolution
-nx      = 64
-ny      = 64
+nx      = 128 #64
+ny      = 128 #64
 
 # Particle resolution
-pres    = 480
+pres    = 960 #480
 
 # Time stepping
 Tend    = .2
@@ -95,8 +95,9 @@ mode  = 1.
 # Directory for output
 outdir_base = './../results/TaylorGreen_2D/'
 
-outfile_u = File(outdir_base+'u_local.pvd')
-outfile_p = File(outdir_base+'p_local.pvd')
+#outfile_u = File(outdir_base+'u_local.pvd')
+#outfile_p = File(outdir_base+'p_local.pvd')
+
 ###################################
 # Exact/Initial solution Taylor-Green
 U_exact = ('-U*exp(-2*nu*pow(pi,2)*t)*(cos(mode*pi*(x[0]))*sin(mode*pi*(x[1])))',
@@ -112,26 +113,32 @@ f = Constant((0.,0.))
 xmin, ymin = geometry['xmin'], geometry['ymin']
 xmax, ymax = geometry['xmax'], geometry['ymax']
 
-mesh = RectangleMesh(Point(xmin,ymin), Point(xmax,ymax), nx,ny)
+mesh = RectangleMesh(MPI.comm_world, Point(xmin,ymin), Point(xmax,ymax), nx,ny)
 bmesh= BoundaryMesh(mesh, 'exterior')
 pbc  = PeriodicBoundary(geometry)
+
+# xdmf output
+xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base+"u.xdmf")
+xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base+"p.xdmf")
 
 # Required elements
 W_E_2   = VectorElement("DG", mesh.ufl_cell(), k)
 T_E_2   = VectorElement("DG", mesh.ufl_cell(), 0)
 Wbar_E_2= VectorElement("DGT", mesh.ufl_cell(), kbar)
+Wbar_E_2_H12 = VectorElement("CG", mesh.ufl_cell(), kbar)["facet"]
 
 Q_E    = FiniteElement("DG", mesh.ufl_cell(), k-1)
 Qbar_E = FiniteElement("DGT", mesh.ufl_cell(), k)
 
 # Function spaces for projection
-W_2     = FunctionSpace(mesh,W_E_2)
-T_2     = FunctionSpace(mesh,T_E_2)
-Wbar_2  = FunctionSpace(mesh,Wbar_E_2, constrained_domain = pbc)
+W_2     = FunctionSpace(mesh, W_E_2)
+T_2     = FunctionSpace(mesh, T_E_2)
+Wbar_2  = FunctionSpace(mesh, Wbar_E_2, constrained_domain = pbc)
+Wbar_2_H12 = FunctionSpace(mesh, Wbar_E_2_H12, constrained_domain = pbc)
 
 # Function spaces for Stokes
-mixedL = FunctionSpace(mesh, MixedElement([W_E_2,Q_E]), constrained_domain = pbc)
-mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2,Qbar_E]), constrained_domain = pbc)
+mixedL = FunctionSpace(mesh, MixedElement([W_E_2, Q_E]), constrained_domain = pbc)
+mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2_H12, Qbar_E]), constrained_domain = pbc)
 
 # Define functions 
 u0_a    = Function(W_2)
@@ -139,14 +146,14 @@ ustar   = Function(W_2)
 duh0    = Function(W_2)
 duh00   = Function(W_2)
 
-ubar0_a = Function(Wbar_2)
+ubar0_a = Function(Wbar_2_H12)
 ubar_a  = Function(Wbar_2)
 Udiv    = Function(W_2)
 
 Uh    = Function(mixedL)
 Uhbar = Function(mixedG)
 U0    = Function(mixedL)
-Uhbar0= Function(mixedG)
+#Uhbar0= Function(mixedG)
 
 u0_a.assign(u_exact)
 ubar0_a.assign(u_exact)
@@ -229,7 +236,7 @@ while step < num_steps:
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] Solve")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'hypre_amg')
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'mumps', 'default')
     del(t1)
     
     # Solve Stokes
@@ -239,7 +246,7 @@ while step < num_steps:
     t1 = Timer("[P] Stokes solve")
     for bc in bcs:
         ssc.apply_boundary(bc)
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "petsc_amg")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
     del(t1)
 
     t1 = Timer("[P] Assign and output")
@@ -254,9 +261,12 @@ while step < num_steps:
     p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1, 2], dtype = np.uintp), theta_p, step)    
     
     if step == 2: theta_L.assign(theta_next)
-    
-    outfile_u << Uh.sub(0)
-    outfile_p << Uh.sub(1) 
+
+    # Probably can be combined into one file?
+    xdmf_u.write(Uh.sub(0), t)
+    xdmf_p.write(Uh.sub(1), t)
+    #outfile_u << Uh.sub(0)
+    #outfile_p << Uh.sub(1) 
     del(t1)
 
 timer.stop()
@@ -265,8 +275,9 @@ timer.stop()
 u_exact.t = t
 p_exact.t = t
 
-u_error = sqrt(assemble(dot(Uh.sub(0) - u_exact, Uh.sub(0) - u_exact)*dx) )
-p_error = sqrt(assemble(dot(Uh.sub(1) - p_exact, Uh.sub(1) - p_exact)*dx) )    
+u_error = sqrt( assemble(dot(Uh.sub(0) - u_exact, Uh.sub(0) - u_exact)*dx) )
+p_error = sqrt( assemble(dot(Uh.sub(1) - p_exact, Uh.sub(1) - p_exact)*dx) )    
+udiv    = sqrt( assemble(div(Uh.sub(0))*div(Uh.sub(0))*dx))
 
 momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey)) * dx ) 
 
@@ -274,6 +285,7 @@ if comm.Get_rank() == 0:
     print("Velocity error "+str(u_error))
     print("Pressure error "+str(p_error))
     print("Momentum "+str(momentum))
+    print("Divergence "+str(udiv))
     print('Elapsed time '+str(timer.elapsed()[0]))
 
 list_timings(TimingClear.keep, [TimingType.wall])
