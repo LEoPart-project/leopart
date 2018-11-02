@@ -22,7 +22,13 @@ class particles(compiled_module.particles):
     def __init__(self, xp, particle_properties, mesh):
 
         gdim = mesh.geometry().dim()
-        particle_template = [gdim] + [p.shape[1] for p in particle_properties]
+
+        particle_template = [gdim]
+        for p in particle_properties:
+            if len(p.shape) == 1:
+                particle_template.append(1)
+            else:
+                particle_template.append(p.shape[1])
 
         num_particles = xp.shape[0]
 
@@ -31,7 +37,10 @@ class particles(compiled_module.particles):
             # Assert if correct size
             assert p_property.shape[0] == num_particles, \
                 "Incorrect particle property shape"
-            p_array = np.append(p_array, p_property, axis=1)
+            if len(p_property.shape) == 1:
+                p_array = np.append(p_array, np.array([p_property]).T, axis=1)
+            else:
+                p_array = np.append(p_array, p_property, axis=1)
 
         compiled_module.particles.__init__(self, p_array, particle_template,
                                            num_particles, mesh)
