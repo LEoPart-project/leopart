@@ -92,7 +92,7 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
 void particles::increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx){
     if ( !phih_new.in(*(phih_old.function_space())) )
     {
-        dolfin_error("particles.cpp::incrment",
+        dolfin_error("particles.cpp::increment",
                      "Compute increment",
                      "Expected Functions to be in the same FunctionSpace");
     }
@@ -217,6 +217,7 @@ particles::positions()
       ++row;
     }
   }
+  assert(row == _Np);
 
   return xp;
 }
@@ -300,11 +301,12 @@ void particles::particle_communicator_push(std::vector<std::vector<particle>>& c
     dolfin_assert(comm_snd.size() == _num_processes);
 
     std::vector<std::vector<double>> comm_snd_vec(_num_processes);
-    std::vector<std::vector<double>> comm_rcv_vec;
+    std::vector<double> comm_rcv_vec;
 
     // Prepare for communication
+    // Convert each vector of Points to std::vector<double>
     for (std::size_t p = 0; p < _num_processes; p++){
-        for(particle part : comm_snd[p] ){
+        for (particle part : comm_snd[p] ){
             std::vector<double> unpacked = unpack_particle(part);
             comm_snd_vec[p].insert(comm_snd_vec[p].end(), unpacked.begin(), unpacked.end());
         }
@@ -313,35 +315,36 @@ void particles::particle_communicator_push(std::vector<std::vector<particle>>& c
     // Communicate with all_to_all
     MPI::all_to_all(_mpi_comm, comm_snd_vec, comm_rcv_vec);
 
-    // FIXME: the outer loop below can probably be removed
     // TODO: thoroughly test this unpacking -> sending -> composing loop
 
-    for(std::size_t p = 0; p < _num_processes; p++){
-        std::size_t pos_iter = 0;
-        while(pos_iter < comm_rcv_vec[p].size()){
-            // This is always the position, right?
-            Point xp(_Ndim, &comm_rcv_vec[p][pos_iter]);
-            unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
-            if (cell_id != std::numeric_limits<unsigned int>::max()){
-                pos_iter += _Ndim; // Add geometric dimension to iterator
-                particle pnew;
-                pnew.push_back(xp);
-                for(std::size_t j=1; j<_ptemplate.size(); j++){
-                    Point property(_ptemplate[j], &comm_rcv_vec[p][pos_iter]);
-                    pnew.push_back(property);
-                    pos_iter += _ptemplate[j]; // Add property dimension to iterator
-                }
-                // Iterator position must be multiple of _plen
-                dolfin_assert(pos_iter % _plen == 0);
-
-                // Push back new particle to hosting cell
-                _cell2part[cell_id].push_back(pnew);
-            }else{
-                // Jump to following particle in array
-                pos_iter += _plen;
-            }
+    std::size_t pos_iter = 0;
+    while(pos_iter < comm_rcv_vec.size()){
+      // This is always the particle position
+      Point xp(_Ndim, &comm_rcv_vec[pos_iter]);
+      unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
+      if (cell_id != std::numeric_limits<unsigned int>::max())
+      {
+        pos_iter += _Ndim; // Add geometric dimension to iterator
+        particle pnew = {xp};
+        for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+        {
+          Point property(_ptemplate[j], &comm_rcv_vec[pos_iter]);
+          pnew.push_back(property);
+          pos_iter += _ptemplate[j]; // Add property dimension to iterator
         }
+        // Iterator position must be multiple of _plen
+        dolfin_assert(pos_iter % _plen == 0);
+
+        // Push back new particle to hosting cell
+        _cell2part[cell_id].push_back(pnew);
+      }
+      else
+      {
+        // Jump to following particle in array
+        pos_iter += _plen;
+      }
     }
+
 }
 
 bool particles::in_bounding_box(const std::vector<double>& point,

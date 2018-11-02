@@ -55,7 +55,7 @@ class particles(compiled_module.particles):
         return pproperty
 
     def number_of_particles(self, mesh):
-        xp_root = comm.gather(self.positions(mesh), root=0)
+        xp_root = comm.gather(self.positions(), root=0)
         if comm.Get_rank() == 0:
             xp_root = np.float16(np.vstack(xp_root))
             print("Number of particles is "+str(len(xp_root)))

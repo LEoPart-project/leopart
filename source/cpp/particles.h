@@ -35,10 +35,10 @@ namespace dolfin{
               const std::vector<unsigned int>& p_template,
               const Mesh& mesh);
 
-        ~particles();
+    ~particles();
 
-        // Interpolate function to particles
-        void interpolate(const Function& phih, const std::size_t property_idx);
+    // Interpolate function to particles
+    void interpolate(const Function& phih, const std::size_t property_idx);
 
         // Increment
         void increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx);
