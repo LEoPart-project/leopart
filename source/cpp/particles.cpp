@@ -203,8 +203,13 @@ particles::positions()
 {
   // Could just use get_property(0)
 
+  std::size_t n_particles = 0;
+  for (const auto &c2p: _cell2part)
+    n_particles += c2p.size();
+  // Should be the same as _Np... but not.
+
   Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    xp(_Np, _Ndim);
+    xp(n_particles, _Ndim);
 
   // Iterate over cells and particles in each cell
   std::size_t row = 0;
@@ -217,7 +222,7 @@ particles::positions()
       ++row;
     }
   }
-  assert(row == _Np);
+  assert(row == n_particles);
 
   return xp;
 }
@@ -230,8 +235,13 @@ std::vector<double> particles::get_property(const std::size_t idx){
                  "return index", "Requested index exceeds particle template");
   const std::size_t property_dim = _ptemplate[idx];
 
+  std::size_t n_particles = 0;
+  for (const auto &c2p: _cell2part)
+    n_particles += c2p.size();
+  // Should be the same as _Np... but not.
+
   std::vector<double> property_vector;
-  property_vector.reserve(_Np * property_dim);
+  property_vector.reserve(n_particles * property_dim);
 
   // Iterate over cells and particles in each cell
   for (const auto &c2p: _cell2part)
