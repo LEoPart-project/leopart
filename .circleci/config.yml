@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Flake8 on source
-          python3 -m flake8 source/
+          python3 -m flake8 source/*
       - run:
           name: Installing DolfinParticles
           command: |
