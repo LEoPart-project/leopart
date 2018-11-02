@@ -3,7 +3,6 @@
 # __copyright__ = 'Copyright (C) 2011' + __author__
 # __license__  = 'GNU Lesser GPL version 3 or any later version'
 
-from dolfin import *
 import numpy as np
 from math import sqrt
 from itertools import product
@@ -23,11 +22,9 @@ or randomly placed (RandomRectangle/RandomCircle)
 
 class RandomGenerator(object):
 
-
     '''
     Fill object by random points.
     '''
-
 
     def __init__(self, domain, rule):
         '''
@@ -92,14 +89,16 @@ class RandomCircle(RandomGenerator):
                                                 (x[1]-center[1])**2) < radius
                                  )
 
+
 class RandomBox(RandomGenerator):
-    def __init__(self,ll,ur):
+    def __init__(self, ll, ur):
         # a is lower left, b is upper right
         ax, ay, az = ll.x(), ll.y(), ll.z()
         bx, by, bz = ur.x(), ur.y(), ur.z()
-        assert ax<bx and ay < by and az < bz
+        assert ax < bx and ay < by and az < bz
         domain = [[ax, bx], [ay, by], [az, bz]]
         RandomGenerator.__init__(self, domain, lambda x: True)
+
 
 class RandomSphere(RandomGenerator):
     def __init__(self, center, radius):
@@ -110,10 +109,11 @@ class RandomSphere(RandomGenerator):
                   [center[2]-radius, center[2]+radius]]
         RandomGenerator.__init__(self, domain,
                                  lambda x: sqrt((x[0]-center[0])**2 +
-                                                (x[1]-center[1])**2 + 
+                                                (x[1]-center[1])**2 +
                                                 (x[2]-center[1])**2) < radius
                                  )
-        
+
+
 class RegularRectangle(RandomGenerator):
     def __init__(self, ll, ur):
         # ll is Point(lower left coordinate), ur is Point(upper right coordinate)
@@ -122,80 +122,81 @@ class RegularRectangle(RandomGenerator):
         assert ax < bx and ay < by
         RandomGenerator.__init__(self, [[ax, bx], [ay, by]], lambda x: True)
 
-    def generate(self, N, method = 'open'):
+    def generate(self, N, method='open'):
         'Genererate points.'
         assert len(N) == self.dim
 
         if self.rank == 0:
-           if method == 'closed':
-               endpoint = True
-           elif method == 'half open':
-               endpoint = False
-           elif method == 'open':
-               endpoint = True
-               new_domain = []
-               for i, (a,b) in enumerate(self.domain):
-                   delta =  0.5 * (b-a)/float(N[i])
-                   a += delta
-                   b -= delta
-                   new_domain.append([a,b])
-               self.domain = new_domain
-           else:
-               raise Exception('Unknown particle placement method')
-           coords = []
-           for i, (a,b) in enumerate(self.domain):
-               coords.append(np.linspace(a,b,N[i],endpoint = endpoint))
+            if method == 'closed':
+                endpoint = True
+            elif method == 'half open':
+                endpoint = False
+            elif method == 'open':
+                endpoint = True
+                new_domain = []
+                for i, (a, b) in enumerate(self.domain):
+                    delta = 0.5 * (b-a)/float(N[i])
+                    a += delta
+                    b -= delta
+                    new_domain.append([a, b])
+                self.domain = new_domain
+            else:
+                raise Exception('Unknown particle placement method')
+            coords = []
+            for i, (a, b) in enumerate(self.domain):
+                coords.append(np.linspace(a, b, N[i], endpoint=endpoint))
 
-           X,Y =  np.meshgrid(coords[0], coords[1])
-           points = np.vstack((np.hstack(X),np.hstack(Y))).T
-           assert np.product(N) == len(points)
-           points_inside = np.array(list(filter(self.rule, points)))
+            X, Y = np.meshgrid(coords[0], coords[1])
+            points = np.vstack((np.hstack(X), np.hstack(Y))).T
+            assert np.product(N) == len(points)
+            points_inside = np.array(list(filter(self.rule, points)))
         else:
-           points_inside = None
+            points_inside = None
 
         return points_inside
 
+
 class RegularBox(RandomGenerator):
-    def __init__(self,ll,ur):
+    def __init__(self, ll, ur):
         # a is lower left, b is upper right
         ax, ay, az = ll.x(), ll.y(), ll.z()
         bx, by, bz = ur.x(), ur.y(), ur.z()
-        assert ax<bx and ay < by and az < bz
+        assert ax < bx and ay < by and az < bz
         domain = [[ax, bx], [ay, by], [az, bz]]
         RandomGenerator.__init__(self, domain, lambda x: True)
-        
-    def generate(self, N, method = 'open'):
+
+    def generate(self, N, method='open'):
         'Genererate points.'
         assert len(N) == self.dim
         if self.rank == 0:
-           if method == 'closed':
-               endpoint = True
-           elif method == 'half open':
-               endpoint = False
-           elif method == 'open':
-               endpoint = True
-               new_domain = []
-               for i, (a,b) in enumerate(self.domain):
-                   delta =  0.5 * (b-a)/float(N[i])
-                   a += delta
-                   b -= delta
-                   new_domain.append([a,b])
-               self.domain = new_domain
-           else:
-               raise Exception('Unknown particle placement method')
-           coords = []
-           for i, (a,b) in enumerate(self.domain):
-               coords.append(np.linspace(a,b,N[i],endpoint = endpoint))
-           
-           X,Y,Z =  np.meshgrid(coords[0], coords[1], coords[2])
-           # Unfold lists
-           X_unf = np.hstack(np.hstack(X))
-           Y_unf = np.hstack(np.hstack(Y))
-           Z_unf = np.hstack(np.hstack(Z))
-           points = np.vstack((X_unf,Y_unf, Z_unf)).T
-           assert np.product(N) == len(points)  
-           points_inside = np.array(list(filter(self.rule, points))) 
+            if method == 'closed':
+                endpoint = True
+            elif method == 'half open':
+                endpoint = False
+            elif method == 'open':
+                endpoint = True
+                new_domain = []
+                for i, (a, b) in enumerate(self.domain):
+                    delta = 0.5 * (b-a)/float(N[i])
+                    a += delta
+                    b -= delta
+                    new_domain.append([a, b])
+                self.domain = new_domain
+            else:
+                raise Exception('Unknown particle placement method')
+            coords = []
+            for i, (a, b) in enumerate(self.domain):
+                coords.append(np.linspace(a, b, N[i], endpoint=endpoint))
+
+            X, Y, Z = np.meshgrid(coords[0], coords[1], coords[2])
+            # Unfold lists
+            X_unf = np.hstack(np.hstack(X))
+            Y_unf = np.hstack(np.hstack(Y))
+            Z_unf = np.hstack(np.hstack(Z))
+            points = np.vstack((X_unf, Y_unf, Z_unf)).T
+            assert np.product(N) == len(points)
+            points_inside = np.array(list(filter(self.rule, points)))
         else:
-           points_inside = None
-           
+            points_inside = None
+
         return points_inside
