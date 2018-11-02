@@ -7,21 +7,25 @@
 Unit tests for advection of single particle
 """
 
-from dolfin import *
-from DolfinParticles import particles, advect_particles, advect_rk2, advect_rk3, RandomRectangle
+from dolfin import (SubDomain, UnitSquareMesh, BoundaryMesh,
+                    Expression, VectorFunctionSpace, Function, near)
+from DolfinParticles import (particles, advect_particles, advect_rk2,
+                             advect_rk3, RandomRectangle)
 from mpi4py import MPI as pyMPI
 import numpy as np
-import pytest
 
 comm = pyMPI.COMM_WORLD
+
 
 class PeriodicBoundary(SubDomain):
     # Left boundary is "target domain" G
     def inside(self, x, on_boundary):
-        # return True if on left or bottom boundary AND NOT on one of the two corners (0, 1) and (1, 0)
-        return bool((near(x[0], 0) or near(x[1], 0)) and\
-                (not ((near(x[0], 0) and near(x[1], 1)) or
-                (near(x[0], 1) and near(x[1], 0)))) and on_boundary)
+        # return True if on left or bottom boundary
+        # AND NOT on one of the two corners (0, 1) and (1, 0)
+        return bool((near(x[0], 0) or near(x[1], 0)) and
+                    (not ((near(x[0], 0) and near(x[1], 1)) or
+                          (near(x[0], 1) and near(x[1], 0)))) and
+                    on_boundary)
 
     def map(self, x, y):
         if near(x[0], 1) and near(x[1], 1):
@@ -34,36 +38,40 @@ class PeriodicBoundary(SubDomain):
             y[0] = x[0]
             y[1] = x[1] - 1.
 
+
 def compute_convergence(iterator, errorlist):
-    assert len(iterator) == len(errorlist), 'Iterator list and error list not of same length'
+    assert len(iterator) == len(errorlist), \
+           'Iterator list and error list not of same length'
     alpha_list = []
     for i in range(len(iterator)-1):
         conv_rate = np.log(errorlist[i+1]/errorlist[i])/np.log(iterator[i+1]/iterator[i])
         alpha_list.append(conv_rate)
     return alpha_list
 
+
 def decorate_advect_particle(my_func):
     def wrapper():
-        mesh = UnitSquareMesh(10,10)
-        bmesh  = BoundaryMesh(mesh,'exterior')
+        mesh = UnitSquareMesh(10, 10)
+        bmesh  = BoundaryMesh(mesh, 'exterior')
 
-        vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
-        V = VectorFunctionSpace(mesh,"CG", 1)
+        vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'), degree=3)
+        V = VectorFunctionSpace(mesh, "CG", 1)
         x = np.array([[0.25, 0.25]])
         dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
-        return my_func(mesh,bmesh, V, vexpr,x,dt_list)
+        return my_func(mesh,bmesh, V, vexpr, x, dt_list)
     return wrapper
+
 
 def test_advect_particle():
     if comm.Get_rank() == 0:
         print('Run advect_particle')
 
     # Rotate one particle, and compute the error    
-    mesh = UnitSquareMesh(10,10)
+    mesh = UnitSquareMesh(10, 10)
     bmesh  = BoundaryMesh(mesh,'exterior')
 
-    vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'), degree=3)
+    V = VectorFunctionSpace(mesh, "CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
 
@@ -72,7 +80,7 @@ def test_advect_particle():
     error_list = []
 
     for dt in dt_list:
-        p = particles(x, [x,x], mesh)
+        p = particles(x, [x, x], mesh)
         ap= advect_particles(p, V, v, bmesh, 'closed', 'none')
         xp_0 = p.positions(mesh)
         t = 0.
@@ -81,12 +89,13 @@ def test_advect_particle():
             t += dt
         
         xp_end = p.positions(mesh)
-        error_list.append( np.linalg.norm(xp_0 - xp_end) )
+        error_list.append(np.linalg.norm(xp_0 - xp_end))
 
     if not all(eps == 0 for eps in error_list):
         rate = compute_convergence(dt_list, error_list)
-        assert any( i > 0.9 for i in rate )
+        assert any(i > 0.9 for i in rate)
 
+        
 def test_advect_particle_rk2():
     if comm.Get_rank() == 0:
         print('Run advect_particle_rk2')
