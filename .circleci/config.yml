@@ -7,6 +7,7 @@ jobs:
       - run:
           name: Installing DolfinParticles
           command: |
+            echo $(pwd)
             cd source/cpp && cmake . && make
             sudo python3 setup.py install
       - run:
