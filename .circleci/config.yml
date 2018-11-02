@@ -6,6 +6,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install dependencies
+          command: sudo pip3 install flake8 pytest --upgrade
+      - run:
           name: Flake8 on source
           command:
             python3 -m flake8 source/
