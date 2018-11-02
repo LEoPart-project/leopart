@@ -8,10 +8,9 @@ jobs:
       - run:
           name: Installing DolfinParticles
           command: |
-            echo $(pwd)
-            ls -l
             cd source/cpp && cmake . && make
-            sudo python3 setup.py install
+            echo $(pwd)
+            cd ../.. && sudo python3 setup.py install
       - run:
           name: Running unit tests
           command: |
