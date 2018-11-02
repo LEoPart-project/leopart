@@ -115,8 +115,9 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Generate particles
         if comm.Get_rank() == 0:
-            x    =  RegularRectangle(Point(xmin,ymin), Point(xmax,ymax)).generate([pres, pres])
-            s    =  np.zeros(len(x), dtype = np.float_)
+            x    =  RegularRectangle(Point(xmin, ymin),
+                                     Point(xmax, ymax)).generate([pres, pres])
+            s    =  np.zeros((len(x), 1), dtype = np.float_)
         else:
             x = None
             s = None
@@ -188,7 +189,7 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             if comm.Get_rank() == 0:
                 progress += 1
             del(t2)
-            
+
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)

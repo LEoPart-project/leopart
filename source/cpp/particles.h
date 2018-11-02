@@ -30,7 +30,8 @@ namespace dolfin{
     friend class AddDelete;
 
     public:
-    particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
+    particles(Eigen::Ref<const Eigen::Array<double,
+              Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
               const std::vector<unsigned int>& p_template,
               int p_num, const Mesh& mesh);
 

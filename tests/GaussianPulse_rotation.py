@@ -85,7 +85,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         # Generate particles
         if comm.Get_rank() == 0:
             x    =  RandomCircle(Point(x0, y0), r).generate([pres, pres])
-            s    =  np.zeros(len(x), dtype = np.float_)
+            s    =  np.zeros((len(x), 1), dtype = np.float_)
         else:
             x = None
             s = None

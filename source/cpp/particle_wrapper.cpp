@@ -20,7 +20,7 @@ PYBIND11_MODULE(particle_wrapper, m)
   m.doc() = "example";
 
   py::class_<dolfin::particles>(m, "particles")
-    .def(py::init<Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+    .def(py::init<Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>,
          const std::vector<unsigned int>&, const int, const dolfin::Mesh&>())
     .def("interpolate", &dolfin::particles::interpolate)
     .def("increment", (void (dolfin::particles::*)(const dolfin::Function&, const dolfin::Function&, const std::size_t)) &dolfin::particles::increment)

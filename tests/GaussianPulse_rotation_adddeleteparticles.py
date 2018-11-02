@@ -13,7 +13,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 import os
 from mshr import *
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 # Load from package
 from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles, l2projection,
@@ -65,7 +65,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
                                                                           "L2 T_half", "Global mass T_half",
                                                                           "L2 T_end", "Global mass T_end", "Wall clock time"))
 
-    for (nx,dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):        
+    for (nx,dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
         output_field = File(outdir+'psi_h'+'_nx'+str(nx)+'.pvd')
@@ -73,7 +73,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         # Compute num steps till completion
         num_steps = np.rint(Tend/float(dt))
         #num_steps = 1
-        
+
         # Generate mesh
         domain = Circle(Point(x0,y0),r, nx*4)
         mesh = generate_mesh(domain,nx)
@@ -90,7 +90,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         # Generate particles
         if comm.Get_rank() == 0:
             x    =  RandomCircle(Point(x0, y0), r).generate([pres, pres])
-            s    =  np.zeros(len(x), dtype = np.float_)
+            s    =  np.zeros((len(x), 1), dtype = np.float_)
         else:
             x = None
             s = None
@@ -101,7 +101,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         # Initialize particles with position x and scalar property s at the mesh
         p   = particles(x, [s], mesh)
         property_idx = 1 # Scalar quantity is stored at slot 1
-                
+
         # Initialize advection class, use RK3 scheme
         ap  = advect_rk3(p, V, uh, bmesh, 'open', 'none')
 
@@ -133,11 +133,11 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h.cpp_object(), property_idx)
-        
+
         # Initialize add/delete particle
         AD = AddDelete(p, 12, 20, [psi0_h])
         lstsq_rho = l2projection(p,W,property_idx)
-        
+
         step = 0
         area_0   = assemble(psi0_h*dx)
         timer    = Timer()
@@ -154,7 +154,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
             ap.do_step(float(dt))
             # Failsafe sweep
             AD.do_sweep_failsafe(3)
-            
+
             #lstsq_rho.project(psi_h.cpp_object() )
             pde_projection.assemble(True, True)
             pde_projection.apply_boundary(bc)

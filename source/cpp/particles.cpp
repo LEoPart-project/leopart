@@ -8,63 +8,45 @@ using namespace dolfin;
 particles::~particles(){
 }
 
-particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
+particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
                      const std::vector<unsigned int>& p_template,
                      int p_num, const Mesh &mesh)
     :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()), _num_processes(MPI::size(mesh.mpi_comm()))
 {
-    // Note: p_array is structured as:
-    // [xp1, xp2, ..., xpn, phi1, phi2, ..., phin, psi1, psi2, ..., psin, ...]
+    // Note: p_array is 2D [num_particles, property_data]
 
     // Get geometry dimension of mesh
     _Ndim = mesh.geometry().dim();
     _Np   = p_num;
+    assert(p_num == p_array.rows());
+
     _cell2part.resize(_num_cells);
 
     // Initialize bounding boxes
     make_bounding_boxes();
 
-    // Initialize particle template and _plen
-    _plen = 0;
-    for(std::size_t i = 0; i < p_template.size(); i++){
-        _ptemplate.push_back(p_template[i]);
-        _plen += p_template[i];
-    }
+    _ptemplate.assign(p_template.begin(), p_template.end());
 
-    // TODO: reformulate where each particle is contiguously stored instead of stacked
-    // this potentially renders this loop significantly easier...
-
-    // Calculate the offset for each particle property
+    // Calculate the offset for each particle property and overall size
     std::vector<unsigned int> offset = {0};
     for (const auto &p : p_template)
       offset.push_back(offset.back() + p);
-    const unsigned int psize = offset.back();
+    _plen = offset.back();
 
     // Loop over particles:
     for(std::size_t i=0; i<_Np; i++){
         // Position and get hosting cell
-        Point xp(_Ndim, p_array.data() + i*_Ndim);
+        Point xp(_Ndim, p_array.row(i).data());
 
         unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
         if (cell_id != std::numeric_limits<unsigned int>::max())
         {
-            // Initialize empty particle
-            particle pnew;
-            // Push back position
-            pnew.push_back(xp);
+            // Initialize particle with position
+            particle pnew = {xp};
 
-            // Loop over other properties
-            // Set start position
-            std::size_t idx;
-            if(_ptemplate.size() > 1)
-                idx = _Np*_Ndim + i * _ptemplate[1];
-
-            for(std::size_t j=1; j < _ptemplate.size(); j++){
-                Point property(_ptemplate[j], p_array.data() + idx);
-                //idx += j * _Np * _ptemplate[j];
-                // New formulation: second part guarantees to jump
-                // at proper positions if ranks between properties vary
-                idx += _Np * _ptemplate[j] - i * (_ptemplate[j] -  _ptemplate[j+1]) ;
+            for(std::size_t j = 1; j < _ptemplate.size(); ++j)
+            {
+                Point property(_ptemplate[j], p_array.row(i).data() + offset[j]);
                 pnew.push_back(property);
             }
 

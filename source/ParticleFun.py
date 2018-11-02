@@ -20,25 +20,19 @@ comm = pyMPI.COMM_WORLD
 
 class particles(compiled_module.particles):
     def __init__(self, xp, particle_properties, mesh):
-        gdim = mesh.geometry().dim()
-        particle_template = [gdim]
-        num_particles = xp.shape[0]
-        p_array = xp.flatten()
 
+        gdim = mesh.geometry().dim()
+        particle_template = [gdim] + [p.shape[1] for p in particle_properties]
+
+        num_particles = xp.shape[0]
+
+        p_array = xp
         for p_property in particle_properties:
             # Assert if correct size
-            assert p_property.shape[0] % num_particles == 0, "Incorrect pproperty shape"
+            assert p_property.shape[0] == num_particles, \
+                "Incorrect particle property shape"
+            p_array = np.append(p_array, p_property, axis=1)
 
-            # Check if scalar/n-d vector
-            try:
-                pdim = p_property.shape[1]
-            except Exception:
-                pdim = int(1)
-
-            particle_template.append(pdim)
-            p_array = np.append(p_array, p_property.flatten())
-
-        p_array = np.asarray(p_array, dtype=np.float_)
         compiled_module.particles.__init__(self, p_array, particle_template,
                                            num_particles, mesh)
         self.ptemplate = particle_template
