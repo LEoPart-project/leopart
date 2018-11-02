@@ -7,8 +7,8 @@
 Unit tests for advection of single particle
 """
 
-from dolfin import (SubDomain, UnitSquareMesh, BoundaryMesh,
-                    Expression, VectorFunctionSpace, Function, near)
+from dolfin import (SubDomain, UnitSquareMesh, BoundaryMesh, RectangleMesh,
+                    Point, Constant, Expression, VectorFunctionSpace, Function, near)
 from DolfinParticles import (particles, advect_particles, advect_rk2,
                              advect_rk3, RandomRectangle)
 from mpi4py import MPI as pyMPI
