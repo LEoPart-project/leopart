@@ -66,7 +66,7 @@ def test_advect_particle():
     if comm.Get_rank() == 0:
         print('Run advect_particle')
 
-    # Rotate one particle, and compute the error    
+    # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10, 10)
     bmesh  = BoundaryMesh(mesh,'exterior')
 
@@ -87,7 +87,7 @@ def test_advect_particle():
         while t<2.-1e-12:
             ap.do_step(dt)
             t += dt
-        
+
         xp_end = p.positions(mesh)
         error_list.append(np.linalg.norm(xp_0 - xp_end))
 
@@ -95,12 +95,12 @@ def test_advect_particle():
         rate = compute_convergence(dt_list, error_list)
         assert any(i > 0.9 for i in rate)
 
-        
+
 def test_advect_particle_rk2():
     if comm.Get_rank() == 0:
         print('Run advect_particle_rk2')
 
-    # Rotate one particle, and compute the error                                                                                                                                                           
+    # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10,10)
     bmesh  = BoundaryMesh(mesh,'exterior')
 
@@ -108,7 +108,7 @@ def test_advect_particle_rk2():
     V = VectorFunctionSpace(mesh,"CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
-    
+
     v = Function(V)
     v.assign(vexpr)
     error_list = []
@@ -134,7 +134,7 @@ def test_advect_particle_rk3():
     if comm.Get_rank() == 0:
         print('Run advect_particle_rk3')
 
-    # Rotate one particle, and compute the error                                                                                                                                                           
+    # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10,10)
     bmesh  = BoundaryMesh(mesh,'exterior')
 
@@ -142,7 +142,7 @@ def test_advect_particle_rk3():
     V = VectorFunctionSpace(mesh,"CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
-        
+
     v = Function(V)
     v.assign(vexpr)
 
@@ -177,7 +177,7 @@ def decorate_periodic_tests(my_func):
 
         vexpr = Constant((1.,1.))
         V = VectorFunctionSpace(mesh,"CG", 1)
-        
+
         x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
         x = comm.bcast(x, root=0)
         dt= 0.05
@@ -234,7 +234,7 @@ def test_advect_particle_periodic():
         xp0_root = np.float32( np.vstack(xp0_root) )
         xpE_root = np.float32( np.vstack(xpE_root) )
         error = np.linalg.norm(xp0_root - xpE_root)
-        assert error < 1e-10 
+        assert error < 1e-10
 
 def test_advect_particle_periodic_rk2():
     xmin = 0.; xmax = 1.
@@ -266,7 +266,7 @@ def test_advect_particle_periodic_rk2():
         t += dt
     xpE = p.positions(mesh)
 
-    # Check if position correct                                                                                                                                                                            
+    # Check if position correct
     xp0_root = comm.gather( xp0, root = 0)
     xpE_root = comm.gather( xpE, root = 0)
 
@@ -296,7 +296,8 @@ def test_advect_particle_periodic_rk3():
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [x[:,0]*0, x**2], mesh)
+    a = np.zeros((len(x), 1))
+    p = particles(x, [a, x**2], mesh)
     ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions(mesh)
@@ -306,7 +307,7 @@ def test_advect_particle_periodic_rk3():
         t += dt
     xpE = p.positions(mesh)
 
-    # Check if position correct                                                                                                                                                                            
+    # Check if position correct
     xp0_root = comm.gather( xp0, root = 0)
     xpE_root = comm.gather( xpE, root = 0)
 

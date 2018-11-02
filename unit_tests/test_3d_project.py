@@ -9,12 +9,13 @@ from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles
                      PDEStaticCondensation, RandomBox, RegularBox,
                      FormsPDEMap, GaussianPulse, AddDelete)
 
-# 
+#
 comm = pyMPI.COMM_WORLD
 
 def assign_particle_values(x, u_exact):
     if comm.Get_rank() == 0:
-        s=np.asarray([u_exact(x[i,:]) for i in range(len(x))], dtype = np.float_)
+        s = np.asarray([[u_exact(x[i,:]) for i in range(len(x))]],
+                       dtype = np.float_).T
     else:
         s = None
     return s
@@ -26,11 +27,11 @@ class Ball(UserExpression):
         self.center = center
         self.lb = lb
         self.ub = ub
-        super().__init__(self, **kwargs)    
-    
+        super().__init__(self, **kwargs)
+
     def eval(self, value, x):
         (xc, yc, zc) = self.center
-        
+
         if (x[0] - xc)**2 + (x[1] - yc)**2 + (x[2] - zc)**2 <= self.r**2:
             value[0] = self.ub
         else:
@@ -54,7 +55,7 @@ def test_l2_projection_3D(polynomial_order, in_expression):
         V = FunctionSpace(mesh,"DG", polynomial_order)
     elif len(interpolate_expression.ufl_shape) == 1:
         V = VectorFunctionSpace(mesh,"DG", polynomial_order)
-    
+
     v_exact = Function(V)
     v_exact.assign(interpolate_expression)
 
@@ -64,13 +65,13 @@ def test_l2_projection_3D(polynomial_order, in_expression):
     x = comm.bcast(x, root=0)
     s = comm.bcast(s, root=0)
 
-    # Just make a complicated particle, possibly with scalars and vectors mixed                                                                                                                         
+    # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [s], mesh)
 
-    # Do AddDelete sweep                                                                                                                                                                            
+    # Do AddDelete sweep
     AD = AddDelete(p, 13, 15, [v_exact])
     AD.do_sweep()
-    
+
     vh = Function(V)
     lstsq_vh = l2projection(p,V,property_idx)
     lstsq_vh.project(vh.cpp_object())
@@ -98,7 +99,7 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
     x = comm.bcast(x, root=0)
     s = comm.bcast(s, root=0)
 
-    # Just make a complicated particle, possibly with scalars and vectors mixed                                                                                                                            
+    # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [s], mesh)
 
     vh = Function(V)
@@ -108,9 +109,6 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
     # Assert if it stays within bounds
     assert np.any(vh.vector().get_local() < ub + 1e-12)
     assert np.any(vh.vector().get_local() > lb - 1e-12 )
-    
+
 # TODO: Vector Function L2
-# TODO: PDE constrained projection  
-
-
-
+# TODO: PDE constrained projection
