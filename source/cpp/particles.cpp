@@ -9,7 +9,7 @@ particles::~particles(){
 }
 
 particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
-                     Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
+                     const std::vector<unsigned int>& p_template,
                      int p_num, const Mesh &mesh)
     :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()), _num_processes(MPI::size(mesh.mpi_comm()))
 {
@@ -34,10 +34,17 @@ particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p
     // TODO: reformulate where each particle is contiguously stored instead of stacked
     // this potentially renders this loop significantly easier...
 
+    // Calculate the offset for each particle property
+    std::vector<unsigned int> offset = {0};
+    for (const auto &p : p_template)
+      offset.push_back(offset.back() + p);
+    const unsigned int psize = offset.back();
+
     // Loop over particles:
     for(std::size_t i=0; i<_Np; i++){
         // Position and get hosting cell
         Point xp(_Ndim, p_array.data() + i*_Ndim);
+
         unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
         if (cell_id != std::numeric_limits<unsigned int>::max())
         {
@@ -146,7 +153,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old, co
     }
 }
 
-void particles::increment(const Function& phih_new, const Function& phih_old, 
+void particles::increment(const Function& phih_new, const Function& phih_old,
                        Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> property_idcs,
                        const double theta, const std::size_t step){
     if ( !phih_new.in(*(phih_old.function_space())) )
@@ -277,12 +284,12 @@ void particles::make_bounding_boxes(){
 
 void particles::particle_communicator_collect(std::vector<std::vector<particle>>& comm_snd,
                                               const std::size_t cidx, const std::size_t pidx){
-    // Assertion to chekc if comm_snd has size of num_procs
+    // Assertion to check if comm_snd has size of num_procs
     dolfin_assert(comm_snd.size() == _num_processes);
 
     // Get position
     particle ptemp = _cell2part[cidx][pidx];
-    std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates()+_Ndim);
+    std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates() + _Ndim);
 
     // Loop over processes
     for (std::size_t p = 0; p < _num_processes; p++)

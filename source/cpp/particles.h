@@ -31,19 +31,19 @@ namespace dolfin{
 
     public:
     particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
-              Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
+              const std::vector<unsigned int>& p_template,
               int p_num, const Mesh& mesh);
 
         ~particles();
 
         // Interpolate function to particles
         void interpolate(const Function& phih, const std::size_t property_idx);
-        
+
         // Increment
         void increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx);
-        
+
         // Increment using theta --> Consider replacing property_idcs
-        void increment(const Function& phih_new, const Function& phih_old, 
+        void increment(const Function& phih_new, const Function& phih_old,
                        Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> property_idcs,
                        const double theta, const std::size_t step);
 

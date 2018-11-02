@@ -39,8 +39,6 @@ class particles(compiled_module.particles):
             p_array = np.append(p_array, p_property.flatten())
 
         p_array = np.asarray(p_array, dtype=np.float_)
-        particle_template = np.asarray(particle_template, dtype=np.intc)
-
         compiled_module.particles.__init__(self, p_array, particle_template,
                                            num_particles, mesh)
         self.ptemplate = particle_template
