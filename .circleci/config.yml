@@ -8,7 +8,7 @@ jobs:
           name: Installing DolfinParticles
           command: |
             cd source/cpp && cmake . && make
-            cd ../.. && sudo python3 setup.py install
+            sudo python3 setup.py install
       - run:
           name: Running unit tests
           command: |
