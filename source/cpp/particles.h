@@ -42,6 +42,13 @@ namespace dolfin{
       return _cell2part[cell_index][particle_index][0];
     }
 
+    // Return property i of particle in cell
+    const Point& property(int cell_index, int particle_index,
+                          int i) const
+    {
+      return _cell2part[cell_index][particle_index][i];
+    }
+
     // Pointer to the mesh
     const Mesh* mesh() const
     {
@@ -116,13 +123,11 @@ namespace dolfin{
         std::vector<std::vector<particle> >  _cell2part;
 
         // Particle properties
-        std::size_t _Np;
         std::vector<unsigned int> _ptemplate;
         std::size_t _plen;
 
         // Needed for parallel
         const MPI_Comm _mpi_comm;
-        const std::size_t _num_processes;
         std::vector<std::vector<double>> _bounding_boxes;
 
         // TO REMOVE

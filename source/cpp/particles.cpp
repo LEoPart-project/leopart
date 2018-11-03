@@ -11,13 +11,12 @@ particles::~particles(){
 particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
                      const std::vector<unsigned int>& p_template, const Mesh &mesh)
   :_mesh(&mesh), _mpi_comm(mesh.mpi_comm()),
-   _ptemplate(p_template),  _num_processes(MPI::size(mesh.mpi_comm()))
+   _ptemplate(p_template)
 {
     // Note: p_array is 2D [num_particles, property_data]
 
     // Get geometry dimension of mesh
     _Ndim = mesh.geometry().dim();
-    _Np   = p_array.rows();
 
     _cell2part.resize(mesh.num_cells());
 
@@ -33,7 +32,7 @@ particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen
     _plen = offset.back();
 
     // Loop over particles:
-    for(std::size_t i=0; i<_Np; i++){
+    for(std::size_t i = 0; i < p_array.rows(); i++){
         // Position and get hosting cell
         Point xp(_Ndim, p_array.row(i).data());
 
@@ -287,14 +286,16 @@ void particles::make_bounding_boxes(){
 void particles::particle_communicator_collect(std::vector<std::vector<particle>>& comm_snd,
                                               const std::size_t cidx, const std::size_t pidx){
     // Assertion to check if comm_snd has size of num_procs
-    dolfin_assert(comm_snd.size() == _num_processes);
+
+  const std::size_t num_processes = MPI::size(_mpi_comm);
+  dolfin_assert(comm_snd.size() == num_processes);
 
     // Get position
     particle ptemp = _cell2part[cidx][pidx];
     std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates() + _Ndim);
 
     // Loop over processes
-    for (std::size_t p = 0; p < _num_processes; p++)
+    for (std::size_t p = 0; p < num_processes; p++)
     {
         // Check if in bounding box
         if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
@@ -308,14 +309,15 @@ void particles::particle_communicator_collect(std::vector<std::vector<particle>>
 
 void particles::particle_communicator_push(std::vector<std::vector<particle>>& comm_snd){
     // Assertion if sender has correct size
-    dolfin_assert(comm_snd.size() == _num_processes);
+  const std::size_t num_processes = MPI::size(_mpi_comm);
+  dolfin_assert(comm_snd.size() == num_processes);
 
-    std::vector<std::vector<double>> comm_snd_vec(_num_processes);
+    std::vector<std::vector<double>> comm_snd_vec(num_processes);
     std::vector<double> comm_rcv_vec;
 
     // Prepare for communication
     // Convert each vector of Points to std::vector<double>
-    for (std::size_t p = 0; p < _num_processes; p++){
+    for (std::size_t p = 0; p < num_processes; p++){
         for (particle part : comm_snd[p] ){
             std::vector<double> unpacked = unpack_particle(part);
             comm_snd_vec[p].insert(comm_snd_vec[p].end(), unpacked.begin(), unpacked.end());

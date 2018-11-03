@@ -109,14 +109,13 @@ void AddDelete::insert_particles(const std::size_t Np_def, const Cell& dolfin_ce
     ufc::cell ufc_cell;
     dolfin_cell.get_cell_data(ufc_cell);
 
-    for(std::size_t pgen = 0; pgen < Np_def; pgen++){
+    for (std::size_t pgen = 0; pgen < Np_def; pgen++){
         // Initialize random positions
         Point xp_new;
         initialize_random_position(xp_new, x_min_max, dolfin_cell);
         Array<double> xp_array(gdim, xp_new.coordinates());
 
-        particle pnew;
-        pnew.push_back(xp_new);
+        particle pnew = {xp_new};
 
         // Eval other properties and push
         for(std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++ ){
@@ -182,10 +181,9 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def, const Cell& 
             for(std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++ ){
                 Point point_value;
 
-
                 // Again the idx_func+1 for skipping position
                 for( std::size_t pidx = 0; pidx < _P->num_cell_particles(cidx); pidx++ )
-                    point_value += distance[pidx]*_P->_cell2part[cidx][pidx][idx_func +1];
+                  point_value += distance[pidx]*_P->property(cidx, pidx, idx_func +1);
 
                 point_value /= distance_sum;
 

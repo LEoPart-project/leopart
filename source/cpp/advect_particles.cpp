@@ -19,7 +19,7 @@ advect_particles::advect_particles( particles& P, FunctionSpace& U, Function& uh
     set_bfacets(bmesh, type1);
 
     // If run in parallel, then get interior facet indices
-    if(_P->_num_processes > 1) int_facets = interior_facets();
+    if(MPI::size(_P->mesh()->mpi_comm()) > 1) int_facets = interior_facets();
 
     // Set facet and cell2facet info
     cell2facet.resize(_P->mesh()->num_cells());
@@ -81,7 +81,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
 
     set_bfacets(bmesh, type1, indices1);
     set_bfacets(bmesh, type2, indices2);
-    if(_P->_num_processes > 1) int_facets = interior_facets();
+    if (MPI::size(_P->mesh()->mpi_comm()) > 1) int_facets = interior_facets();
     // Length should amount to size of boundary mesh, works in 3D?
     if((obc_facets.size() + cbc_facets.size() + pbc_facets.size()) != bmesh.num_cells())
     {
@@ -530,7 +530,7 @@ void advect_particles::do_step(double dt){
                         }else if(std::find(pbc_facets.begin(), pbc_facets.end(),  std::get<0>(intersect_info)) != pbc_facets.end()){
                             // Then periodic bc
                             apply_periodic_bc(dt_rem, up, ci->index(), i, std::get<0>(intersect_info) );
-                            if(_P->_num_processes > 1 ){ //Behavior in parallel
+                            if (num_processes > 1){ //Behavior in parallel
                                 _P->particle_communicator_collect(comm_snd, ci->index(), i);
                             }else{
                                 // Behavior in serial
@@ -1207,7 +1207,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
     double dt_rem = dt;
     //std::size_t cidx_recv = cidx;
 
-
+    const std::size_t mpi_size = MPI::size(_P->mesh()->mpi_comm());
     std::size_t cidx_recv = std::numeric_limits<std::size_t>::max();
 
     if(step == 0 ){
@@ -1334,7 +1334,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
                     if(step == (num_steps - 1) )
                       _P->_cell2part[cidx][*pidx][xp0_idx] = _P->x(cidx, *pidx);
 
-                    if(_P->_num_processes > 1 ){ //Behavior in parallel
+                    if (mpi_size > 1){ //Behavior in parallel
                         // Allways do a global push
                         _P->particle_communicator_collect(comm_snd, cidx, *pidx);
                     }else{
@@ -1444,14 +1444,14 @@ void advect_rk2::do_step(double dt){
                     _P->_cell2part[ci->index()][i][up0_idx] = up;
                 }else{
                     // Goto next particle, this particle hitted closed bound
-                    if(_P->_cell2part[ci->index()][i][up0_idx][0] == std::numeric_limits<double>::max()) continue;
-                    up += _P->_cell2part[ci->index()][i][up0_idx];
-                    up *= 0.5;
+                  if(_P->property(ci->index(), i, up0_idx)[0] == std::numeric_limits<double>::max()) continue;
+                  up += _P->property(ci->index(), i, up0_idx);
+                  up *= 0.5;
                 }
 
                 // Reset position to old
                 if(step == 1)
-                    _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                  _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 // Do substep
                 do_substep(dt, up, ci->index(), &i, step, num_substeps,
@@ -1559,7 +1559,7 @@ void advect_rk3::do_step(double dt){
                 Point up(gdim, u_p.data() );
 
                 // Then reset position to the old position
-                _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 if(step == 0 ){
                     _P->_cell2part[ci->index()][i][up0_idx] =  up * (weights[step]) ;
@@ -1574,7 +1574,7 @@ void advect_rk3::do_step(double dt){
 
                 // Reset position to old
                 if(step == 1)
-                    _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                  _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 // Do substep
                 do_substep(dt*dti[step], up, ci->index(), &i, step, num_substeps,

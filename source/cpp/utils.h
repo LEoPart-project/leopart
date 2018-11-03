@@ -10,12 +10,8 @@
 namespace dolfin{
     class Utils
     {
-    friend class advect_particles;
-    // Some utility functions for, header only
+      // Some utility functions for, header only
     public:
-        Utils(){}
-        ~Utils(){}
-
         static void return_expansion_coeffs(std::vector<double>& coeffs,
                                             const Cell& dolfin_cell, const Function* phih)
         {
