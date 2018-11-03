@@ -10,7 +10,7 @@ particles::~particles(){
 
 particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
                      const std::vector<unsigned int>& p_template, const Mesh &mesh)
-  :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()),
+  :_mesh(&mesh), _mpi_comm(mesh.mpi_comm()),
    _ptemplate(p_template),  _num_processes(MPI::size(mesh.mpi_comm()))
 {
     // Note: p_array is 2D [num_particles, property_data]
@@ -19,7 +19,7 @@ particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen
     _Ndim = mesh.geometry().dim();
     _Np   = p_array.rows();
 
-    _cell2part.resize(_num_cells);
+    _cell2part.resize(mesh.num_cells());
 
     // Initialize bounding boxes
     make_bounding_boxes();
@@ -75,7 +75,7 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
                     phih.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -120,7 +120,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old, co
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
                     phih_new.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -177,7 +177,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(),pidx), *cell,
                     phih_new.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -421,7 +421,7 @@ void particles::get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,
     if(_Npc > 0){
         for(std::size_t pidx=0; pidx<_Npc; pidx++){
             double basis_matrix[space_dimension][value_size_loc];
-            element->evaluate_basis_all(&basis_matrix[0][0], _cell2part[cidx][pidx][0].coordinates(),
+            element->evaluate_basis_all(&basis_matrix[0][0], x(cidx, pidx).coordinates(),
                                             vertex_coordinates.data(), ufc_cell.orientation);
 
             // Then insert in Eigen matrix and vector (rewrite this ugly loop!?)

@@ -21,13 +21,12 @@
 namespace dolfin{
   class particles
     {
-    friend class l2projection;
 
-    friend class advect_particles;
-    friend class advect_rk2;
-    friend class advect_rk3;
-    friend class PDEStaticCondensation;
-    friend class AddDelete;
+      // TODO: get rid of friends!
+      friend class advect_particles;
+      friend class advect_rk2;
+      friend class advect_rk3;
+      friend class AddDelete;
 
     public:
     particles(Eigen::Ref<const Eigen::Array<double,
@@ -36,6 +35,36 @@ namespace dolfin{
               const Mesh& mesh);
 
     ~particles();
+
+    // Get the position of a particle in a cell
+    Point x(int cell_index, int particle_index)
+    {
+      return _cell2part[cell_index][particle_index][0];
+    }
+
+    // Pointer to the mesh
+    const Mesh* mesh() const
+    {
+      return _mesh;
+    }
+
+    // Get size of property i
+    unsigned int ptemplate(int i)
+    {
+      return _ptemplate[i];
+    }
+
+    // Number of properties
+    unsigned int num_properties()
+    {
+      return _ptemplate.size();
+    }
+
+    // Number of particles in Cell c
+    unsigned int num_cell_particles(int c)
+    {
+      return _cell2part[c].size();
+    }
 
     // Interpolate function to particles
     void interpolate(const Function& phih, const std::size_t property_idx);
@@ -51,6 +80,12 @@ namespace dolfin{
         Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
           positions();
         std::vector<double> get_property(const std::size_t idx);
+
+        void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
+                                        Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
+                                        const Cell& dolfin_cell, std::shared_ptr<const FiniteElement> element,
+                                        const std::size_t space_dimension, const std::size_t value_size_loc,
+                                        const std::size_t property_idx);
 
     private:
         // Push particle to new position
@@ -73,18 +108,11 @@ namespace dolfin{
         // Unpack particle, required in parallel
         std::vector<double> unpack_particle(const particle part);
 
-        void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
-                                        Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
-                                        const Cell& dolfin_cell, std::shared_ptr<const FiniteElement> element,
-                                        const std::size_t space_dimension, const std::size_t value_size_loc,
-                                        const std::size_t property_idx);
-
         // TODO: locate/relocate funcionality
 
         // Attributes
         const Mesh* _mesh;
         std::size_t _Ndim;
-        const unsigned int _num_cells;
         std::vector<std::vector<particle> >  _cell2part;
 
         // Particle properties

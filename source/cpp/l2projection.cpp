@@ -22,13 +22,13 @@ l2projection::l2projection(particles& P, FunctionSpace& V, const std::size_t idx
        _value_size_loc *= _element->value_dimension(i);
 
     // Check if matches with stored particle template
-    if(_value_size_loc != _P->_ptemplate[_idx_pproperty])
+    if(_value_size_loc != _P->ptemplate(_idx_pproperty))
         dolfin_error("l2projection","set _value_size_loc",
                      "Local value size (%d) mismatches particle template property with size (%d)",
-                     _value_size_loc, _P->_ptemplate[_idx_pproperty]);
+                     _value_size_loc, _P->ptemplate(_idx_pproperty));
 
     // Initialize _mesh and the _dolfin_cells
-    _Nixp.resize(_P->_num_cells);
+    _Nixp.resize(_P->mesh()->num_cells());
 }
 //-----------------------------------------------------------------------------
 l2projection::~l2projection(){
@@ -41,7 +41,7 @@ void l2projection::project(Function& u){
     // double basis_matrix[_space_dimension][_value_size_loc];
 
     // TODO: new and compact formulation. WORK IN PROGRESS!
-    for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
+  for( CellIterator cell( *(_P->mesh()) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
         Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
@@ -55,7 +55,7 @@ void l2projection::project(Function& u){
                                        _space_dimension, _value_size_loc, _idx_pproperty);
 
         // Store q in Nixp (actually, why?)
-        std::size_t _Npc = _P->_cell2part[i].size();
+        std::size_t _Npc = _P->num_cell_particles(i);
         _Nixp[i].resize(_space_dimension,_Npc * _value_size_loc);
         _Nixp[i] = q;
 
@@ -96,7 +96,7 @@ void l2projection::project(Function& u, const double lb, const double ub){
         ci0(i + _space_dimension) = ub;
     }
 
-    for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
+    for( CellIterator cell( *(_P->mesh()) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
         Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
@@ -110,7 +110,7 @@ void l2projection::project(Function& u, const double lb, const double ub){
                                        _space_dimension, _value_size_loc, _idx_pproperty);
 
         // Store q in Nixp (actually, why?)
-        std::size_t _Npc = _P->_cell2part[i].size();
+        std::size_t _Npc = _P->num_cell_particles(i);
         _Nixp[i].resize(_space_dimension,_Npc * _value_size_loc);
         _Nixp[i] = q;
 
@@ -138,7 +138,7 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
     A_g.zero();
     f_g.zero();
 
-    for( CellIterator cell( *(_P->_mesh) ); !cell.end(); ++cell){
+    for( CellIterator cell( *(_P->mesh()) ); !cell.end(); ++cell){
         std::size_t i = cell->index();
         // Get dofs local to cell
         Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs = _dofmap->cell_dofs(i);
@@ -152,7 +152,7 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
                                        _space_dimension, _value_size_loc, _idx_pproperty);
 
         // Store q in Nixp (actually, why?)
-        std::size_t _Npc = _P->_cell2part[i].size();
+        std::size_t _Npc = _P->num_cell_particles(i);
         _Nixp[i].resize(_space_dimension,_Npc * _value_size_loc);
         _Nixp[i] = q;
 
