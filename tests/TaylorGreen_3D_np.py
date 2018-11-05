@@ -9,7 +9,7 @@ import time as tm
 from mpi4py import MPI as pyMPI
 from DolfinParticles import (particles, advect_rk3, RandomBox,
                              AddDelete, PDEStaticCondensation,
-                             StokesStaticCondensation,
+                             StokesStaticCondensation, l2projection,
                              FormsPDEMap, FormsStokes)
 import os
 
@@ -168,6 +168,7 @@ mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2_H12,Qbar_E]), constrained_do
 
 # Define functions
 u0_a    = Function(W_2)
+u_l2    = Function(W_2)
 ustar   = Function(W_2)
 duh0    = Function(W_2)
 duh00   = Function(W_2)
@@ -213,7 +214,7 @@ AD = AddDelete(p, 15, 25, [Udiv, duh0])
 
 # Forms PDE map
 funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
-forms_adv      = FormsPDEMap(mesh, funcspace_dict).forms_theta_nlinear(u0_a, ubar0_a, dt, \
+forms_adv      = FormsPDEMap(mesh, funcspace_dict).forms_theta_nlinear_np(u0_a, u_l2, ubar0_a, dt, \
                     theta_map = Constant(1.0), theta_L = theta_L, duh0 = duh0, duh00 = duh00)
 pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
                                                                                    forms_adv['H_a'],
@@ -231,6 +232,8 @@ forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
                                                          forms_stokes['B_S'],
                                     forms_stokes['Q_S'], forms_stokes['S_S'])
+
+lstsq_u = l2projection(p, W_2, 1)
 
 # Prepare time stepping loop
 num_steps = np.rint(Tend/float(dt))
@@ -256,12 +259,16 @@ while step < num_steps:
     # Do failsafe sweep
     AD.do_sweep_failsafe(5)
     del(t1)
+
+    # Do l2 project
+    lstsq_u.project(u_l2.cpp_object())
+
     # Do constrained projection
     t1 = Timer("[P] assemble projection")
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] solve projection")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'bicgstab', 'hypre_amg')
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'bicgstab', 'hypre_amg')
     del(t1)
 
     # Solve Stokes
