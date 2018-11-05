@@ -8,8 +8,8 @@ import numpy as np
 import time as tm
 from mpi4py import MPI as pyMPI
 from DolfinParticles import (particles, advect_rk3, RandomRectangle,
-                             AddDelete, PDEStaticCondensation, 
-                             StokesStaticCondensation, 
+                             AddDelete, PDEStaticCondensation,
+                             StokesStaticCondensation,
                              FormsPDEMap, FormsStokes)
 import os
 
@@ -20,15 +20,15 @@ class PeriodicBoundary(SubDomain):
         SubDomain.__init__(self)
         self.xmin, self.xmax = ddict['xmin'], ddict['xmax']
         self.ymin, self.ymax = ddict['ymin'], ddict['ymax']
-    
+
     # Left boundary is "target domain" G
     def inside(self, x, on_boundary):
         xmin, xmax, ymin, ymax = self.xmin, self.xmax, self.ymin, self.ymax
         # return True if on left or bottom boundary AND NOT on one of the two corners (0, 1) and (1, 0)
         return bool((near(x[0], xmin) or near(x[1], ymin)) and\
-                (not ((near(x[0], xmin) and near(x[1], ymax)) or 
+                (not ((near(x[0], xmin) and near(x[1], ymax)) or
                 (near(x[0], xmax) and near(x[1], ymin)))) and on_boundary)
-            
+
     def map(self, x, y):
         xmin, xmax, ymin, ymax = self.xmin, self.xmax, self.ymin, self.ymax
         # If near top left corner
@@ -38,7 +38,7 @@ class PeriodicBoundary(SubDomain):
         elif near(x[0], xmax):
             y[0] = x[0] - (xmax - xmin)
             y[1] = x[1]
-        else:  
+        else:
             y[0] = x[0]
             y[1] = x[1] - (ymax - ymin)
 
@@ -46,13 +46,13 @@ class Corner(SubDomain):
     def __init__(self, ddict):
         SubDomain.__init__(self)
         self.xmax, self.ymax = ddict['xmax'], ddict['ymax']
-        
-    def inside(self, x, on_boundary):    
-        return near(x[0], self.xmax) and near(x[1], self.ymax) 
+
+    def inside(self, x, on_boundary):
+        return near(x[0], self.xmax) and near(x[1], self.ymax)
 
 def assign_particle_values(x, u_exact):
     if comm.Get_rank() == 0:
-        s=np.asarray([u_exact(x[i,:]) for i in range(len(x))], dtype = np.float_)
+        s = np.asarray([u_exact(x[i,:]) for i in range(len(x))], dtype = np.float_)
     else:
         s = None
     return s
@@ -140,7 +140,7 @@ Wbar_2_H12 = FunctionSpace(mesh, Wbar_E_2_H12, constrained_domain = pbc)
 mixedL = FunctionSpace(mesh, MixedElement([W_E_2, Q_E]), constrained_domain = pbc)
 mixedG = FunctionSpace(mesh, MixedElement([Wbar_E_2_H12, Qbar_E]), constrained_domain = pbc)
 
-# Define functions 
+# Define functions
 u0_a    = Function(W_2)
 ustar   = Function(W_2)
 duh0    = Function(W_2)
@@ -159,7 +159,7 @@ u0_a.assign(u_exact)
 ubar0_a.assign(u_exact)
 Udiv.assign(u_exact)
 
-# Initialize particles 
+# Initialize particles
 if comm.Get_rank() == 0:
     x    =  RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
     s    =  assign_particle_values(x, u_exact)
@@ -167,7 +167,7 @@ else:
     x = None
     s = None
 x = comm.bcast(x, root=0)
-s = comm.bcast(s, root=0)   
+s = comm.bcast(s, root=0)
 
 lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -186,21 +186,21 @@ funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_ba
 forms_adv      = FormsPDEMap(mesh, funcspace_dict).forms_theta_nlinear(u0_a, ubar0_a, dt, \
                     theta_map = Constant(1.0), theta_L = theta_L, duh0 = duh0, duh00 = duh00)
 pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
-                                                                                   forms_adv['H_a'], 
+                                                                                   forms_adv['H_a'],
                                                                                    forms_adv['B_a'],
                                                forms_adv['Q_a'], forms_adv['R_a'], forms_adv['S_a'],
                                                                                         property_idx)
 
-# Forms Stokes 
+# Forms Stokes
 # Set pressure in corner to zero
 bc1 = DirichletBC(mixedG.sub(1), Constant(0), Corner(geometry), "pointwise")
 bcs = [bc1]
 
-forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
+forms_stokes = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
 
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
-                                                         forms_stokes['B_S'], 
-                                    forms_stokes['Q_S'], forms_stokes['S_S']) 
+                                                         forms_stokes['B_S'],
+                                    forms_stokes['Q_S'], forms_stokes['S_S'])
 
 
 ex = as_vector((1., 0.))
@@ -221,16 +221,16 @@ while step < num_steps:
         print('Step number '+str(step))
 
     t1 = Timer("[P] Sweep and step")
-    # Limit number of particles 
+    # Limit number of particles
     AD.do_sweep()
-    
-    # Advect particles    
+
+    # Advect particles
     ap.do_step(float(dt))
-    
+
     # Do failsafe sweep
     AD.do_sweep_failsafe(4)
     del(t1)
-    
+
     # Do constrained projection
     t1 = Timer("[P] Assemble")
     pde_projection.assemble(True, True)
@@ -238,7 +238,7 @@ while step < num_steps:
     t1 = Timer("[P] Solve")
     pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'mumps', 'default')
     del(t1)
-    
+
     # Solve Stokes
     t1 = Timer("[P] Stokes assemble")
     ssc.assemble_global_system(True)
@@ -252,34 +252,34 @@ while step < num_steps:
     t1 = Timer("[P] Assign and output")
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
-    
+
     # Needed for constrained map
     assign(ubar0_a, Uhbar.sub(0))
     assign(u0_a, ustar);  assign(duh00, duh0); assign(duh0, project(Uh.sub(0)-ustar,W_2))
-    
+
     #p.increment(Udiv, ustar, 1)
-    p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1, 2], dtype = np.uintp), theta_p, step)    
-    
+    p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1, 2], dtype = np.uintp), theta_p, step)
+
     if step == 2: theta_L.assign(theta_next)
 
     # Probably can be combined into one file?
     xdmf_u.write(Uh.sub(0), t)
     xdmf_p.write(Uh.sub(1), t)
     #outfile_u << Uh.sub(0)
-    #outfile_p << Uh.sub(1) 
+    #outfile_p << Uh.sub(1)
     del(t1)
 
 timer.stop()
-    
-# Compute errors    
+
+# Compute errors
 u_exact.t = t
 p_exact.t = t
 
 u_error = sqrt( assemble(dot(Uh.sub(0) - u_exact, Uh.sub(0) - u_exact)*dx) )
-p_error = sqrt( assemble(dot(Uh.sub(1) - p_exact, Uh.sub(1) - p_exact)*dx) )    
+p_error = sqrt( assemble(dot(Uh.sub(1) - p_exact, Uh.sub(1) - p_exact)*dx) )
 udiv    = sqrt( assemble(div(Uh.sub(0))*div(Uh.sub(0))*dx))
 
-momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey)) * dx ) 
+momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey)) * dx )
 
 if comm.Get_rank() == 0:
     print("Velocity error "+str(u_error))

@@ -8,10 +8,10 @@ using namespace dolfin;
 advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                                    const BoundaryMesh& bmesh, const std::string type1,
                                    const std::string update_particle)
-    : _P(&P), uh(&uhi), _element( U.element() ), update_particle(update_particle)
+    : _P(&P), uh(&uhi), _element(U.element()), update_particle(update_particle)
 {
     /*
-     * Following types are distinghuished:
+     * Following types are distinguished:
      * "open"       --> open boundary
      * "periodic"   --> periodic bc (additional info on extent required)
      * "closed"     --> closed boundary
