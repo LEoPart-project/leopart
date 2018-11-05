@@ -18,12 +18,14 @@ particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen
     // Get geometry dimension of mesh
     _Ndim = mesh.geometry().dim();
 
+    // Set up communication array
+    _comm_snd.resize(MPI::size(_mpi_comm));
+
     _cell2part.resize(mesh.num_cells());
 
     // Initialize bounding boxes
     make_bounding_boxes();
 
-    // _ptemplate.assign(p_template.begin(), p_template.end());
 
     // Calculate the offset for each particle property and overall size
     std::vector<unsigned int> offset = {0};
@@ -52,7 +54,7 @@ particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen
             // carries the old values
 
             // Push back to particle structure
-            _cell2part[cell_id].push_back(pnew);
+            add_particle(cell_id, pnew);
         }
     }
 }
@@ -71,7 +73,7 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
     for( CellIterator cell(*(_mesh)); !cell.end(); ++cell){
         std::vector<double> coeffs;
         Utils::return_expansion_coeffs(coeffs, *cell, &phih);
-        for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
+        for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()) ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
             Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
@@ -116,7 +118,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old, co
         for(std::size_t i = 0; i<coeffs_new.size(); i++)
             coeffs.push_back( coeffs_new[i] - coeffs_old[i] );
 
-        for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
+        for(std::size_t pidx = 0; pidx < num_cell_particles(cell->index()) ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
             Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
@@ -173,7 +175,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
         for(std::size_t i = 0; i<coeffs_new.size(); i++)
             coeffs.push_back( coeffs_new[i] - coeffs_old[i] );
 
-        for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
+        for(std::size_t pidx = 0; pidx < num_cell_particles(cell->index()) ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
             Utils::return_basis_matrix(basis_matrix, x(cell->index(),pidx), *cell,
@@ -205,7 +207,6 @@ particles::positions()
   std::size_t n_particles = 0;
   for (const auto &c2p: _cell2part)
     n_particles += c2p.size();
-  // Should be the same as _Np... but not.
 
   Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
     xp(n_particles, _Ndim);
@@ -237,7 +238,6 @@ std::vector<double> particles::get_property(const std::size_t idx){
   std::size_t n_particles = 0;
   for (const auto &c2p: _cell2part)
     n_particles += c2p.size();
-  // Should be the same as _Np... but not.
 
   std::vector<double> property_vector;
   property_vector.reserve(n_particles * property_dim);
@@ -260,21 +260,21 @@ void particles::push_particle(const double dt, const Point& up, const std::size_
 }
 
 void particles::make_bounding_boxes(){
-    std::size_t _gdim = _Ndim;
+  std::size_t gdim = _mesh->geometry().dim();
 
     // Create bounding boxes of mesh
-    std::vector<double> x_min_max(2*_gdim);
+    std::vector<double> x_min_max(2*gdim);
     std::vector<double> coordinates = _mesh->coordinates();
-    for (std::size_t i = 0; i < _gdim; ++i)
+    for (std::size_t i = 0; i < gdim; ++i)
     {
-      for (auto it = coordinates.begin() + i; it < coordinates.end(); it += _gdim)
+      for (auto it = coordinates.begin() + i; it < coordinates.end(); it += gdim)
       {
         if (it == coordinates.begin() + i){
             x_min_max[i]         = *it;
-            x_min_max[_gdim + i] = *it;
+            x_min_max[gdim + i] = *it;
         }else{
             x_min_max[i]         = std::min(x_min_max[i], *it);
-            x_min_max[_gdim + i] = std::max(x_min_max[_gdim + i], *it);
+            x_min_max[gdim + i] = std::max(x_min_max[gdim + i], *it);
         }
       }
     }
@@ -283,45 +283,48 @@ void particles::make_bounding_boxes(){
     MPI::all_gather(_mpi_comm, x_min_max, _bounding_boxes);
 }
 
-void particles::particle_communicator_collect(std::vector<std::vector<particle>>& comm_snd,
-                                              const std::size_t cidx, const std::size_t pidx){
+void particles::particle_communicator_collect(const std::size_t cidx, const std::size_t pidx){
     // Assertion to check if comm_snd has size of num_procs
 
   const std::size_t num_processes = MPI::size(_mpi_comm);
-  dolfin_assert(comm_snd.size() == num_processes);
+  dolfin_assert(_comm_snd.size() == num_processes);
 
     // Get position
     particle ptemp = _cell2part[cidx][pidx];
-    std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates() + _Ndim);
+    std::vector<double> xp_temp(ptemp[0].coordinates(),
+                                ptemp[0].coordinates() + _Ndim);
 
     // Loop over processes
     for (std::size_t p = 0; p < num_processes; p++)
     {
         // Check if in bounding box
         if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
-            comm_snd[p].push_back(ptemp);
+            _comm_snd[p].push_back(ptemp);
     }
 
     // Erase particle
-    _cell2part[cidx].erase(_cell2part[cidx].begin() + pidx);
+    delete_particle(cidx, pidx);
     // Decrement particle iterator (?!)
 }
 
-void particles::particle_communicator_push(std::vector<std::vector<particle>>& comm_snd){
+void particles::particle_communicator_push(){
     // Assertion if sender has correct size
   const std::size_t num_processes = MPI::size(_mpi_comm);
-  dolfin_assert(comm_snd.size() == num_processes);
+  dolfin_assert(_comm_snd.size() == num_processes);
 
     std::vector<std::vector<double>> comm_snd_vec(num_processes);
     std::vector<double> comm_rcv_vec;
 
     // Prepare for communication
     // Convert each vector of Points to std::vector<double>
-    for (std::size_t p = 0; p < num_processes; p++){
-        for (particle part : comm_snd[p] ){
-            std::vector<double> unpacked = unpack_particle(part);
-            comm_snd_vec[p].insert(comm_snd_vec[p].end(), unpacked.begin(), unpacked.end());
-        }
+    for (std::size_t p = 0; p < num_processes; p++)
+    {
+      for (particle part : _comm_snd[p])
+      {
+        std::vector<double> unpacked = unpack_particle(part);
+        comm_snd_vec[p].insert(comm_snd_vec[p].end(), unpacked.begin(), unpacked.end());
+      }
+      _comm_snd[p].clear(); // Reset array for next time
     }
 
     // Communicate with all_to_all
@@ -348,7 +351,7 @@ void particles::particle_communicator_push(std::vector<std::vector<particle>>& c
         dolfin_assert(pos_iter % _plen == 0);
 
         // Push back new particle to hosting cell
-        _cell2part[cell_id].push_back(pnew);
+        add_particle(cell_id, pnew);
       }
       else
       {
@@ -356,7 +359,6 @@ void particles::particle_communicator_push(std::vector<std::vector<particle>>& c
         pos_iter += _plen;
       }
     }
-
 }
 
 bool particles::in_bounding_box(const std::vector<double>& point,
@@ -408,7 +410,7 @@ void particles::get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,
 
     // Get cell index and num particles
     std::size_t cidx = dolfin_cell.index();
-    std::size_t _Npc = _cell2part[cidx].size();
+    std::size_t _Npc = num_cell_particles(cidx);
 
     // Get and set cell data
     std::vector<double> vertex_coordinates;

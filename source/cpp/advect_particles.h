@@ -29,7 +29,16 @@
 
 namespace dolfin{
 
-    typedef std::tuple<Facet, Point, Point, std::vector<std::size_t>, std::vector<bool> > facet_info;
+  //    typedef std::tuple<Facet, Point, Point, std::vector<std::size_t>, std::vector<bool> > facet_info;
+
+    typedef struct facet_info_t
+    {
+      Facet facet;
+      Point midpoint;
+      Point normal;
+      std::vector<std::size_t> cells;
+      std::vector<bool> outward;
+    } facet_info;
 
     class advect_particles
     {
@@ -114,8 +123,7 @@ namespace dolfin{
         void do_substep(double dt, Point& up, const std::size_t cidx, std::size_t* pidx,
                        const std::size_t step, const std::size_t num_steps,
                        const std::size_t xp0_idx, const std::size_t up0_idx,
-                       std::vector<std::size_t>& reloc_local_c, std::vector<particle>& reloc_local_p,
-                       std::vector<std::vector<particle>>& comm_snd);
+                       std::vector<std::size_t>& reloc_local_c, std::vector<particle>& reloc_local_p);
 
     };
 
@@ -146,36 +154,27 @@ namespace dolfin{
 
         // Something on particle updaters
 
-
-
     private:
         std::size_t xp0_idx, up0_idx;
 
-        void update_particle_template(){
-            xp0_idx = _P->_ptemplate.size();
-            up0_idx = _P->_ptemplate.size()+1;
+        void update_particle_template()
+        {
+          const std::size_t gdim = _P->mesh()->geometry().dim();
+          xp0_idx = _P->expand_template(gdim);
+          up0_idx = _P->expand_template(gdim);
 
-            // Modify particle template, by appending slots for old position/velocity
-            std::vector<size_t> append = {_P->_Ndim, _P->_Ndim};
-            _P->_ptemplate.insert(_P->_ptemplate.end(), append.begin(), append.end());
-            _P->_plen += 2 * _P->_Ndim;
-
-            // Make zero vector
-            Point zero_point;
-            // Loop over cells
-            for( CellIterator ci(*(_P->_mesh)); !ci.end(); ++ci){
-                for(int pidx = 0; pidx < _P->_cell2part[ci->index()].size() ; pidx++){
-                    // Create 2 slots:
-                    // At xp0 slot, push the position, at up0 slot put 0
-                   _P->_cell2part[ci->index()][pidx].push_back(_P->_cell2part[ci->index()][pidx][0]);
-                   _P->_cell2part[ci->index()][pidx].push_back(zero_point);
-                }
-            }
+          // Copy position to xp0 property
+          for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
+          {
+            for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
+              _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
+          }
         }
 
-        void init_weights(){
-            dti = {1.0, 1.0};
-            weights = {0.5, 0.5};
+        void init_weights()
+        {
+          dti = {1.0, 1.0};
+          weights = {0.5, 0.5};
         }
     };
 
@@ -203,34 +202,28 @@ namespace dolfin{
          ~advect_rk3();
 
         void do_step(double dt);
+
     private:
         std::size_t xp0_idx, up0_idx;
 
-        void update_particle_template(){
-            xp0_idx = _P->_ptemplate.size();
-            up0_idx = _P->_ptemplate.size()+1;
+        void update_particle_template()
+        {
+          const std::size_t gdim = _P->mesh()->geometry().dim();
+          xp0_idx = _P->expand_template(gdim);
+          up0_idx = _P->expand_template(gdim);
 
-            // Modify particle template, by appending slots for old position/velocity
-            std::vector<size_t> append = {_P->_Ndim, _P->_Ndim};
-            _P->_ptemplate.insert(_P->_ptemplate.end(), append.begin(), append.end());
-            _P->_plen += 2 * _P->_Ndim;
-
-            // Make zero vector
-            Point zero_point;
-            // Loop over cells
-            for( CellIterator ci(*(_P->_mesh)); !ci.end(); ++ci){
-                for(int pidx = 0; pidx < _P->_cell2part[ci->index()].size() ; pidx++){
-                    // Create 2 slots:
-                    // At xp0 slot, push the position, at up0 slot put 0
-                   _P->_cell2part[ci->index()][pidx].push_back(_P->_cell2part[ci->index()][pidx][0]);
-                   _P->_cell2part[ci->index()][pidx].push_back(zero_point);
-                }
-            }
+          // Copy position to xp0 property
+          for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
+          {
+            for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
+              _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
+          }
         }
 
-        void init_weights(){
-            dti = {0.5,0.75,1.0};
-            weights = {2./9., 3./9., 4./9.};
+        void init_weights()
+        {
+          dti = {0.5, 0.75, 1.0};
+          weights = {2./9., 3./9., 4./9.};
         }
     };
 }
