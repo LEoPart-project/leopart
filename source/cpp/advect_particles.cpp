@@ -52,25 +52,35 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
   std::size_t gdim = _P->mesh()->geometry().dim();
 
   // Then the only thing to do: check if type1 was "periodic"
-    if (type1 == "periodic"){
-
-        // TODO: Perform a check if it has the right size, always has to come in pairs
-        // TODO: do provided values make sense?
-        if( (pbc_limits.size() % ( gdim * 4) ) != 0 )
-            dolfin_error("advect_particles.cpp::advect_particles","construct periodic boundary information", "Incorrect shape of pbc_limits provided?");
-
-        std::size_t num_rows = pbc_limits.size()/(gdim * 2);
-        for(std::size_t i = 0; i < num_rows ; i++ ){
-            std::vector<double> pbc_helper(gdim * 2 );
-            for(std::size_t j = 0; j < gdim * 2; j++){
-                pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
-            }
-            pbc_lims.push_back( pbc_helper );
-        }
-        pbc_active = true;
-    }else{
-        dolfin_error("advect_particles.cpp::advect_particles","could not set pbc_lims","Did you provide limits for a non-periodic BC?");
+  if (type1 == "periodic")
+  {
+    // TODO: Perform a check if it has the right size, always has to come in pairs
+    // TODO: do provided values make sense?
+    if ((pbc_limits.size() % (gdim * 4)) != 0)
+    {
+      dolfin_error("advect_particles.cpp::advect_particles",
+                   "construct periodic boundary information",
+                   "Incorrect shape of pbc_limits provided?");
     }
+
+
+    std::size_t num_rows = pbc_limits.size()/(gdim * 2);
+    for(std::size_t i = 0; i < num_rows ; i++ )
+    {
+      std::vector<double> pbc_helper(gdim * 2 );
+      for(std::size_t j = 0; j < gdim * 2; j++)
+        pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
+
+      pbc_lims.push_back( pbc_helper );
+    }
+    pbc_active = true;
+  }
+  else
+  {
+        dolfin_error("advect_particles.cpp::advect_particles",
+                     "could not set pbc_lims",
+                     "Did you provide limits for a non-periodic BC?");
+  }
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
@@ -156,172 +166,174 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_facets_info(){
-    /*
-     * In 2D, we have the following dimensions
-     *      0       Vertices
-     *      1       Facets
-     *      2       Cells
-    */
+void advect_particles::set_facets_info()
+{
+  //
+  // In 2D, we have the following dimensions
+  //      0       Vertices
+  //      1       Facets
+  //      2       Cells
+  //
 
   std::size_t _cdim = _P->mesh()->topology().dim();
   std::size_t gdim = _P->mesh()->geometry().dim();
   std::size_t _fdim = _cdim - 1;
   std::size_t _vdim = _fdim - 1;
 
-    for (FacetIterator fi(*(_P->mesh())); !fi.end(); ++fi )
+  for (FacetIterator fi(*(_P->mesh())); !fi.end(); ++fi )
+  {
+    //std::cout<<"Facet Index "<<fi->index()<<std::endl;
+
+    // Get and store facet normal and facet midpoint
+    Point facet_n  = fi->normal();
+    Point facet_mp = fi->midpoint();
+    std::vector<double> facet_n_coords(facet_n.coordinates(), facet_n.coordinates() + gdim);
+    std::vector<double> facet_mp_coords(facet_mp.coordinates(), facet_mp.coordinates() + gdim);
+
+    // Initialize facet vertex coordinates (assume simplicial mesh)
+    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic> fv_coords(gdim, gdim);
+
+    // Initialize cell connectivity vector and normal direction
+    std::vector<std::size_t> cellfcell; // A facet allways connects 2 elements
+    std::vector<bool> outward_normal;
+
+    // Vertex coordinate vector for simplical elements
+    std::vector<double> cvertex_coords((gdim + 1) * gdim);
+    std::size_t k = 0;
+    for (VertexIterator vi(*fi); !vi.end(); ++vi)
     {
-      Facet f(*(_P->mesh()), fi->index());
-        //std::cout<<"Facet Index "<<fi->index()<<std::endl;
+      for(std::size_t j = 0; j < gdim; j++)
+        fv_coords(k, j) = *(vi->x() + j);
+      ++k;
+    }
 
-        // Get and store facet normal and facet midpoint
-        Point facet_n  = f.normal();
-        Point facet_mp = f.midpoint();
-        std::vector<double> facet_n_coords(facet_n.coordinates(), facet_n.coordinates() + gdim);
-        std::vector<double> facet_mp_coords(facet_mp.coordinates(), facet_mp.coordinates() + gdim);
+    Eigen::Array<double, 1, Eigen::Dynamic> pv_coords(gdim);
+    for (CellIterator ci(*fi); !ci.end(); ++ci)
+    {
+      //std::cout<<"Neighbor cells"<<ci->index()<<std::endl;
+      ci->get_vertex_coordinates(cvertex_coords);
 
-        // Initialize facet vertex coordinates (assume symplical mesh)
-        std::vector<std::vector<double>> fvertex_coords(gdim);
+      // Now check if we can find any mismatching vertices
+      bool outward_pointing = true;       // By default, we assume outward pointing normal
+      for(std::size_t l = 0; l < (gdim + 1) * gdim; l += gdim)
+      {
+        Eigen::Map<Eigen::Array<double, 1, Eigen::Dynamic>>
+          cv_coords(cvertex_coords.data() + l, gdim);
+        pv_coords = cv_coords - fv_coords.row(0);
 
-        // Initialize cell connectivity vector and normal direction
-        std::vector<std::size_t> cellfcell; // A facet allways connects 2 elements
-        std::vector<bool> outward_normal;
-        // Vertex coordinate vector for simplical elements
-        std::vector<double> cvertex_coords((gdim + 1) * gdim);
-        std::size_t k = 0;
-        for (VertexIterator vi(f); !vi.end(); ++vi)
-        {
-          Vertex v(*(_P->mesh()), vi->index());
-            for(std::size_t j = 0; j < gdim; j++)
-                fvertex_coords[k].push_back(*( v.x() + j ));
-            k++;
-        } // End vertex iterator
-
-        for (CellIterator ci(f); !ci.end(); ++ci)
-        {
-          //std::cout<<"Neighbor cells"<<ci->index()<<std::endl;
-          Cell c(*(_P->mesh()), ci->index());
-          c.get_vertex_coordinates(cvertex_coords);
-
-          // Now check if we can find any mismatching vertices
-          bool outward_pointing = true;       // By default, we assume outward pointing normal
-          for(std::size_t l = 0; l < (gdim + 1) * gdim; l+= gdim)
-          {
-              std::vector<double> diff;
-              // There must be a better way for subtracting vectors?
-              std::vector<double> dummy(gdim);
-              for(std::size_t m = 0; m < gdim; m++) dummy[m] = cvertex_coords[l+m];
-              std::vector<double> pv = subtract(dummy, fvertex_coords[0]); //Allways just take first facet vertex
-              double l2diff= std::inner_product(facet_n_coords.begin(), facet_n_coords.end(), pv.begin(), 0.0);
-              if(l2diff > 1E-10 ){
-                  outward_pointing = false;
-                  break;
-              }
-          }
-
-          // Store relevant data
-          cellfcell.push_back(ci->index());
-          outward_normal.push_back(outward_pointing);
-          cell2facet[ci->index()].push_back(fi->index());
-        } // End cell iterator
-
-        // Perform some safety checks
-        if(cellfcell.size() == 1){
-          // Then the facet index must be in one of boundary facet lists
-            if((std::find(int_facets.begin(), int_facets.end(), fi->index()) != int_facets.end()) &&
-               (std::find(obc_facets.begin(), obc_facets.end(), fi->index()) != obc_facets.end()) &&
-               (std::find(cbc_facets.begin(), cbc_facets.end(), fi->index()) != cbc_facets.end()) &&
-               (std::find(pbc_facets.begin(), pbc_facets.end(), fi->index()) != pbc_facets.end())   ){
-                dolfin_error("advect_particles.cpp::set_facets_info", "get correct facet 2 cell connectivity.",
-                             "Detected only one cell neighbour to facet, but cannot find facet in boundary lists.");
-            }
-        }else if(cellfcell.size() == 2){
-            if(cellfcell[0] == cellfcell[1])
-                dolfin_error("advect_particles.cpp::set_facets_info", "get correct facet 2 cell connectivity.",
-                             "Neighboring cells ");
-            if(outward_normal[0] == outward_normal[1])
-                dolfin_error("advect_particles.cpp::set_facets_info","get correct facet normal direction",
-                             "The normal cannot be of same direction for neighboring cells");
-        }else{
-            dolfin_error("advect_particles.cpp::set_facets_info","get connecting cells",
-                         "Each facet should neighbor at max two cells.");
+        double l2diff = std::inner_product(facet_n_coords.begin(),
+                                           facet_n_coords.end(), pv_coords.data(), 0.0);
+        if (l2diff > 1E-10 ){
+          outward_pointing = false;
+          break;
         }
-        // Store info in facets_info variable
-        facet_info finf({f, facet_mp, facet_n, cellfcell, outward_normal});
-        facets_info.push_back(finf);
-    } // End facet iterator
+      }
 
-    // Some optional checks for cell2facet and facets_info
-    /*
-    for(std::size_t i = 0; i<facets_info.size(); i++){
-        std::cout<<"Facet "<<i<<" is connected to cell(s):"<<std::endl;
-        for(std::size_t x : std::get<3>(facets_info[i])) std::cout<<x<<std::endl;
+      // Store relevant data
+      cellfcell.push_back(ci->index());
+      outward_normal.push_back(outward_pointing);
+      cell2facet[ci->index()].push_back(fi->index());
     }
-    for(std::size_t i = 0; i < cell2facet.size(); i++){
-        std::cout<<"Cell "<<i<<" is connected to facets:"<<std::endl;
-        for(std::size_t x: cell2facet[i]) std::cout<<x<<std::endl;
-    }
-    */
-}
-//-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype){
-    if(btype == "closed"){
-        cbc_facets = boundary_facets(bmesh);
-    }else if(btype == "open"){
-        obc_facets = boundary_facets(bmesh);
-    }else if(btype == "periodic"){
-        pbc_facets = boundary_facets(bmesh);
-    }else{
-        dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type", "Set boundary type correct");
-    }
-}
-//-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs){
-    if(btype == "closed"){
-        cbc_facets = boundary_facets(bmesh, bidcs);
-    }else if(btype == "open"){
-        obc_facets = boundary_facets(bmesh, bidcs);
-    }else if(btype == "periodic"){
-        pbc_facets = boundary_facets(bmesh, bidcs);
-    }else{
-        dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type", "Set boundary type correct");
-    }
-}
-//-----------------------------------------------------------------------------
-std::vector<double> advect_particles::subtract(std::vector<double>& u, std::vector<double>& v){
-    if(u.size() != v.size())
-        dolfin_error("advect_particles.cpp::subtract","subtract vectors of different size",
-                     "Provide two equally shape vectors");
-    std::vector<double> subtract(u.size());
-    for(std::size_t j=0; j < u.size(); j++)
+
+    // Perform some safety checks
+    if (cellfcell.size() == 1)
     {
-        subtract[j] = u[j] - v[j];
+      // Then the facet index must be in one of boundary facet lists
+      if ((std::find(int_facets.begin(), int_facets.end(), fi->index()) != int_facets.end()) &&
+          (std::find(obc_facets.begin(), obc_facets.end(), fi->index()) != obc_facets.end()) &&
+          (std::find(cbc_facets.begin(), cbc_facets.end(), fi->index()) != cbc_facets.end()) &&
+          (std::find(pbc_facets.begin(), pbc_facets.end(), fi->index()) != pbc_facets.end())   )
+      {
+        dolfin_error("advect_particles.cpp::set_facets_info",
+                     "get correct facet 2 cell connectivity.",
+                     "Detected only one cell neighbour to facet, but cannot find facet in boundary lists.");
+      }
     }
-    return subtract;
-}
-//-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh){
-  std::size_t d = (_P->mesh()->geometry().dim())-1;
-    MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
-    std::size_t* val = boundary_facets.values();
-    std::vector<std::size_t> bfacet_idcs;
+    else if(cellfcell.size() == 2)
+    {
+      if (cellfcell[0] == cellfcell[1])
+        dolfin_error("advect_particles.cpp::set_facets_info",
+                     "get correct facet 2 cell connectivity.",
+                     "Neighboring cells ");
+      if (outward_normal[0] == outward_normal[1])
+      {
+        dolfin_error("advect_particles.cpp::set_facets_info",
+                     "get correct facet normal direction",
+                     "The normal cannot be of same direction for neighboring cells");
+      }
 
-    for (std::size_t i =0; i<boundary_facets.size(); i++){
-        bfacet_idcs.push_back( *(val+i) );
-        // Make sure that diff equals 0
-        Cell fbm(bmesh,i);
-        Facet fm(*(_P->mesh()),*(val+i));
-        Point diff = fm.midpoint() - fbm.midpoint();
-        if (diff.norm() > 1E-10)
-            dolfin_error("advect_particles.cpp::boundary_facets 1", "finding facets matching boundary mesh facets",
-                         "Unknown");
     }
-    return bfacet_idcs;
+    else
+    {
+      dolfin_error("advect_particles.cpp::set_facets_info",
+                   "get connecting cells",
+                   "Each facet should neighbor at max two cells.");
+    }
+
+    // Store info in facets_info variable
+    facet_info finf({*fi, facet_mp, facet_n, cellfcell, outward_normal});
+    facets_info.push_back(finf);
+  } // End facet iterator
+
 }
 //-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs){
+void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype)
+{
+  if (btype == "closed")
+    cbc_facets = boundary_facets(bmesh);
+  else if(btype == "open")
+    obc_facets = boundary_facets(bmesh);
+  else if(btype == "periodic")
+    pbc_facets = boundary_facets(bmesh);
+  else
+  {
+    dolfin_error("advect_particles.cpp::set_bfacets",
+                 "Unknown boundary type",
+                 "Set boundary type correct");
+  }
+}
+//-----------------------------------------------------------------------------
+void advect_particles::set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs)
+{
+  if(btype == "closed")
+    cbc_facets = boundary_facets(bmesh, bidcs);
+  else if(btype == "open")
+    obc_facets = boundary_facets(bmesh, bidcs);
+  else if(btype == "periodic")
+    pbc_facets = boundary_facets(bmesh, bidcs);
+  else
+  {
+    dolfin_error("advect_particles.cpp::set_bfacets",
+                 "Unknown boundary type",
+                 "Set boundary type correct");
+  }
+}
+//-----------------------------------------------------------------------------
+std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh)
+{
+  std::size_t d = (_P->mesh()->geometry().dim()) - 1;
+  MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
+  std::size_t* val = boundary_facets.values();
+  std::vector<std::size_t> bfacet_idcs;
+
+  for (std::size_t i = 0; i<boundary_facets.size(); i++)
+  {
+    bfacet_idcs.push_back(*(val + i));
+    // Make sure that diff equals 0
+    Cell fbm(bmesh,i);
+    Facet fm(*(_P->mesh()), *(val+i));
+    Point diff = fm.midpoint() - fbm.midpoint();
+    if (diff.norm() > 1E-10)
+      dolfin_error("advect_particles.cpp::boundary_facets 1", "finding facets matching boundary mesh facets",
+                         "Unknown");
+  }
+  return bfacet_idcs;
+}
+//-----------------------------------------------------------------------------
+std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs)
+{
     // This method is not yet tested!
-  std::size_t d = _P->mesh()->geometry().dim() - 1;
+    std::size_t d = _P->mesh()->geometry().dim() - 1;
     MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
     std::size_t* val = boundary_facets.values();
     std::vector<std::size_t> bfacet_idcs;

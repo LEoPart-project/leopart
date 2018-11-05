@@ -28,7 +28,7 @@ r       = 0.5            # Radius of domain
 sigma   = Constant(0.1) # stdev of Gaussian
 
 # Mesh/particle properties, use safe number of particles
-nx_list   = [8, 16, 32, 64]
+nx_list   = [1, 2]
 pres_list = [120 * pow(2,i) for i in range(len(nx_list))]
 
 # Polynomial order
@@ -62,7 +62,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
                                                                           "L2 T_half", "Global mass T_half",
                                                                           "L2 T_end", "Global mass T_end", "Wall clock time"))
 
-    for (nx,dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
+    for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
         output_field = File(outdir+'psi_h'+'_nx'+str(nx)+'.pvd')
@@ -72,6 +72,11 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
 
         # Generate mesh
         mesh = Mesh('circle.xml')
+        n = nx
+        while (n > 1):
+            mesh = refine(mesh)
+            n /= 2
+        print("Mesh (", nx, ") contains ", mesh.num_cells(), " cells")
         bmesh= BoundaryMesh(mesh, 'exterior')
 
         # Velocity and initial condition

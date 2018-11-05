@@ -76,9 +76,6 @@ namespace dolfin{
         void set_bfacets(const BoundaryMesh& bmesh, const std::string btype);
         void set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
 
-        // TODO: void update_facet_info() (moving meshes)
-        std::vector<double> subtract(std::vector<double>& u, std::vector<double>& v);
-
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh);
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
         std::vector<std::size_t> interior_facets();
