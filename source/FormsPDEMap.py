@@ -133,8 +133,9 @@ class FormsPDEMap:
         return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
 
     def forms_theta_nlinear_np(self, v0, v_int, Ubar0, dt, theta_map=Constant(1.0),
-                            theta_L=Constant(1.0), duh0=Constant((0., 0.)), duh00=Constant((0., 0)),
-                            h=Constant((0., 0.)), neumann_idx=99):
+                               theta_L=Constant(1.0), duh0=Constant((0., 0.)),
+                               duh00=Constant((0., 0)), h=Constant((0., 0.)),
+                               neumann_idx=99):
 
         '''
         No particles in mass matrix
@@ -174,7 +175,7 @@ class FormsPDEMap:
         gamma = conditional(ge(dot(Udiv, n), 0), 0, 1)
 
         # LHS contribution s
-        N_a = dot(v,w) * dx + facet_integral(beta_map*dot(v, w))
+        N_a = dot(v, w) * dx + facet_integral(beta_map*dot(v, w))
         G_a = dot(lamb, w)/dt * dx - theta_map*inner(outer_v_a, grad(lamb))*dx \
             + theta_map * (1-gamma) * dot(outer_v_a * n,
                                           lamb) * self.ds(neumann_idx)
@@ -192,7 +193,7 @@ class FormsPDEMap:
         S_a = facet_integral(dot(Constant(zero_vec), wbar))
 
         return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
-    
+
     def forms_theta_nlinear_multiphase(self, rho, rho0, rho00, rhobar, v0, Ubar0, dt, theta_map,
                                        theta_L=Constant(1.0), duh0=Constant((0., 0.)),
                                        duh00=Constant((0., 0)),
