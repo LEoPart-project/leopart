@@ -94,8 +94,8 @@ nx, ny, nz = 20, 20, 20
 pres    = 150
 
 # Time stepping
-Tend    = 3.
-dt      = Constant(2.5e-2)
+Tend    = 20e-2
+dt      = Constant(10e-2)
 
 # Viscosity
 nu      = Constant(2e-3)
@@ -209,7 +209,7 @@ p   = particles(x, [s,s], mesh)
 ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten(), 'none')
 
 # Particle management
-AD = AddDelete(p, 10, 20, [Udiv, duh0])
+AD = AddDelete(p, 15, 25, [Udiv, duh0])
 
 # Forms PDE map
 funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
@@ -261,7 +261,7 @@ while step < num_steps:
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] solve projection")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'mumps', 'default')
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'bicgstab', 'hypre_amg')
     del(t1)
    
     # Solve Stokes 
