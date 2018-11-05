@@ -20,14 +20,13 @@ PYBIND11_MODULE(particle_wrapper, m)
   m.doc() = "example";
 
   py::class_<dolfin::particles>(m, "particles")
-    .def(py::init<Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
-         Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>>,
-         const int, const dolfin::Mesh&>())
+    .def(py::init<Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>,
+         const std::vector<unsigned int>&, const dolfin::Mesh&>())
     .def("interpolate", &dolfin::particles::interpolate)
     .def("increment", (void (dolfin::particles::*)(const dolfin::Function&, const dolfin::Function&, const std::size_t)) &dolfin::particles::increment)
-    .def("increment", (void (dolfin::particles::*)(const dolfin::Function&, const dolfin::Function&, 
+    .def("increment", (void (dolfin::particles::*)(const dolfin::Function&, const dolfin::Function&,
                              Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>, const double, const std::size_t)) &dolfin::particles::increment)
-    .def("get_positions", &dolfin::particles::get_positions)
+    .def("positions", &dolfin::particles::positions)
     .def("get_property", &dolfin::particles::get_property);
 
   py::class_<dolfin::advect_particles>(m, "advect_particles")
@@ -85,12 +84,12 @@ PYBIND11_MODULE(particle_wrapper, m)
     .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,
                                        const dolfin::Form&, const dolfin::Form&>())
     .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,
-                                       const dolfin::Form&, const dolfin::Form&, 
+                                       const dolfin::Form&, const dolfin::Form&,
                                        std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
     .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&,
                                        const dolfin::Form&, const dolfin::Form&,
                                        const dolfin::Form&, const dolfin::Form&>())
-    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&, 
+    .def(py::init<const dolfin::Mesh&, const dolfin::Form&, const dolfin::Form&,
                                        const dolfin::Form&, const dolfin::Form&,
                                        const dolfin::Form&, const dolfin::Form&,
                                        std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
@@ -101,7 +100,7 @@ PYBIND11_MODULE(particle_wrapper, m)
     .def("apply_boundary", &dolfin::StokesStaticCondensation::apply_boundary)
     .def("solve_problem", (void (dolfin::StokesStaticCondensation::*)(dolfin::Function&, dolfin::Function&, const std::string, const std::string))
     &dolfin::StokesStaticCondensation::solve_problem);
-    
+
   py::class_<dolfin::PDEStaticCondensation>(m, "PDEStaticCondensation")
     .def(py::init<const dolfin::Mesh&, dolfin::particles&,
          const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&, const dolfin::Form&,

@@ -20,29 +20,28 @@ comm = pyMPI.COMM_WORLD
 
 class particles(compiled_module.particles):
     def __init__(self, xp, particle_properties, mesh):
-        gdim = mesh.geometry().dim()
-        particle_template = [gdim]
-        num_particles = xp.shape[0]
-        p_array = xp.flatten()
 
+        gdim = mesh.geometry().dim()
+
+        particle_template = [gdim]
+        for p in particle_properties:
+            if len(p.shape) == 1:
+                particle_template.append(1)
+            else:
+                particle_template.append(p.shape[1])
+
+        p_array = xp
         for p_property in particle_properties:
             # Assert if correct size
-            assert p_property.shape[0] % num_particles == 0, "Incorrect pproperty shape"
-
-            # Check if scalar/n-d vector
-            try:
-                pdim = p_property.shape[1]
-            except Exception:
-                pdim = int(1)
-
-            particle_template.append(pdim)
-            p_array = np.append(p_array, p_property.flatten())
-
-        p_array = np.asarray(p_array, dtype=np.float_)
-        particle_template = np.asarray(particle_template, dtype=np.intc)
+            assert p_property.shape[0] == xp.shape[0], \
+                "Incorrect particle property shape"
+            if len(p_property.shape) == 1:
+                p_array = np.append(p_array, np.array([p_property]).T, axis=1)
+            else:
+                p_array = np.append(p_array, p_property, axis=1)
 
         compiled_module.particles.__init__(self, p_array, particle_template,
-                                           num_particles, mesh)
+                                           mesh)
         self.ptemplate = particle_template
         return
 
@@ -55,14 +54,8 @@ class particles(compiled_module.particles):
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
-    def positions(self, mesh):
-        Ndim = mesh.geometry().dim()
-        xp = np.asarray(self.get_positions())
-        xp = xp.reshape((-1, Ndim))
-        return xp
-
     def number_of_particles(self, mesh):
-        xp_root = comm.gather(self.positions(mesh), root=0)
+        xp_root = comm.gather(self.positions(), root=0)
         if comm.Get_rank() == 0:
             xp_root = np.float16(np.vstack(xp_root))
             print("Number of particles is "+str(len(xp_root)))

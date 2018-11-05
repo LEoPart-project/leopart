@@ -46,7 +46,7 @@ def test_add_particles():
     error = sqrt(assemble((v-interpolate_expression) *
                           (v - interpolate_expression) * dx))
 
-    assert len(p.positions(mesh) == mesh.num_cells() * np_min)
+    assert len(p.positions() == mesh.num_cells() * np_min)
     assert error < 1e-12
 
 
@@ -76,7 +76,7 @@ def test_remove_particles():
     error = sqrt(assemble((v-interpolate_expression) *
                           (v - interpolate_expression) * dx))
 
-    assert len(p.positions(mesh) == mesh.num_cells() * np_min)
+    assert len(p.positions() == mesh.num_cells() * np_min)
     assert error < 1e-12
 
 
@@ -107,5 +107,5 @@ def test_failsafe_sweep():
     error = sqrt(assemble((v-interpolate_expression) *
                           (v - interpolate_expression) * dx))
 
-    assert len(p.positions(mesh) == mesh.num_cells() * np_failsafe)
+    assert len(p.positions() == mesh.num_cells() * np_failsafe)
     assert error < 1e-12

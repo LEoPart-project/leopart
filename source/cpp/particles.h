@@ -21,34 +21,78 @@
 namespace dolfin{
   class particles
     {
-    friend class l2projection;
 
-    friend class advect_particles;
-    friend class advect_rk2;
-    friend class advect_rk3;
-    friend class PDEStaticCondensation;
-    friend class AddDelete;
+      // TODO: get rid of friends!
+      friend class advect_particles;
+      friend class advect_rk2;
+      friend class advect_rk3;
+      friend class AddDelete;
 
     public:
-    particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
-              Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
-              int p_num, const Mesh& mesh);
+    particles(Eigen::Ref<const Eigen::Array<double,
+              Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
+              const std::vector<unsigned int>& p_template,
+              const Mesh& mesh);
 
-        ~particles();
+    ~particles();
 
-        // Interpolate function to particles
-        void interpolate(const Function& phih, const std::size_t property_idx);
-        
+    // Get the position of a particle in a cell
+    Point x(int cell_index, int particle_index)
+    {
+      return _cell2part[cell_index][particle_index][0];
+    }
+
+    // Return property i of particle in cell
+    const Point& property(int cell_index, int particle_index,
+                          int i) const
+    {
+      return _cell2part[cell_index][particle_index][i];
+    }
+
+    // Pointer to the mesh
+    const Mesh* mesh() const
+    {
+      return _mesh;
+    }
+
+    // Get size of property i
+    unsigned int ptemplate(int i)
+    {
+      return _ptemplate[i];
+    }
+
+    // Number of properties
+    unsigned int num_properties()
+    {
+      return _ptemplate.size();
+    }
+
+    // Number of particles in Cell c
+    unsigned int num_cell_particles(int c)
+    {
+      return _cell2part[c].size();
+    }
+
+    // Interpolate function to particles
+    void interpolate(const Function& phih, const std::size_t property_idx);
+
         // Increment
         void increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx);
-        
+
         // Increment using theta --> Consider replacing property_idcs
-        void increment(const Function& phih_new, const Function& phih_old, 
+        void increment(const Function& phih_new, const Function& phih_old,
                        Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> property_idcs,
                        const double theta, const std::size_t step);
 
-        std::vector<double> get_positions();
+        Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+          positions();
         std::vector<double> get_property(const std::size_t idx);
+
+        void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
+                                        Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
+                                        const Cell& dolfin_cell, std::shared_ptr<const FiniteElement> element,
+                                        const std::size_t space_dimension, const std::size_t value_size_loc,
+                                        const std::size_t property_idx);
 
     private:
         // Push particle to new position
@@ -71,28 +115,19 @@ namespace dolfin{
         // Unpack particle, required in parallel
         std::vector<double> unpack_particle(const particle part);
 
-        void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
-                                        Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
-                                        const Cell& dolfin_cell, std::shared_ptr<const FiniteElement> element,
-                                        const std::size_t space_dimension, const std::size_t value_size_loc,
-                                        const std::size_t property_idx);
-
         // TODO: locate/relocate funcionality
 
         // Attributes
         const Mesh* _mesh;
         std::size_t _Ndim;
-        const unsigned int _num_cells;
         std::vector<std::vector<particle> >  _cell2part;
 
         // Particle properties
-        std::size_t _Np;
-        std::vector<std::size_t> _ptemplate;
+        std::vector<unsigned int> _ptemplate;
         std::size_t _plen;
 
         // Needed for parallel
         const MPI_Comm _mpi_comm;
-        const std::size_t _num_processes;
         std::vector<std::vector<double>> _bounding_boxes;
 
         // TO REMOVE

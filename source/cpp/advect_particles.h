@@ -33,9 +33,6 @@ namespace dolfin{
 
     class advect_particles
     {
-    //friend class RefillCells; // Refill cells makes use of static functions and maybe more importantly
-                              // and, maybe more importantly, RefillCells must access (and change!) xp_o, dup_o, drhop_o
-    //friend class PDEStaticCondensation;
 
     public:
         // Constructors

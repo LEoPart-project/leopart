@@ -19,10 +19,10 @@ advect_particles::advect_particles( particles& P, FunctionSpace& U, Function& uh
     set_bfacets(bmesh, type1);
 
     // If run in parallel, then get interior facet indices
-    if(_P->_num_processes > 1) int_facets = interior_facets();
+    if(MPI::size(_P->mesh()->mpi_comm()) > 1) int_facets = interior_facets();
 
     // Set facet and cell2facet info
-    cell2facet.resize(_P->_mesh->num_cells());
+    cell2facet.resize(_P->mesh()->num_cells());
     set_facets_info();
 
     // Set some other useful info
@@ -44,19 +44,21 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
                                    const std::string update_particle)
     : advect_particles::advect_particles(P, U, uhi, bmesh, type1, update_particle)
 {
-    // Then the only thing to do: check if type1 was "periodic"
+  std::size_t gdim = _P->mesh()->geometry().dim();
+
+  // Then the only thing to do: check if type1 was "periodic"
     if(type1 == "periodic"){
 
         // TODO: Perform a check if it has the right size, always has to come in pairs
         // TODO: do provided values make sense?
-        if( (pbc_limits.size() % ( _P->_Ndim * 4) ) != 0 )
+        if( (pbc_limits.size() % ( gdim * 4) ) != 0 )
             dolfin_error("advect_particles.cpp::advect_particles","construct periodic boundary information", "Incorrect shape of pbc_limits provided?");
 
-        std::size_t num_rows = pbc_limits.size()/( _P->_Ndim * 2);
+        std::size_t num_rows = pbc_limits.size()/(gdim * 2);
         for(std::size_t i = 0; i < num_rows ; i++ ){
-            std::vector<double> pbc_helper( _P->_Ndim * 2 );
-            for(std::size_t j = 0; j < _P->_Ndim * 2; j++){
-                pbc_helper[j] = pbc_limits[i * _P->_Ndim * 2 + j];
+            std::vector<double> pbc_helper(gdim * 2 );
+            for(std::size_t j = 0; j < gdim * 2; j++){
+                pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
             }
             pbc_lims.push_back( pbc_helper );
         }
@@ -79,7 +81,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
 
     set_bfacets(bmesh, type1, indices1);
     set_bfacets(bmesh, type2, indices2);
-    if(_P->_num_processes > 1) int_facets = interior_facets();
+    if (MPI::size(_P->mesh()->mpi_comm()) > 1) int_facets = interior_facets();
     // Length should amount to size of boundary mesh, works in 3D?
     if((obc_facets.size() + cbc_facets.size() + pbc_facets.size()) != bmesh.num_cells())
     {
@@ -92,7 +94,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
     }
 
     // Set facet and cell2facet info
-    cell2facet.resize(_P->_mesh->num_cells());
+    cell2facet.resize(_P->mesh()->num_cells());
     set_facets_info();
 
     // Set some other useful info
@@ -115,14 +117,15 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
                                    const std::string update_particle)
     : advect_particles::advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2, update_particle)
 {
+  std::size_t gdim = _P->mesh()->geometry().dim();
     if(type1 == "periodic" || type2 == "periodic"){
-        if( (pbc_limits.size() % ( _P->_Ndim * 4) ) != 0 )
+        if( (pbc_limits.size() % ( gdim * 4) ) != 0 )
             dolfin_error("advect_particles.cpp::advect_particles","construct periodic boundary information", "Incorrect shape of pbc_limits provided?");
-        std::size_t num_rows = pbc_limits.size()/( _P->_Ndim * 2);
+        std::size_t num_rows = pbc_limits.size()/( gdim * 2);
         for(std::size_t i = 0; i < num_rows ; i++ ){
-            std::vector<double> pbc_helper( _P->_Ndim * 2 );
-            for(std::size_t j = 0; j < _P->_Ndim * 2; j++){
-                pbc_helper[j] = pbc_limits[i * _P->_Ndim * 2 + j];
+            std::vector<double> pbc_helper( gdim * 2 );
+            for(std::size_t j = 0; j < gdim * 2; j++){
+                pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
             }
             pbc_lims.push_back( pbc_helper );
         }
@@ -140,13 +143,14 @@ void advect_particles::set_facets_info(){
      *      2       Cells
     */
 
-    std::size_t _cdim = _P->_mesh->topology().dim();
+  std::size_t _cdim = _P->mesh()->topology().dim();
+  std::size_t gdim = _P->mesh()->geometry().dim();
     std::size_t _fdim = _cdim - 1;
     std::size_t _vdim = _fdim - 1;
 
-    for ( FacetIterator fi(*(_P->_mesh)); !fi.end(); ++fi )
+    for ( FacetIterator fi(*(_P->mesh())); !fi.end(); ++fi )
     {
-        Facet f(*(_P->_mesh), fi->index());
+      Facet f(*(_P->mesh()), fi->index());
         //std::cout<<"Facet Index "<<fi->index()<<std::endl;
 
         // Get and store facet normal and facet midpoint
@@ -155,43 +159,43 @@ void advect_particles::set_facets_info(){
 
         double* facet_n_ptr = facet_n.coordinates();
         double* facet_mp_ptr = facet_mp.coordinates();
-        std::vector<double> facet_n_coords(_P->_Ndim);
-        std::vector<double> facet_mp_coords(_P->_Ndim);
-        for(std::size_t m = 0; m<_P->_Ndim; m++){
+        std::vector<double> facet_n_coords(gdim);
+        std::vector<double> facet_mp_coords(gdim);
+        for(std::size_t m = 0; m < gdim; m++){
             facet_n_coords[m] = *(facet_n_ptr  + m);
             facet_mp_coords[m]= *(facet_mp_ptr + m);
         }
 
         // Initialize facet vertex coordinates (assume symplical mesh)
-        std::vector<std::vector<double>> fvertex_coords(_P->_Ndim);
+        std::vector<std::vector<double>> fvertex_coords(gdim);
 
         // Initialize cell connectivity vector and normal direction
         std::vector<std::size_t> cellfcell; // A facet allways connects 2 elements
         std::vector<bool> outward_normal;
         // Vertex coordinate vector for simplical elements
-        std::vector<double> cvertex_coords( (_P->_Ndim + 1) * _P->_Ndim );
+        std::vector<double> cvertex_coords( (gdim + 1) * gdim );
         std::size_t k = 0;
         for ( VertexIterator vi(f); !vi.end(); ++vi)
         {
-            Vertex v(*(_P->_mesh), vi->index());
-            for(std::size_t j = 0; j<_P->_Ndim; j++)
+          Vertex v(*(_P->mesh()), vi->index());
+            for(std::size_t j = 0; j < gdim; j++)
                 fvertex_coords[k].push_back(*( v.x() + j ));
             k++;
         } // End vertex iterator
         for (CellIterator ci(f); !ci.end(); ++ci)
         {
           //std::cout<<"Neighbor cells"<<ci->index()<<std::endl;
-          Cell c(*(_P->_mesh), ci->index());
+          Cell c(*(_P->mesh()), ci->index());
           c.get_vertex_coordinates(cvertex_coords);
 
           // Now check if we can find any mismatching vertices
           bool outward_pointing = true;       // By default, we assume outward pointing normal
-          for(std::size_t l = 0; l < (_P->_Ndim + 1) * _P->_Ndim; l+= _P->_Ndim)
+          for(std::size_t l = 0; l < (gdim + 1) * gdim; l+= gdim)
           {
               std::vector<double> diff;
               // There must be a better way for subtracting vectors?
-              std::vector<double> dummy(_P->_Ndim);
-              for(std::size_t m = 0; m < _P->_Ndim; m++) dummy[m] = cvertex_coords[l+m];
+              std::vector<double> dummy(gdim);
+              for(std::size_t m = 0; m < gdim; m++) dummy[m] = cvertex_coords[l+m];
               std::vector<double> pv = subtract(dummy, fvertex_coords[0]); //Allways just take first facet vertex
               double l2diff= std::inner_product(facet_n_coords.begin(), facet_n_coords.end(), pv.begin(), 0.0);
               if(l2diff > 1E-10 ){
@@ -282,7 +286,7 @@ std::vector<double> advect_particles::subtract(std::vector<double>& u, std::vect
 }
 //-----------------------------------------------------------------------------
 std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh){
-    std::size_t d = (_P->_Ndim)-1;
+  std::size_t d = (_P->mesh()->geometry().dim())-1;
     MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
     std::size_t* val = boundary_facets.values();
     std::vector<std::size_t> bfacet_idcs;
@@ -291,7 +295,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
         bfacet_idcs.push_back( *(val+i) );
         // Make sure that diff equals 0
         Cell fbm(bmesh,i);
-        Facet fm(*(_P->_mesh),*(val+i));
+        Facet fm(*(_P->mesh()),*(val+i));
         Point diff = fm.midpoint() - fbm.midpoint();
         if(diff.norm() > 1E-10)
             dolfin_error("advect_particles.cpp::boundary_facets 1", "finding facets matching boundary mesh facets",
@@ -302,7 +306,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
 //-----------------------------------------------------------------------------
 std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs){
     // This method is not yet tested!
-    std::size_t d = _P->_Ndim-1;
+  std::size_t d = _P->mesh()->geometry().dim() - 1;
     MeshFunction<std::size_t>  boundary_facets = bmesh.entity_map(d);
     std::size_t* val = boundary_facets.values();
     std::vector<std::size_t> bfacet_idcs;
@@ -313,7 +317,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
 
         // Debugging only, check if diff equals 0
         Cell fbm(bmesh, bidcs[i]);
-        Facet fm(*(_P->_mesh),*(val+bidcs[i]));
+        Facet fm(*(_P->mesh()),*(val+bidcs[i]));
 
         Point diff = fm.midpoint() - fbm.midpoint();
         if(diff.norm() > 1E-10)
@@ -324,8 +328,8 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
 }
 //-----------------------------------------------------------------------------
 std::vector<std::size_t> advect_particles::interior_facets(){
-    std::size_t d = _P->_Ndim-1;
-    BoundaryMesh bmesh(*(_P->_mesh),"interior");
+  std::size_t d = _P->mesh()->geometry().dim() - 1;
+    BoundaryMesh bmesh(*(_P->mesh()),"interior");
     std::vector<std::size_t> bfacet_idcs = boundary_facets(bmesh);
     return bfacet_idcs;
 }
@@ -417,7 +421,9 @@ void advect_particles::relocate_particles(){
 */
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt){
-    const MPI_Comm mpi_comm = _P->_mesh->mpi_comm();
+  const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
+  const std::size_t gdim = _P->mesh()->geometry().dim();
+
     std::size_t num_processes = MPI::size(mpi_comm);
 
     // Needed for local reloc
@@ -426,20 +432,20 @@ void advect_particles::do_step(double dt){
 
     std::vector<std::vector<particle>> comm_snd(num_processes);
 
-    for( CellIterator ci(*(_P->_mesh)); !ci.end(); ++ci){
+    for( CellIterator ci(*(_P->mesh())); !ci.end(); ++ci){
         std::vector<double> coeffs;
         // Restrict once per cell, once per timestep
         Utils::return_expansion_coeffs(coeffs, *ci, uh);
 
         // Loop over particles in cell
-        for(int i = 0; i < _P->_cell2part[ci->index()].size() ; i++)
+        for (int i = 0; i < _P->num_cell_particles(ci->index()); i++)
         {
             // FIXME: It might be better to use 'pointer iterator here' as we need to erase from cell2part vector
             // now we decrement iterator int when needed
 
             std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
 
-            Utils::return_basis_matrix(basis_matrix, _P->_cell2part[ci->index()][i][0], *ci, _element);
+            Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci, _element);
 
             // Compute value at point using expansion coeffs and basis matrix, first convert to Eigen matrix
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), _value_size_loc, _space_dimension);
@@ -447,7 +453,7 @@ void advect_particles::do_step(double dt){
             Eigen::VectorXd u_p =  basis_mat * exp_coeffs ;
 
             // Convert velocity to point
-            Point up(_P->_Ndim, u_p.data() );
+            Point up(gdim, u_p.data() );
 
             std::size_t cidx_recv = ci->index();
             double dt_rem = dt;
@@ -455,7 +461,7 @@ void advect_particles::do_step(double dt){
             while(dt_rem > 1E-15){
                 // Returns facet which is intersected and the time it takes to do so
                 std::tuple<std::size_t, double> intersect_info = time2intersect(cidx_recv, dt_rem,
-                                                                                _P->_cell2part[ci->index()][i][0], up);
+                                                                                _P->x(ci->index(), i), up);
                 if(std::get<0>(intersect_info) == std::numeric_limits<std::size_t>::max() ){
                     // Then remain within cell, finish time step
                     _P->push_particle(dt_rem, up, ci->index(), i);
@@ -524,11 +530,11 @@ void advect_particles::do_step(double dt){
                         }else if(std::find(pbc_facets.begin(), pbc_facets.end(),  std::get<0>(intersect_info)) != pbc_facets.end()){
                             // Then periodic bc
                             apply_periodic_bc(dt_rem, up, ci->index(), i, std::get<0>(intersect_info) );
-                            if(_P->_num_processes > 1 ){ //Behavior in parallel
+                            if (num_processes > 1){ //Behavior in parallel
                                 _P->particle_communicator_collect(comm_snd, ci->index(), i);
                             }else{
                                 // Behavior in serial
-                                std::size_t cell_id = _P->_mesh->bounding_box_tree()->compute_first_entity_collision( _P->_cell2part[ci->index()][i][0]);
+                              std::size_t cell_id = _P->mesh()->bounding_box_tree()->compute_first_entity_collision( _P->x(ci->index(), i));
                                 reloc_local_c.push_back(cell_id);
                                 reloc_local_p.push_back(_P->_cell2part[ci->index()][i]);
                                 _P->_cell2part[ci->index()].erase(_P->_cell2part[ci->index()].begin() + i);
@@ -954,20 +960,21 @@ void advect_particles::apply_closed_bc(double dt, Point& up, std::size_t cidx, s
 }
 //-----------------------------------------------------------------------------
 void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,  std::size_t pidx, std::size_t fidx){
+  const std::size_t gdim = _P->mesh()->geometry().dim();
     Point midpoint = std::get<1>(facets_info[fidx]);
     std::size_t row_match = std::numeric_limits<std::size_t>::max();
     std::size_t row_friend;
     std::size_t component;
     bool hit = false;
     for(std::size_t i = 0; i < pbc_lims.size(); i++){
-        for(std::size_t j = 0; j < _P->_Ndim; j++){
+        for(std::size_t j = 0; j < gdim; j++){
             if( std::abs(midpoint[j] - pbc_lims[i][ j*2 ]) < 1E-10
                     &&
                 std::abs(midpoint[j] - pbc_lims[i][ j*2  + 1 ]) < 1E-10 ){
                 // Then we most likely found a match, but check if midpoint coordinates are in between the limits
                 // for the other coordinate directions
                 hit = true;
-                for(std::size_t k = 0; k < _P->_Ndim; k++){
+                for(std::size_t k = 0; k < gdim; k++){
                     if( k == j ) continue;
                     // New formulation
                     if( midpoint[k] <= pbc_lims[i][ k*2 ]  || midpoint[k] >= pbc_lims[i][ k*2 + 1 ] )
@@ -1003,13 +1010,13 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
                 (pbc_lims[row_friend][ component*2 ] - pbc_lims[row_match][ component*2 ]);
 
     // Corners can be tricky, therefore include this test
-    for(std::size_t i = 0; i < _P->_Ndim; i++){
+    for(std::size_t i = 0; i < gdim; i++){
         if( i == component ) continue; // Skip this
-        if( _P->_cell2part[cidx][pidx][0][i] < pbc_lims[row_match][ i*2 ] ){
+        if( _P->x(cidx, pidx)[i] < pbc_lims[row_match][ i*2 ] ){
             // Then we push the particle to the other end of domain
             _P->_cell2part[cidx][pidx][0][i] +=
                 (pbc_lims[row_friend][ i*2 + 1 ] - pbc_lims[row_match][ i*2 ]);
-        }else if( _P->_cell2part[cidx][pidx][0][i] > pbc_lims[row_match][ i*2 + 1] ){
+        }else if( _P->x(cidx, pidx)[i] > pbc_lims[row_match][ i*2 + 1] ){
             _P->_cell2part[cidx][pidx][0][i] -=
                 (pbc_lims[row_match][ i*2 + 1 ] - pbc_lims[row_friend][ i*2 ]);
         }
@@ -1022,12 +1029,14 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx){
     // FIXME: more efficient implementation??
     // FIXME: can give troubles when domain decomposition results in one cell in domain corner
     // Check if periodic bcs are violated somewhere, if so, modify particle position
-    for(std::size_t i = 0; i < pbc_lims.size()/2; i++){
-        for(std::size_t j = 0; j<_P->_Ndim; j++){
+  std::size_t gdim = _P->mesh()->geometry().dim();
+
+  for(std::size_t i = 0; i < pbc_lims.size()/2; i++){
+        for(std::size_t j = 0; j< gdim; j++){
             if( std::abs(pbc_lims[2*i][2*j] - pbc_lims[2*i][2*j+1]) < 1E-13 ){
-                if( _P->_cell2part[cidx][pidx][0][j]  >  pbc_lims[2*i][2*j]
+              if( _P->x(cidx, pidx)[j]  >  pbc_lims[2*i][2*j]
                         &&
-                    _P->_cell2part[cidx][pidx][0][j]  >  pbc_lims[2*i+1][2*j]   )
+                  _P->x(cidx, pidx)[j]  >  pbc_lims[2*i+1][2*j]   )
                 {
                     _P->_cell2part[cidx][pidx][0][j] -=
                             (std::max(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) -
@@ -1035,31 +1044,31 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx){
                     // Check whether the other bounds are violated, to handle corners
                     // FIXME: cannot handle cases where domain of friend in one direction is different from
                     // match, reason: looping over periodic bc pairs
-                    for(std::size_t k = 0; k<_P->_Ndim; k++){
+                    for(std::size_t k = 0; k < gdim; k++){
                         if( k == j ) continue;
-                        if( _P->_cell2part[cidx][pidx][0][k] < pbc_lims[2*i][2*k]  ){
+                        if( _P->x(cidx, pidx)[k] < pbc_lims[2*i][2*k]  ){
                             _P->_cell2part[cidx][pidx][0][k]  +=
                                  ( pbc_lims[2*i + 1][2*k + 1]  - pbc_lims[2*i][2*k]);
-                        }else if( _P->_cell2part[cidx][pidx][0][k] > pbc_lims[2*i][2*k + 1] ){
+                        }else if( _P->x(cidx, pidx)[k] > pbc_lims[2*i][2*k + 1] ){
                             _P->_cell2part[cidx][pidx][0][k]  -=
                                  ( pbc_lims[2*i][2*k + 1] - pbc_lims[2*i + 1][2*k]);
                         }
                     }
-                }else if(_P->_cell2part[cidx][pidx][0][j]  <  pbc_lims[2*i][2*j]
+                }else if(_P->x(cidx, pidx)[j]  <  pbc_lims[2*i][2*j]
                             &&
-                         _P->_cell2part[cidx][pidx][0][j]  <  pbc_lims[2*i+1][2*j]
+                         _P->x(cidx, pidx)[j]  <  pbc_lims[2*i+1][2*j]
                          )
                 {
                     _P->_cell2part[cidx][pidx][0][j] +=
                             (std::max(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) -
                              std::min(pbc_lims[2*i][2*j], pbc_lims[2*i+1][2*j]) );
                     // Check wheter the other bounds are violated, to handle corners
-                    for(std::size_t k = 0; k<_P->_Ndim; k++){
+                    for(std::size_t k = 0; k < gdim; k++){
                         if( k == j ) continue;
-                        if( _P->_cell2part[cidx][pidx][0][k] < pbc_lims[2*i][2*k]  ){
+                        if( _P->x(cidx, pidx)[k] < pbc_lims[2*i][2*k]  ){
                             _P->_cell2part[cidx][pidx][0][k]  +=
                                  ( pbc_lims[2*i + 1][2*k + 1]  - pbc_lims[2*i][2*k]);
-                        }else if( _P->_cell2part[cidx][pidx][0][k] > pbc_lims[2*i][2*k + 1] ){
+                        }else if( _P->x(cidx, pidx)[k] > pbc_lims[2*i][2*k + 1] ){
                             _P->_cell2part[cidx][pidx][0][k]  -=
                                  ( pbc_lims[2*i][2*k + 1] - pbc_lims[2*i + 1][2*k]);
                         }
@@ -1198,7 +1207,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
     double dt_rem = dt;
     //std::size_t cidx_recv = cidx;
 
-
+    const std::size_t mpi_size = MPI::size(_P->mesh()->mpi_comm());
     std::size_t cidx_recv = std::numeric_limits<std::size_t>::max();
 
     if(step == 0 ){
@@ -1208,7 +1217,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
         // for the multistep (RK) schemes, the carried old position may not be the same as the cell
         // where the particle lives newest position is always carried
         // TODO: Can we think of smarter implementation?
-        cidx_recv = _P->_mesh->bounding_box_tree()->compute_first_entity_collision( _P->_cell2part[cidx][*pidx][0]);
+      cidx_recv = _P->mesh()->bounding_box_tree()->compute_first_entity_collision( _P->x(cidx, *pidx));
 
         // One alternative might be:
         // Cell cell(*(_P->_mesh), cidx);
@@ -1237,7 +1246,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
     while(dt_rem > 1E-15){
         // Returns facet which is intersected and the time it takes to do so
         std::tuple<std::size_t, double> intersect_info = time2intersect(cidx_recv, dt_rem,
-                                                                        _P->_cell2part[cidx][*pidx][0], up);
+                                                                        _P->x(cidx, *pidx), up);
         if(std::get<0>(intersect_info) == std::numeric_limits<std::size_t>::max() ){
             // Then remain within cell, finish time step
             _P->push_particle(dt_rem, up, cidx, *pidx);
@@ -1245,7 +1254,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
 
             if( step == (num_steps - 1) )
                 // Copy current position to old position
-                _P->_cell2part[cidx][*pidx][xp0_idx] = _P->_cell2part[cidx][*pidx][0];
+              _P->_cell2part[cidx][*pidx][xp0_idx] = _P->x(cidx, *pidx);
 
             // If cidx_recv != ci->index(), particles crossed facet and hence need to be relocated
             if(cidx_recv != cidx ){
@@ -1276,7 +1285,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
                     dt_rem *= 0.;
                     // Copy current position to old position
                     if( step == (num_steps - 1) )
-                        _P->_cell2part[cidx][*pidx][xp0_idx] = _P->_cell2part[cidx][*pidx][0];
+                      _P->_cell2part[cidx][*pidx][xp0_idx] = _P->x(cidx, *pidx);
 
                     if(cidx_recv != cidx ){
                         reloc_local_c.push_back(cidx_recv);
@@ -1323,15 +1332,15 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
 
                     // Copy current position to old position
                     if(step == (num_steps - 1) )
-                        _P->_cell2part[cidx][*pidx][xp0_idx] = _P->_cell2part[cidx][*pidx][0];
+                      _P->_cell2part[cidx][*pidx][xp0_idx] = _P->x(cidx, *pidx);
 
-                    if(_P->_num_processes > 1 ){ //Behavior in parallel
+                    if (mpi_size > 1){ //Behavior in parallel
                         // Allways do a global push
                         _P->particle_communicator_collect(comm_snd, cidx, *pidx);
                     }else{
                         // Behavior in serial
                         // TODO: call particle locate
-                        std::size_t cell_id = _P->_mesh->bounding_box_tree()->compute_first_entity_collision( _P->_cell2part[cidx][*pidx][0]);
+                      std::size_t cell_id = _P->mesh()->bounding_box_tree()->compute_first_entity_collision(_P->x(cidx, *pidx));
 
                         reloc_local_c.push_back(cell_id);
                         reloc_local_p.push_back(_P->_cell2part[cidx][*pidx]);
@@ -1399,10 +1408,12 @@ void advect_rk2::do_step(double dt){
     if(dt <= 0.)
         dolfin_error("advect_particles.cpp::step", "set timestep.", "Timestep should be > 0.");
 
-    const MPI_Comm mpi_comm = _P->_mesh->mpi_comm();
+    const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
+    std::size_t gdim = _P->mesh()->geometry().dim();
+
     std::size_t num_processes = MPI::size(mpi_comm);
 
-    std::vector<std::vector<double> > coeffs_storage( _P->_num_cells );
+    std::vector<std::vector<double> > coeffs_storage(_P->mesh()->num_cells());
     std::size_t num_substeps = 2;
 
     for(std::size_t step = 0; step < num_substeps; step++){
@@ -1412,35 +1423,35 @@ void advect_rk2::do_step(double dt){
         // Needed for global push
         std::vector<std::vector<particle>> comm_snd(num_processes);
 
-        for( CellIterator ci(*(_P->_mesh)); !ci.end(); ++ci){
+        for( CellIterator ci(*(_P->mesh())); !ci.end(); ++ci){
             if(step == 0 ){ // Restrict once per cell, once per timestep
                 std::vector<double> coeffs;
                 Utils::return_expansion_coeffs(coeffs, *ci, uh);
                 coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(), coeffs.begin(), coeffs.end());
             }
 
-            for(std::size_t i = 0; i < _P->_cell2part[ci->index()].size() ; i++){
+            for(std::size_t i = 0; i < _P->num_cell_particles(ci->index()) ; i++){
                 std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-                Utils::return_basis_matrix(basis_matrix, _P->_cell2part[ci->index()][i][0], *ci, _element);
+                Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci, _element);
 
                 // Compute value at point using expansion coeffs and basis matrix, first convert to Eigen matrix
                 Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), _value_size_loc, _space_dimension);
                 Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs_storage[ci->index()].data(), _space_dimension);
                 Eigen::VectorXd u_p =  basis_mat * exp_coeffs ;
 
-                Point up(_P->_Ndim, u_p.data() );
+                Point up(gdim, u_p.data() );
                 if(step == 0 ){
                     _P->_cell2part[ci->index()][i][up0_idx] = up;
                 }else{
                     // Goto next particle, this particle hitted closed bound
-                    if(_P->_cell2part[ci->index()][i][up0_idx][0] == std::numeric_limits<double>::max()) continue;
-                    up += _P->_cell2part[ci->index()][i][up0_idx];
-                    up *= 0.5;
+                  if(_P->property(ci->index(), i, up0_idx)[0] == std::numeric_limits<double>::max()) continue;
+                  up += _P->property(ci->index(), i, up0_idx);
+                  up *= 0.5;
                 }
 
                 // Reset position to old
                 if(step == 1)
-                    _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                  _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 // Do substep
                 do_substep(dt, up, ci->index(), &i, step, num_substeps,
@@ -1513,10 +1524,11 @@ void advect_rk3::do_step(double dt){
     if(dt < 0.)
         dolfin_error("advect_particles.cpp::step", "set timestep.", "Timestep should be > 0.");
 
-    const MPI_Comm mpi_comm = _P->_mesh->mpi_comm();
+    const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
+    const std::size_t gdim = _P->mesh()->geometry().dim();
     std::size_t num_processes = MPI::size(mpi_comm);
 
-    std::vector<std::vector<double> > coeffs_storage( _P->_num_cells );
+    std::vector<std::vector<double> > coeffs_storage(_P->mesh()->num_cells());
     std::size_t num_substeps = 3;
 
     for(std::size_t step = 0; step < num_substeps; step++){
@@ -1526,7 +1538,7 @@ void advect_rk3::do_step(double dt){
         // Needed for global push
         std::vector<std::vector<particle>> comm_snd(num_processes);
 
-        for( CellIterator ci(*(_P->_mesh)); !ci.end(); ++ci){
+        for( CellIterator ci(*(_P->mesh())); !ci.end(); ++ci){
             if(step == 0 ){ // Restrict once per cell, once per timestep
                 std::vector<double> coeffs;
                 Utils::return_expansion_coeffs(coeffs, *ci, uh);
@@ -1534,20 +1546,20 @@ void advect_rk3::do_step(double dt){
             }
 
             // Loop over particles
-            for(std::size_t i = 0; i < _P->_cell2part[ci->index()].size() ; i++){
+            for(std::size_t i = 0; i < _P->num_cell_particles(ci->index()) ; i++){
                 std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
 
-                Utils::return_basis_matrix(basis_matrix, _P->_cell2part[ci->index()][i][0], *ci, _element);
+                Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci, _element);
 
                 // Compute value at point using expansion coeffs and basis matrix, first convert to Eigen matrix
                 Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), _value_size_loc, _space_dimension);
                 Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs_storage[ci->index()].data(), _space_dimension);
                 Eigen::VectorXd u_p =  basis_mat * exp_coeffs ;
 
-                Point up(_P->_Ndim, u_p.data() );
+                Point up(gdim, u_p.data() );
 
                 // Then reset position to the old position
-                _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 if(step == 0 ){
                     _P->_cell2part[ci->index()][i][up0_idx] =  up * (weights[step]) ;
@@ -1562,7 +1574,7 @@ void advect_rk3::do_step(double dt){
 
                 // Reset position to old
                 if(step == 1)
-                    _P->_cell2part[ci->index()][i][0] = _P->_cell2part[ci->index()][i][xp0_idx];
+                  _P->_cell2part[ci->index()][i][0] = _P->property(ci->index(), i, xp0_idx);
 
                 // Do substep
                 do_substep(dt*dti[step], up, ci->index(), &i, step, num_substeps,

@@ -5,8 +5,8 @@
 
 """
     Testing the advection of a slotted disk (with sharp discontinuities)
-    , using a bounded l2 projection. 
-    Since no global solve is involved, this 
+    , using a bounded l2 projection.
+    Since no global solve is involved, this
     test is well-suited for assessing the scaling in parallel.
     Note: conservation properties are lost with this approach.
 """
@@ -32,34 +32,34 @@ class SlottedDisk(UserExpression):
         self.lb     = lb
         self.ub     = ub
         super().__init__(self, **kwargs)
-        
+
     def eval(self, value, x):
         xc = self.center[0]
         yc = self.center[1]
-        
+
         if  ((x[0] - xc)**2 + (x[1] - yc)**2 <=self.r**2) \
             and not ( (xc - self.width) <= x[0] <=  (xc + self.width)  and  x[1] >= yc + self.depth):
             value[0] = self.ub
         else:
             value[0] = self.lb
-            
+
     def value_shape(self):
         return ()
-    
+
 def assign_particle_values(x, u_exact):
     if comm.Get_rank() == 0:
-        s=np.asarray([u_exact(x[i,:]) for i in range(len(x))], dtype = np.float_)
+        s=np.asarray([u_exact(x[i,:]) for i in range(len(x))], dtype = np.float_).reshape(len(x), 1)
     else:
         s = None
-    return s    
+    return s
 
 # Domain properties
 x0,y0   = 0., 0.        # Center of domain
 xc,yc   = -0.15, 0.     # Center of Gaussian
 r       = .5            # Radius of domain
-rdisk   = 0.2           # Radius of slotted disk     
+rdisk   = 0.2           # Radius of slotted disk
 rwidth  = 0.05          # Width of slot
-lb      = -1.           # Lower value in slotted disk 
+lb      = -1.           # Lower value in slotted disk
 ub      = 3.            # Upper value in slotted disk
 
 # Mesh/particle resolution
@@ -88,7 +88,7 @@ mesh = generate_mesh(domain,nx)
 bmesh  = BoundaryMesh(mesh,'exterior')
 
 # Set slotted disk
-psi0_expr = SlottedDisk(radius = rdisk, center = [xc, yc], width = rwidth, depth = 0., 
+psi0_expr = SlottedDisk(radius = rdisk, center = [xc, yc], width = rwidth, depth = 0.,
                                         degree = 3, lb = lb, ub = ub)
 
 # Function space and velocity field
@@ -127,10 +127,10 @@ timer    = Timer()
 timer.start()
 while step < num_steps:
     step += 1
-    
+
     if comm.Get_rank() == 0:
         print("Step "+str(step))
-      
+
     ap.do_step(float(dt))
     lstsq_psi.project(psi_h.cpp_object(),lb, ub)
 

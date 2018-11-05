@@ -43,10 +43,10 @@ PDEStaticCondensation::PDEStaticCondensation(const Mesh& mesh, particles& P,
     for (std::size_t i = 0; i < _element->value_rank(); i++)
        _value_size_loc *= _element->value_dimension(i);
 
-    if(_value_size_loc != _P->_ptemplate[_idx_pproperty])
+    if(_value_size_loc != _P->ptemplate(_idx_pproperty))
         dolfin_error("l2projection","set _value_size_loc",
                      "Local value size (%d) mismatches particle template property with size (%d)",
-                     _value_size_loc, _P->_ptemplate[_idx_pproperty]);
+                     _value_size_loc, _P->ptemplate(_idx_pproperty));
 }
 //-----------------------------------------------------------------------------
 PDEStaticCondensation::PDEStaticCondensation(const Mesh& mesh, particles& P,

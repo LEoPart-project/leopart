@@ -9,6 +9,12 @@ jobs:
           name: Install dependencies
           command: sudo pip3 install flake8 pytest --upgrade
       - run:
+          name: Install latest ufl and fiat
+          command: |
+            pip install git+https://bitbucket.org/fenics-project/fiat.git --user
+            pip install git+https://bitbucket.org/fenics-project/ufl.git --user
+            pip install git+https://bitbucket.org/fenics-project/dijitso.git --user
+      - run:
           name: Flake8 on source
           command:
             python3 -m flake8 source/

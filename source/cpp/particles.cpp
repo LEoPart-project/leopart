@@ -8,56 +8,43 @@ using namespace dolfin;
 particles::~particles(){
 }
 
-particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> p_array,
-                     Eigen::Ref<const Eigen::Array<int, Eigen::Dynamic, 1>> p_template,
-                     int p_num, const Mesh &mesh)
-    :_mesh(&mesh), _num_cells(mesh.num_cells()), _mpi_comm(mesh.mpi_comm()), _num_processes(MPI::size(mesh.mpi_comm()))
+particles::particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> p_array,
+                     const std::vector<unsigned int>& p_template, const Mesh &mesh)
+  :_mesh(&mesh), _mpi_comm(mesh.mpi_comm()),
+   _ptemplate(p_template)
 {
-    // Note: p_array is structured as:
-    // [xp1, xp2, ..., xpn, phi1, phi2, ..., phin, psi1, psi2, ..., psin, ...]
+    // Note: p_array is 2D [num_particles, property_data]
 
     // Get geometry dimension of mesh
     _Ndim = mesh.geometry().dim();
-    _Np   = p_num;
-    _cell2part.resize(_num_cells);
+
+    _cell2part.resize(mesh.num_cells());
 
     // Initialize bounding boxes
     make_bounding_boxes();
 
-    // Initialize particle template and _plen
-    _plen = 0;
-    for(std::size_t i = 0; i < p_template.size(); i++){
-        _ptemplate.push_back(p_template[i]);
-        _plen += p_template[i];
-    }
+    // _ptemplate.assign(p_template.begin(), p_template.end());
 
-    // TODO: reformulate where each particle is contiguously stored instead of stacked
-    // this potentially renders this loop significantly easier...
+    // Calculate the offset for each particle property and overall size
+    std::vector<unsigned int> offset = {0};
+    for (const auto &p : p_template)
+      offset.push_back(offset.back() + p);
+    _plen = offset.back();
 
     // Loop over particles:
-    for(std::size_t i=0; i<_Np; i++){
+    for(std::size_t i = 0; i < p_array.rows(); i++){
         // Position and get hosting cell
-        Point xp(_Ndim, p_array.data() + i*_Ndim);
+        Point xp(_Ndim, p_array.row(i).data());
+
         unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
         if (cell_id != std::numeric_limits<unsigned int>::max())
         {
-            // Initialize empty particle
-            particle pnew;
-            // Push back position
-            pnew.push_back(xp);
+            // Initialize particle with position
+            particle pnew = {xp};
 
-            // Loop over other properties
-            // Set start position
-            std::size_t idx;
-            if(_ptemplate.size() > 1)
-                idx = _Np*_Ndim + i * _ptemplate[1];
-
-            for(std::size_t j=1; j < _ptemplate.size(); j++){
-                Point property(_ptemplate[j], p_array.data() + idx);
-                //idx += j * _Np * _ptemplate[j];
-                // New formulation: second part guarantees to jump
-                // at proper positions if ranks between properties vary
-                idx += _Np * _ptemplate[j] - i * (_ptemplate[j] -  _ptemplate[j+1]) ;
+            for(std::size_t j = 1; j < _ptemplate.size(); ++j)
+            {
+                Point property(_ptemplate[j], p_array.row(i).data() + offset[j]);
                 pnew.push_back(property);
             }
 
@@ -87,7 +74,7 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
                     phih.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -104,7 +91,7 @@ void particles::interpolate(const Function &phih, const std::size_t property_idx
 void particles::increment(const Function& phih_new, const Function& phih_old, const std::size_t property_idx){
     if ( !phih_new.in(*(phih_old.function_space())) )
     {
-        dolfin_error("particles.cpp::incrment",
+        dolfin_error("particles.cpp::increment",
                      "Compute increment",
                      "Expected Functions to be in the same FunctionSpace");
     }
@@ -132,7 +119,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old, co
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
                     phih_new.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -146,7 +133,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old, co
     }
 }
 
-void particles::increment(const Function& phih_new, const Function& phih_old, 
+void particles::increment(const Function& phih_new, const Function& phih_old,
                        Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> property_idcs,
                        const double theta, const std::size_t step){
     if ( !phih_new.in(*(phih_old.function_space())) )
@@ -189,7 +176,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
         for(std::size_t pidx = 0; pidx < _cell2part[cell->index()].size() ; pidx++)
         {
             std::vector<double> basis_matrix(space_dimension * value_size_loc);
-            Utils::return_basis_matrix(basis_matrix, _cell2part[cell->index()][pidx][0], *cell,
+            Utils::return_basis_matrix(basis_matrix, x(cell->index(),pidx), *cell,
                     phih_new.function_space()->element());
 
             Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc, space_dimension);
@@ -210,44 +197,65 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
     }
 }
 
-std::vector<double> particles::get_positions(){
-    std::vector<double> xp;
-    for(std::size_t i =0; i < _cell2part.size() ; i++){
-        std::size_t _Npc = _cell2part[i].size();
-        // Prevent segmentation fault, check if cell contains
-        // particles, if so collect coordinates
-        if(_Npc > 0){
-            for(std::size_t j=0; j<_Npc; j++){
-                for(std::size_t k = 0; k<_Ndim; k++)
-                    xp.push_back( _cell2part[i][j][0][k] );
-            }
-        }
+Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+particles::positions()
+{
+  // Could just use get_property(0)
+
+  std::size_t n_particles = 0;
+  for (const auto &c2p: _cell2part)
+    n_particles += c2p.size();
+  // Should be the same as _Np... but not.
+
+  Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    xp(n_particles, _Ndim);
+
+  // Iterate over cells and particles in each cell
+  std::size_t row = 0;
+  for (const auto &c2p: _cell2part)
+  {
+    for (const auto &p: c2p)
+    {
+      for (std::size_t k = 0; k < _Ndim; ++k)
+        xp(row, k) = p[0][k];
+      ++row;
     }
-    return xp;
+  }
+  assert(row == n_particles);
+
+  return xp;
 }
 
 std::vector<double> particles::get_property(const std::size_t idx){
-    // Test if idx is valid:
-    if(idx > _ptemplate.size())
-        dolfin_error("particles::get_property","return index","Requested index exceeds particle template");
 
-    // Store property in property_vector
-    std::vector<double> property_vector;
-    for(std::size_t i =0; i < _cell2part.size() ; i++){
-       std::size_t _Npc = _cell2part[i].size();
-       // Prevent segmentation fault, check if cell contains
-       // particles, if so collect coordinates
-       if(_Npc > 0){
-           for(std::size_t j=0; j<_Npc; j++){
-               for(std::size_t k = 0; k< _ptemplate[idx]; k++)
-                   property_vector.push_back( _cell2part[i][j][idx][k] );
-           }
-       }
+  // Test if idx is valid
+  if (idx > _ptemplate.size())
+    dolfin_error("particles::get_property",
+                 "return index", "Requested index exceeds particle template");
+  const std::size_t property_dim = _ptemplate[idx];
+
+  std::size_t n_particles = 0;
+  for (const auto &c2p: _cell2part)
+    n_particles += c2p.size();
+  // Should be the same as _Np... but not.
+
+  std::vector<double> property_vector;
+  property_vector.reserve(n_particles * property_dim);
+
+  // Iterate over cells and particles in each cell
+  for (const auto &c2p: _cell2part)
+  {
+    for (const auto &p: c2p)
+    {
+      for(std::size_t k = 0; k < property_dim; k++)
+        property_vector.push_back(p[idx][k]);
     }
-    return property_vector;
+  }
+  return property_vector;
 }
 
-void particles::push_particle(const double dt, const Point& up, const std::size_t cidx, const std::size_t pidx){
+void particles::push_particle(const double dt, const Point& up, const std::size_t cidx, const std::size_t pidx)
+{
     _cell2part[cidx][pidx][0] += up*dt;
 }
 
@@ -277,15 +285,17 @@ void particles::make_bounding_boxes(){
 
 void particles::particle_communicator_collect(std::vector<std::vector<particle>>& comm_snd,
                                               const std::size_t cidx, const std::size_t pidx){
-    // Assertion to chekc if comm_snd has size of num_procs
-    dolfin_assert(comm_snd.size() == _num_processes);
+    // Assertion to check if comm_snd has size of num_procs
+
+  const std::size_t num_processes = MPI::size(_mpi_comm);
+  dolfin_assert(comm_snd.size() == num_processes);
 
     // Get position
     particle ptemp = _cell2part[cidx][pidx];
-    std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates()+_Ndim);
+    std::vector<double> xp_temp(ptemp[0].coordinates(), ptemp[0].coordinates() + _Ndim);
 
     // Loop over processes
-    for (std::size_t p = 0; p < _num_processes; p++)
+    for (std::size_t p = 0; p < num_processes; p++)
     {
         // Check if in bounding box
         if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
@@ -299,14 +309,16 @@ void particles::particle_communicator_collect(std::vector<std::vector<particle>>
 
 void particles::particle_communicator_push(std::vector<std::vector<particle>>& comm_snd){
     // Assertion if sender has correct size
-    dolfin_assert(comm_snd.size() == _num_processes);
+  const std::size_t num_processes = MPI::size(_mpi_comm);
+  dolfin_assert(comm_snd.size() == num_processes);
 
-    std::vector<std::vector<double>> comm_snd_vec(_num_processes);
-    std::vector<std::vector<double>> comm_rcv_vec;
+    std::vector<std::vector<double>> comm_snd_vec(num_processes);
+    std::vector<double> comm_rcv_vec;
 
     // Prepare for communication
-    for (std::size_t p = 0; p < _num_processes; p++){
-        for(particle part : comm_snd[p] ){
+    // Convert each vector of Points to std::vector<double>
+    for (std::size_t p = 0; p < num_processes; p++){
+        for (particle part : comm_snd[p] ){
             std::vector<double> unpacked = unpack_particle(part);
             comm_snd_vec[p].insert(comm_snd_vec[p].end(), unpacked.begin(), unpacked.end());
         }
@@ -315,35 +327,36 @@ void particles::particle_communicator_push(std::vector<std::vector<particle>>& c
     // Communicate with all_to_all
     MPI::all_to_all(_mpi_comm, comm_snd_vec, comm_rcv_vec);
 
-    // FIXME: the outer loop below can probably be removed
     // TODO: thoroughly test this unpacking -> sending -> composing loop
 
-    for(std::size_t p = 0; p < _num_processes; p++){
-        std::size_t pos_iter = 0;
-        while(pos_iter < comm_rcv_vec[p].size()){
-            // This is always the position, right?
-            Point xp(_Ndim, &comm_rcv_vec[p][pos_iter]);
-            unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
-            if (cell_id != std::numeric_limits<unsigned int>::max()){
-                pos_iter += _Ndim; // Add geometric dimension to iterator
-                particle pnew;
-                pnew.push_back(xp);
-                for(std::size_t j=1; j<_ptemplate.size(); j++){
-                    Point property(_ptemplate[j], &comm_rcv_vec[p][pos_iter]);
-                    pnew.push_back(property);
-                    pos_iter += _ptemplate[j]; // Add property dimension to iterator
-                }
-                // Iterator position must be multiple of _plen
-                dolfin_assert(pos_iter % _plen == 0);
-
-                // Push back new particle to hosting cell
-                _cell2part[cell_id].push_back(pnew);
-            }else{
-                // Jump to following particle in array
-                pos_iter += _plen;
-            }
+    std::size_t pos_iter = 0;
+    while(pos_iter < comm_rcv_vec.size()){
+      // This is always the particle position
+      Point xp(_Ndim, &comm_rcv_vec[pos_iter]);
+      unsigned int cell_id = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
+      if (cell_id != std::numeric_limits<unsigned int>::max())
+      {
+        pos_iter += _Ndim; // Add geometric dimension to iterator
+        particle pnew = {xp};
+        for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+        {
+          Point property(_ptemplate[j], &comm_rcv_vec[pos_iter]);
+          pnew.push_back(property);
+          pos_iter += _ptemplate[j]; // Add property dimension to iterator
         }
+        // Iterator position must be multiple of _plen
+        dolfin_assert(pos_iter % _plen == 0);
+
+        // Push back new particle to hosting cell
+        _cell2part[cell_id].push_back(pnew);
+      }
+      else
+      {
+        // Jump to following particle in array
+        pos_iter += _plen;
+      }
     }
+
 }
 
 bool particles::in_bounding_box(const std::vector<double>& point,
@@ -410,7 +423,7 @@ void particles::get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,
     if(_Npc > 0){
         for(std::size_t pidx=0; pidx<_Npc; pidx++){
             double basis_matrix[space_dimension][value_size_loc];
-            element->evaluate_basis_all(&basis_matrix[0][0], _cell2part[cidx][pidx][0].coordinates(),
+            element->evaluate_basis_all(&basis_matrix[0][0], x(cidx, pidx).coordinates(),
                                             vertex_coordinates.data(), ufc_cell.orientation);
 
             // Then insert in Eigen matrix and vector (rewrite this ugly loop!?)

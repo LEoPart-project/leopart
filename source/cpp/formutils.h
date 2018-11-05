@@ -29,22 +29,12 @@ namespace dolfin{
     {
     // Some utility functions for operations on dolfin Forms.
     // Should contain only static methods.
-    friend class PDEStaticCondensation;
-    friend class StokesStaticCondensation;
 
     public:
-        FormUtils();
-        ~FormUtils();
-
-    protected:
         // Test rank of form
         static void test_rank(const Form &a, const std::size_t rank);
 
-        // Get local tensor info
-        //        static void local_tensor_info(const Form& a, const Cell& cell,
-        //                                      std::size_t* nrows, ArrayView<const dolfin::la_index>& cdof_rows,
-        //                                      std::size_t* ncols, ArrayView<const dolfin::la_index>& cdof_cols);
-
+        // Get local tensor size
         static std::pair<std::size_t, std::size_t> local_tensor_size(const Form& a, const Cell& cell);
 
         // Local assembler
