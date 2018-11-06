@@ -132,6 +132,68 @@ class FormsPDEMap:
 
         return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
 
+    def forms_theta_nlinear_np(self, v0, v_int, Ubar0, dt, theta_map=Constant(1.0),
+                               theta_L=Constant(1.0), duh0=Constant((0., 0.)),
+                               duh00=Constant((0., 0)), h=Constant((0., 0.)),
+                               neumann_idx=99):
+
+        '''
+        No particles in mass matrix
+        '''
+
+        # Define trial test functions
+        v, w = TrialFunction(self.W), TestFunction(self.W)
+        lamb, tau = TrialFunction(self.T), TestFunction(self.T)
+        vbar, wbar = TrialFunction(self.Wbar), TestFunction(self.Wbar)
+
+        # infer geometric dimension
+        zero_vec = np.zeros(self.gdim)
+
+        # Fix to get size of constants ligned up in 3D
+        if self.gdim > 2:  # TODO: and h.value_size() <= 2:
+            h = Constant(zero_vec)
+
+        if self.gdim > 2:  # TODO: and duh0.value_size() <= 2:
+            duh0 = Constant(zero_vec)
+
+        if self.gdim > 2:  # TODO and duh00.value_size() <= 2:
+            duh00 = Constant(zero_vec)
+
+        beta_map = self.beta_map
+        n = self.n
+        facet_integral = self.facet_integral
+
+        # Define v_star
+        v_star = v0 + (1-theta_L) * duh00 + theta_L * duh0
+
+        Udiv = v0 + duh0
+        outer_v_a = outer(w, Udiv)
+        outer_v_a_o = outer(v_star, Udiv)
+        outer_ubar_a = outer(vbar, Ubar0)
+
+        # Switch to detect in/outflow boundary
+        gamma = conditional(ge(dot(Udiv, n), 0), 0, 1)
+
+        # LHS contribution s
+        N_a = dot(v, w) * dx + facet_integral(beta_map*dot(v, w))
+        G_a = dot(lamb, w)/dt * dx - theta_map*inner(outer_v_a, grad(lamb))*dx \
+            + theta_map * (1-gamma) * dot(outer_v_a * n,
+                                          lamb) * self.ds(neumann_idx)
+
+        L_a = -facet_integral(beta_map * dot(vbar, w))
+        H_a = facet_integral(dot(outer_ubar_a*n, tau)) \
+            - dot(outer_ubar_a*n, tau) * self.ds(neumann_idx)
+        B_a = facet_integral(beta_map * dot(vbar, wbar))
+
+        # RHS contributions
+        Q_a = dot(v_int, w) * dx
+        R_a = dot(v_star, tau)/dt * dx \
+            + (1-theta_map)*inner(outer_v_a_o, grad(tau))*dx \
+            - gamma * dot(h, tau) * self.ds(neumann_idx)
+        S_a = facet_integral(dot(Constant(zero_vec), wbar))
+
+        return self.__get_form_dict(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
+
     def forms_theta_nlinear_multiphase(self, rho, rho0, rho00, rhobar, v0, Ubar0, dt, theta_map,
                                        theta_L=Constant(1.0), duh0=Constant((0., 0.)),
                                        duh00=Constant((0., 0)),

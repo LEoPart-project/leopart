@@ -69,7 +69,7 @@ pres    = 960 #480
 
 # Time stepping
 Tend    = .2
-dt      = Constant(1.25e-2)
+dt      = Constant(2.5e-2) #Constant(1.25e-2)
 
 # Viscosity
 nu      = Constant(2e-3)
@@ -228,7 +228,7 @@ while step < num_steps:
     ap.do_step(float(dt))
 
     # Do failsafe sweep
-    AD.do_sweep_failsafe(4)
+    AD.do_sweep_failsafe(7)
     del(t1)
 
     # Do constrained projection
@@ -236,7 +236,7 @@ while step < num_steps:
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] Solve")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'mumps', 'default')
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'bicgstab', 'hypre_amg')
     del(t1)
 
     # Solve Stokes
