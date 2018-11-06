@@ -316,7 +316,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(const BoundaryMesh& b
   std::size_t* val = boundary_facets.values();
   std::vector<std::size_t> bfacet_idcs;
 
-  for (std::size_t i = 0; i<boundary_facets.size(); i++)
+  for (std::size_t i = 0; i < boundary_facets.size(); i++)
   {
     bfacet_idcs.push_back(*(val + i));
     // Make sure that diff equals 0
