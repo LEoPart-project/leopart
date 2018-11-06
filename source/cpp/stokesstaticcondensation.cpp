@@ -269,7 +269,7 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal
     }else{
         // Iterative solver
         std::size_t num_it = solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
-        //if(MPI::rank(mpi_comm) == 0) std::cout<<"Number of iterations"<<num_it<<std::endl;
+        if(MPI::rank(mpi_comm) == 0) std::cout<<"Number of iterations"<<num_it<<std::endl;
     }
     // Backsubtitution in Ulocal
     backsubtitute(Uglobal, Ulocal);

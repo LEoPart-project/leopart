@@ -168,6 +168,70 @@ class FormsStokes:
         S_S = facet_integral(dot(Constant(zero_vec), wbar))
         return self.__get_form_dict(A_S, G_S, G_ST, B_S, Q_S, S_S)
 
+    def forms_unsteady_laplacian(self, ustar, dt, nu, f):
+        '''
+        Forms for Backward-Euler time integration, with
+        viscosity in Laplacian formulation
+        '''
+
+        w, q = TestFunctions(self.mixedL)
+        u, p = TrialFunctions(self.mixedL)
+        wbar, qbar = TestFunctions(self.mixedG)
+        ubar, pbar = TrialFunctions(self.mixedG)
+
+        # Infer geometric dimension
+        zero_vec = np.zeros(self.gdim)
+
+        n = self.n
+        he = self.he
+        alpha = self.alpha
+        beta_stab = self.beta_stab
+        facet_integral = self.facet_integral
+
+        pI = p*Identity(self.mixedL.sub(1).ufl_cell().topological_dimension())
+        pbI = pbar * \
+            Identity(self.mixedL.sub(1).ufl_cell().topological_dimension())
+
+        # Upper left block
+        # Contribution comes from local momentum balance
+        AB = dot(u, w)/dt * dx \
+            + inner(nu*grad(u), grad(w))*dx \
+            + facet_integral(dot(-nu*grad(u)*n
+                                 + (nu*alpha/he)*u, w)) \
+            + facet_integral(dot(-nu*u, grad(w)*n)) \
+            - inner(pI, grad(w))*dx
+        # Contribution comes from local mass balance
+        BtF = -dot(q, div(u))*dx - \
+            facet_integral(beta_stab*he/(nu+1)*dot(p, q))
+        A_S = AB + BtF
+
+        # Upper right block G
+        # Contribution from local momentum
+        CD = facet_integral(-alpha/he*nu*inner(ubar, w)) \
+            + facet_integral(nu*inner(ubar, grad(w)*n)) \
+            + facet_integral(dot(pbI*n, w))
+        H = facet_integral(beta_stab*he/(nu+1)*dot(pbar, q))
+        G_S = CD + H
+
+        # Transpose block
+        CDT = facet_integral(-alpha/he*nu*inner(wbar, u)) \
+            + facet_integral(nu*inner(wbar, grad(u)*n)) \
+            + facet_integral(qbar * dot(u, n))
+        HT = facet_integral(beta_stab*he/(nu+1)*dot(p, qbar))
+        G_ST = CDT + HT
+
+        # Lower right block B
+        KL = facet_integral(alpha/he*nu*dot(ubar, wbar)) - \
+            facet_integral(dot(pbar*n, wbar))
+        LtP = -facet_integral(dot(ubar, n)*qbar) - \
+            facet_integral(beta_stab*he/(nu+1) * pbar * qbar)
+        B_S = KL + LtP
+
+        # Righthandside
+        Q_S = dot(f, w)*dx + dot(ustar, w)/dt * dx
+        S_S = facet_integral(dot(Constant(zero_vec), wbar))
+        return self.__get_form_dict(A_S, G_S, G_ST, B_S, Q_S, S_S)
+
     def facet_integral(self, integrand):
         # - integrand *self.ds(99)
         return integrand('-')*dS + integrand('+')*dS + integrand*ds
