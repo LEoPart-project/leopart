@@ -17,7 +17,6 @@ def test_advect_periodic(advection_scheme):
     xmax, ymax, zmax = 1., 1., 1.
 
     mesh = UnitCubeMesh(10, 10, 10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     lims = np.array([[xmin, xmin, ymin, ymax, zmin, zmax],[xmax, xmax, ymin, ymax, zmin, zmax],
                     [xmin, xmax, ymin, ymin, zmin, zmax],[xmin, xmax, ymax, ymax, zmin, zmax],
@@ -36,11 +35,11 @@ def test_advect_periodic(advection_scheme):
     p = particles(x, [x*0, x**2], mesh)
 
     if advection_scheme == 'euler':
-        ap= advect_particles(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+        ap= advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
     elif advection_scheme == 'rk2':
-        ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+        ap= advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
     elif advection_scheme == 'rk3':
-        ap= advect_rk3(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+        ap= advect_rk3(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
     t  = 0.

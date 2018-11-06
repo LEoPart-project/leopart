@@ -68,7 +68,6 @@ def test_advect_particle():
 
     # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10, 10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'), degree=3)
     V = VectorFunctionSpace(mesh, "CG", 1)
@@ -81,7 +80,7 @@ def test_advect_particle():
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        ap= advect_particles(p, V, v, bmesh, 'closed', 'none')
+        ap= advect_particles(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
         t = 0.
         while t<2.-1e-12:
@@ -102,7 +101,6 @@ def test_advect_particle_rk2():
 
     # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
     V = VectorFunctionSpace(mesh,"CG", 1)
@@ -115,7 +113,7 @@ def test_advect_particle_rk2():
 
     for dt in dt_list:
         p = particles(x, [x,x], mesh)
-        ap= advect_rk2(p, V, v, bmesh, 'closed', 'none')
+        ap= advect_rk2(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
 
         t = 0.
@@ -136,7 +134,6 @@ def test_advect_particle_rk3():
 
     # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
     V = VectorFunctionSpace(mesh,"CG", 1)
@@ -149,7 +146,7 @@ def test_advect_particle_rk3():
     error_list = []
     for dt in dt_list:
         p = particles(x, [x,x], mesh)
-        ap= advect_rk3(p, V, v, bmesh, 'closed', 'none')
+        ap= advect_rk3(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
 
         t = 0.
@@ -170,7 +167,6 @@ def decorate_periodic_tests(my_func):
         ymin = 0.; ymax = 1.
 
         mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-        bmesh  = BoundaryMesh(mesh,'exterior')
 
         lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                          [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -182,7 +178,7 @@ def decorate_periodic_tests(my_func):
         x = comm.bcast(x, root=0)
         dt= 0.05
 
-        xp0, xpE = my_func(mesh,bmesh,lims,V, vexpr,x,dt)
+        xp0, xpE = my_func(mesh, lims, V, vexpr, x, dt)
 
         xp0_root = comm.gather( xp0, root = 0)
         xpE_root = comm.gather( xpE, root = 0)
@@ -201,7 +197,6 @@ def test_advect_particle_periodic():
     ymin = 0.; ymax = 1.
 
     mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                          [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -217,7 +212,7 @@ def test_advect_particle_periodic():
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap= advect_particles(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    ap= advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
     t  = 0.
@@ -241,7 +236,6 @@ def test_advect_particle_periodic_rk2():
     ymin = 0.; ymax = 1.
 
     mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                          [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -257,7 +251,7 @@ def test_advect_particle_periodic_rk2():
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    ap= advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
     t  = 0.
@@ -281,7 +275,6 @@ def test_advect_particle_periodic_rk3():
     ymin = 0.; ymax = 1.
 
     mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
     lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
                          [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
@@ -297,7 +290,7 @@ def test_advect_particle_periodic_rk3():
     v.assign(vexpr)
 
     p = particles(x, [x[:,0]*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    ap= advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
     t  = 0.
