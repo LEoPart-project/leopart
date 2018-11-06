@@ -20,6 +20,6 @@ points, cells, _, _, _ = pygmsh.generate_mesh(geom)
 import meshio
 # Prune topology and save 2D
 cells = {'triangle':cells['triangle']}
-# points = points[:,:2]
+points = points[:,:2]
 
 meshio.write_points_cells("circle.xml", points, cells)

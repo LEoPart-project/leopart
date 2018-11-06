@@ -137,7 +137,7 @@ void AddDelete::insert_particles(const std::size_t Np_def, const Cell& dolfin_ce
             pnew.push_back(xp_new);
 
         // Push back to particles
-        _P->_cell2part[dolfin_cell.index()].push_back(pnew);
+        _P->add_particle(dolfin_cell.index(), pnew);
     }
 }
 //
@@ -170,13 +170,15 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def, const Cell& 
         std::vector<double> distance;
         double distance_sum(0);
         double distance_p;
-        for (auto p: _P->_cell2part[cidx]){
-            distance_p = xp_new.squared_distance(p[0]);
-            distance.push_back(distance_p);
-            distance_sum += distance_p;
+        for (unsigned int i = 0; i < _P->num_cell_particles(cidx); ++i)
+        {
+          const Point& p = _P->x(cidx, i);
+          distance_p = xp_new.squared_distance(p);
+          distance.push_back(distance_p);
+          distance_sum += distance_p;
         }
 
-        if(distance_sum > 0.){
+        if (distance_sum > 0.){
             // Then loop over the particle template
             for(std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++ ){
                 Point point_value;
@@ -218,7 +220,7 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def, const Cell& 
         while(pnew.size() < _P->num_properties())
             pnew.push_back(xp_new);
 
-        _P->_cell2part[dolfin_cell.index()].push_back(pnew);
+        _P->add_particle(dolfin_cell.index(), pnew);
     }
 }
 //
@@ -244,22 +246,22 @@ void AddDelete::delete_particles(const std::size_t Np_surp, const std::size_t Np
             }
         }
         // Store in pair
-        pdistance_pair.push_back( std::make_pair(pdistance[0] + pdistance[1], pidx1) );
+        pdistance_pair.push_back(std::make_pair(pdistance[0] + pdistance[1], pidx1));
     }
 
     // Sort (ascending!)
-    std::sort(pdistance_pair.begin(),pdistance_pair.end());
-    std::vector<std::size_t> remove_idcs;
+    std::sort(pdistance_pair.begin(), pdistance_pair.end());
 
-    for(std::size_t prmv = 0; prmv < Np_surp; prmv++){
-        remove_idcs.push_back(pdistance_pair[prmv].second);
-    }
+    std::vector<std::size_t> remove_idcs;
+    for(std::size_t prmv = 0; prmv < Np_surp; ++prmv)
+      remove_idcs.push_back(pdistance_pair[prmv].second);
+
     std::sort(remove_idcs.begin(), remove_idcs.end());
 
     // And finally remove
-    for(std::size_t prmv = 0; prmv < Np_surp; prmv++){
-        _P->_cell2part[cidx].erase(_P->_cell2part[cidx].begin() + (remove_idcs[prmv]- prmv) );
-    }
+    for(std::size_t prmv = 0; prmv < Np_surp; ++prmv)
+      _P->delete_particle(cidx, remove_idcs[prmv] - prmv);
+
 }
 
 void AddDelete::initialize_random_position(Point& xp_new, const std::vector<double>& x_min_max, const Cell& dolfin_cell){

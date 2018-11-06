@@ -12,7 +12,6 @@
 """
 
 from dolfin import *
-from mshr import *
 from mpi4py import MPI as pyMPI
 import numpy as np
 
@@ -83,8 +82,10 @@ outdir = './../results/SlottedDisk_Rotation/'
 outfile= File(outdir+'psi_h.pvd')
 
 # Mesh
-domain = Circle(Point(x0,y0),r,nx*4)
-mesh = generate_mesh(domain,nx)
+mesh = Mesh('circle.xml')
+mesh = refine(mesh)
+mesh = refine(mesh)
+mesh = refine(mesh)
 bmesh  = BoundaryMesh(mesh,'exterior')
 
 # Set slotted disk
