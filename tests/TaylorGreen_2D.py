@@ -114,7 +114,6 @@ xmin, ymin = geometry['xmin'], geometry['ymin']
 xmax, ymax = geometry['xmax'], geometry['ymax']
 
 mesh = RectangleMesh(MPI.comm_world, Point(xmin,ymin), Point(xmax,ymax), nx,ny)
-bmesh= BoundaryMesh(mesh, 'exterior')
 pbc  = PeriodicBoundary(geometry)
 
 # xdmf output
@@ -176,7 +175,7 @@ lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
 # the second slot will be to store old velocities at particle level
 property_idx = 1
 p   = particles(x, [s, s], mesh)
-ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten(), 'none')
+ap  = advect_rk3(p, W_2, Udiv, 'periodic', lims.flatten(), 'none')
 
 # Particle management
 AD = AddDelete(p, 10, 20, [Udiv, duh0])

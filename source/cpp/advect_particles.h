@@ -46,24 +46,30 @@ namespace dolfin{
     public:
         // Constructors
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                         const BoundaryMesh& bmesh, const std::string type1,
+                         const std::string type1,
                          const std::string update_particle = "none");
+
+        // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                         const BoundaryMesh& bmesh, const std::string type1,
+                         const std::string type1,
                          Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                          const std::string update_particle = "none");
 
+        // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const BoundaryMesh& bmesh, const std::string type1,
                          Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
                          const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                          const std::string update_particle = "none");
+
+        // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
                          const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
                          Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                          const std::string update_particle = "none" );
 
+        // Step forward in time dt
         void do_step(double dt);
 
         // Destructor
@@ -73,10 +79,10 @@ namespace dolfin{
         particles* _P;
 
         void set_facets_info();
-        void set_bfacets(const BoundaryMesh& bmesh, const std::string btype);
+        void set_bfacets(const std::string btype);
         void set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
 
-        std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh);
+        std::vector<std::size_t> boundary_facets();
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
         std::vector<std::size_t> interior_facets();
 
@@ -128,9 +134,9 @@ namespace dolfin{
     {
     public:
         // Constructors
-        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
                    const std::string update_particle = "none" );
-        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
@@ -179,9 +185,9 @@ namespace dolfin{
     {
     public:
         // Constructors
-        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
                    const std::string update_particle = "none" );
-        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
+        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                    const std::string update_particle = "none" );
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
