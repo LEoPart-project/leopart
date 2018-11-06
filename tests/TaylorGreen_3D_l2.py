@@ -13,7 +13,7 @@ from DolfinParticles import (particles, advect_rk3, RandomBox,
                              FormsPDEMap, FormsStokes)
 import os
 
-#parameters["lu_solver"]["symmetric"] = True
+set_log_level(20)
 
 comm = pyMPI.COMM_WORLD
 
@@ -26,7 +26,6 @@ class PeriodicBoundary(SubDomain):
 
     def inside(self, x, on_boundary):
         xmin, xmax, ymin, ymax, zmin, zmax = self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax
-        #xmin, ymin, zmin, xmax, ymax, zmax = 0. , 0., 0., 1., 1., 1.
         return  bool( ( near(x[0], xmin) or  near(x[1], ymin) or near(x[2], zmin)) and \
                     (not (( near(x[0], xmin) and near(x[1], ymax) ) or \
                           ( near(x[0], xmin) and near(x[2], zmax) ) or \
@@ -88,17 +87,17 @@ def assign_particle_values(x, u_exact):
 geometry = {'xmin': -1., 'ymin': -1., 'zmin': -1, 'xmax': 1., 'ymax': 1., 'zmax': 1.}
 
 # Mesh resolution
-nx, ny, nz = 20, 20, 20
+nx, ny, nz = 32, 32, 32
 
 # Particle resolution
-pres    = 150
+pres = 250
 
 # Time stepping
-Tend    = 20e-2
-dt      = Constant(10e-2)
+Tend = 1.5
+dt = Constant(2.5e-2)
 
 # Viscosity
-nu      = Constant(2e-3)
+nu = Constant(1e-3)
 
 # Stokes related
 k       = 1
@@ -122,14 +121,9 @@ mode  = 1.
 outdir_base = './../results/TaylorGreen_3D_lores/'
 ###################################
 
-#outfile_u = File(outdir_base+'u_local.pvd')
-#outfile_p = File(outdir_base+'p_local.pvd')
-#outfile_r = File(outdir_base+'vorticity.pvd')
-
 U_exact = (' U*sin(mode*pi*(x[0])) * cos(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
            '-U*cos(mode*pi*(x[0])) * sin(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
            ' 0.')
-           #' U*sin(mode*pi*(x[0])) * sin(mode*pi*(x[1])) * cos(mode*pi*(x[2]))')
 u_exact = Expression(U_exact, degree = 7, U=float(1.), nu=float(nu), mode = mode)
 
 f = Constant((0.,0.,0.))
@@ -214,7 +208,7 @@ AD = AddDelete(p, 15, 25, [Udiv, duh0])
 
 # Forms PDE map
 funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
-forms_adv      = FormsPDEMap(mesh, funcspace_dict).forms_theta_nlinear_np(u0_a, u_l2, ubar0_a, dt, \
+forms_adv      = FormsPDEMap(mesh, funcspace_dict, beta_map=Constant(1e-5)).forms_theta_nlinear(u0_a, ubar0_a, dt, \
                     theta_map = Constant(1.0), theta_L = theta_L, duh0 = duh0, duh00 = duh00)
 pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
                                                                                    forms_adv['H_a'],
@@ -227,7 +221,7 @@ pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'
 bc1 = DirichletBC(mixedG.sub(1), Constant(0), Corner(geometry), "pointwise")
 bcs = [bc1]
 
-forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
+forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady_laplacian(ustar,dt,nu,f)
 
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
                                                          forms_stokes['B_S'],
@@ -261,15 +255,17 @@ while step < num_steps:
     del(t1)
 
     # Do l2 project
-    lstsq_u.project(u_l2.cpp_object())
-
+    t1 = Timer("[P] l2 projection")
+    lstsq_u.project(ustar.cpp_object())
+    del(t1)
     # Do constrained projection
-    t1 = Timer("[P] assemble projection")
-    pde_projection.assemble(True, True)
-    del(t1)
-    t1 = Timer("[P] solve projection")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'bicgstab', 'hypre_amg')
-    del(t1)
+    #t1 = Timer("[P] assemble projection")
+    #pde_projection.assemble(True, True)
+    #del(t1)
+    #t1 = Timer("[P] solve projection")
+    #pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'bicgstab', 'hypre_amg') 
+    #pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'amg')
+    #del(t1)
 
     # Solve Stokes
     t1 = Timer("[P] Stokes assemble ")
@@ -278,7 +274,7 @@ while step < num_steps:
         ssc.apply_boundary(bc)
     del(t1)
     t1 = Timer("[P] Stokes solve")
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "none")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "hypre_amg")
     del(t1)
 
     # Needed for particle advection
@@ -288,19 +284,17 @@ while step < num_steps:
     assign(ubar0_a, Uhbar.sub(0))
     assign(u0_a, ustar);  assign(duh00, duh0); assign(duh0, project(Uh.sub(0)-ustar,W_2))
 
-    #p.increment(Udiv, ustar, 1)
+    #p.interpolate(Udiv.cpp_object(), 1)
+    #p.increment(Udiv.cpp_object(), ustar, 1)
     p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1,2], dtype = np.uintp), theta_p, step)
 
     if step == 2: theta_L.assign(theta_next)
-
-    #outfile_u << Uh.sub(0)
-    #outfile_p << Uh.sub(1)
+    
     xdmf_u.write(Uh.sub(0), t)
     xdmf_p.write(Uh.sub(1), t)
 
     # Compute vorticity
     curl_func.assign( project(curl(Uh.sub(0)), W_2) )
-    #outfile_r << curl_func
     xdmf_curl.write(curl_func, t)
 
 timer.stop()

@@ -69,7 +69,7 @@ pres    = 960 #480
 
 # Time stepping
 Tend    = .2
-dt      = Constant(2.5e-2) #Constant(1.25e-2)
+dt      = Constant(1.25e-2) #Constant(1.25e-2)
 
 # Viscosity
 nu      = Constant(2e-3)
@@ -196,7 +196,7 @@ pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'
 bc1 = DirichletBC(mixedG.sub(1), Constant(0), Corner(geometry), "pointwise")
 bcs = [bc1]
 
-forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
+forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady_laplacian(ustar,dt,nu,f)
 
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
                                                          forms_stokes['B_S'], 
@@ -236,7 +236,7 @@ while step < num_steps:
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] Solve")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'bicgstab', 'hypre_amg')
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'hypre_amg')
     del(t1)
     
     # Solve Stokes

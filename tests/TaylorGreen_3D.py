@@ -13,7 +13,9 @@ from DolfinParticles import (particles, advect_rk3, RandomBox,
                              FormsPDEMap, FormsStokes)
 import os
 
-#parameters["lu_solver"]["symmetric"] = True
+parameters["krylov_solver"]["maximum_iterations"] = 1000
+parameters["krylov_solver"]["monitor_convergence"] = True
+parameters["krylov_solver"]["nonzero_initial_guess"] = True
 
 comm = pyMPI.COMM_WORLD
 
@@ -94,8 +96,8 @@ nx, ny, nz = 20, 20, 20
 pres    = 150
 
 # Time stepping
-Tend    = 20e-2
-dt      = Constant(10e-2)
+Tend    = 10e-2
+dt      = Constant(5e-2)
 
 # Viscosity
 nu      = Constant(2e-3)
@@ -173,6 +175,7 @@ duh0    = Function(W_2)
 duh00   = Function(W_2)
 
 ubar0_a = Function(Wbar_2_H12)
+#ubar0_a = Function(W_2)
 ubar_a  = Function(Wbar_2)
 Udiv    = Function(W_2)
 
@@ -261,7 +264,10 @@ while step < num_steps:
     pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] solve projection")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'bicgstab', 'hypre_amg')
+    #if step <= 2:
+    #    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'gmres', 'petsc_amg')
+    #else:
+    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'hypre_amg')
     del(t1)
 
     # Solve Stokes
@@ -271,17 +277,20 @@ while step < num_steps:
         ssc.apply_boundary(bc)
     del(t1)
     t1 = Timer("[P] Stokes solve")
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "none")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "hypre_amg")
     del(t1)
 
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
 
     # Needed for constrained map
+    #assign(ubar0_a, ubar_a)
     assign(ubar0_a, Uhbar.sub(0))
+    #assign(ubar0_a, Udiv)
     assign(u0_a, ustar);  assign(duh00, duh0); assign(duh0, project(Uh.sub(0)-ustar,W_2))
 
-    #p.increment(Udiv, ustar, 1)
+    #p.interpolate(Udiv.cpp_object(), 1)
+    #p.increment(Udiv.cpp_object(), ustar, 1)
     p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1,2], dtype = np.uintp), theta_p, step)
 
     if step == 2: theta_L.assign(theta_next)
