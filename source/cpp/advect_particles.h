@@ -79,7 +79,6 @@ namespace dolfin{
 
         std::vector<std::size_t> boundary_facets();
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-        std::vector<std::size_t> interior_facets();
 
         // Initialize open, closed and periodic facets
         std::vector<std::size_t> obc_facets, cbc_facets, pbc_facets;

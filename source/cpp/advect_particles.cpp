@@ -330,17 +330,6 @@ std::vector<std::size_t> advect_particles::boundary_facets(
   return bfacet_idcs;
 }
 //-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::interior_facets()
-{
-  std::vector<std::size_t> interior_fids;
-  std::size_t D = _P->mesh()->topology().dim();
-  for (FacetIterator f(*(_P->mesh())); !f.end(); ++f)
-    if (f->num_entities(D) == 1 and f->num_global_entities(D) == 2)
-      interior_fids.push_back(f->index());
-
-  return interior_fids;
-}
-//-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
 {
   const Mesh* mesh = _P->mesh();
@@ -1038,7 +1027,6 @@ void advect_rk2::do_step(double dt)
 
   const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
   std::size_t gdim = _P->mesh()->geometry().dim();
-
   std::size_t num_processes = MPI::size(mpi_comm);
 
   std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
@@ -1060,6 +1048,7 @@ void advect_rk2::do_step(double dt)
                                            coeffs.begin(), coeffs.end());
       }
 
+      // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
@@ -1075,26 +1064,28 @@ void advect_rk2::do_step(double dt)
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
-        if (step == 0)
-          _P->set_property(ci->index(), i, up0_idx, up);
-        else
-        {
-          // Goto next particle, this particle hitted closed bound
-          if (_P->property(ci->index(), i, up0_idx)[0]
-              == std::numeric_limits<double>::max())
-            continue;
-          up += _P->property(ci->index(), i, up0_idx);
-          up *= 0.5;
-        }
 
         // Reset position to old
-        if (step == 1)
-          _P->set_property(ci->index(), i, 0,
-                           _P->property(ci->index(), i, xp0_idx));
+        _P->set_property(ci->index(), i, 0,
+                         _P->property(ci->index(), i, xp0_idx));
+
+        if (step == 0)
+          _P->set_property(ci->index(), i, up0_idx, up * weights[step]);
+        else
+        {
+          Point up0 = _P->property(ci->index(), i, up0_idx);
+          if (up0[0] == std::numeric_limits<double>::max())
+            continue;
+
+          if (step == num_substeps - 1)
+            up = up0 + up * weights[step];
+          else
+            _P->set_property(ci->index(), i, up0_idx, up0 + up * weights[step]);
+        }
 
         // Do substep
-        do_substep(dt, up, ci->index(), &i, step, num_substeps, xp0_idx,
-                   up0_idx, reloc_local_c, reloc_local_p);
+        do_substep(dt * dti[step], up, ci->index(), &i, step, num_substeps,
+                   xp0_idx, up0_idx, reloc_local_c, reloc_local_p);
       }
     }
 
@@ -1174,7 +1165,7 @@ advect_rk3::advect_rk3(
 //-----------------------------------------------------------------------------
 void advect_rk3::do_step(double dt)
 {
-  if (dt < 0.)
+  if (dt <= 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
 
@@ -1205,7 +1196,6 @@ void advect_rk3::do_step(double dt)
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-
         Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
                                    _element);
 
@@ -1219,32 +1209,24 @@ void advect_rk3::do_step(double dt)
 
         Point up(gdim, u_p.data());
 
-        // Then reset position to the old position
+        // Reset position to the original position
         _P->set_property(ci->index(), i, 0,
                          _P->property(ci->index(), i, xp0_idx));
 
         if (step == 0)
-          _P->set_property(ci->index(), i, up0_idx, up * (weights[step]));
-        else if (step == 1)
+          _P->set_property(ci->index(), i, up0_idx, up * weights[step]);
+        else
         {
-          Point p = _P->property(ci->index(), i, up0_idx);
-          if (p[0] == std::numeric_limits<double>::max())
-            continue;
-          _P->set_property(ci->index(), i, up0_idx, p + up * (weights[step]));
-        }
-        else if (step == 2)
-        {
-          Point p = _P->property(ci->index(), i, up0_idx);
-          if (p[0] == std::numeric_limits<double>::max())
-            continue;
-          up *= weights[step];
-          up += _P->property(ci->index(), i, up0_idx);
-        }
+          Point up0 = _P->property(ci->index(), i, up0_idx);
 
-        // Reset position to old
-        if (step == 1)
-          _P->set_property(ci->index(), i, 0,
-                           _P->property(ci->index(), i, xp0_idx));
+          if (up0[0] == std::numeric_limits<double>::max())
+            continue;
+
+          if (step == num_substeps - 1)
+            up = up0 + up * weights[step];
+          else
+            _P->set_property(ci->index(), i, up0_idx, up0 + up * weights[step]);
+        }
 
         // Do substep
         do_substep(dt * dti[step], up, ci->index(), &i, step, num_substeps,
@@ -1259,7 +1241,7 @@ void advect_rk3::do_step(double dt)
         _P->add_particle(reloc_local_c[i], reloc_local_p[i]);
       else
       {
-        dolfin_error("advection_rk2.cpp::do_step",
+        dolfin_error("advection_rk3.cpp::do_step",
                      "find a hosting cell on local process", "Unknown");
       }
     }

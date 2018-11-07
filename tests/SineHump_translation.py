@@ -18,7 +18,7 @@ import os
 
 # Load from package
 from DolfinParticles import (particles, advect_particles, PDEStaticCondensation,
-                     RegularRectangle, FormsPDEMap, SineHump)
+                             RegularRectangle, FormsPDEMap, SineHump)
 
 #set_log_level(PROGRESS)
 comm = pyMPI.COMM_WORLD
