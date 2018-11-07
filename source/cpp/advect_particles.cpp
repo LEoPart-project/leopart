@@ -168,73 +168,54 @@ advect_particles::advect_particles(
 //-----------------------------------------------------------------------------
 void advect_particles::set_facets_info()
 {
-  //
-  // In 2D, we have the following dimensions
-  //      0       Vertices
-  //      1       Facets
-  //      2       Cells
-  //
+  // Cache midpoint, and normal of each facet in mesh
+  // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
+  // etc.
 
-  std::size_t tdim = _P->mesh()->topology().dim();
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  const Mesh* mesh = _P->mesh();
+  std::size_t tdim = mesh->topology().dim();
+  std::size_t gdim = mesh->geometry().dim();
+  const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
-  for (FacetIterator fi(*(_P->mesh())); !fi.end(); ++fi)
+  for (FacetIterator fi(*mesh); !fi.end(); ++fi)
   {
-    // std::cout<<"Facet Index "<<fi->index()<<std::endl;
-
     // Get and store facet normal and facet midpoint
     Point facet_n = fi->normal();
     Point facet_mp = fi->midpoint();
-    std::vector<double> facet_n_coords(facet_n.coordinates(),
-                                       facet_n.coordinates() + gdim);
-    std::vector<double> facet_mp_coords(facet_mp.coordinates(),
-                                        facet_mp.coordinates() + gdim);
-
-    // Initialize facet vertex coordinates (assume simplicial mesh)
-    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic> fv_coords(gdim, gdim);
-
-    // Initialize cell connectivity vector and normal direction
-    std::vector<std::size_t> cellfcell; // A facet allways connects 2 elements
     std::vector<bool> outward_normal;
 
-    // Vertex coordinate vector for simplical elements
-    std::vector<double> cvertex_coords((gdim + 1) * gdim);
-    std::size_t k = 0;
-    for (VertexIterator vi(*fi); !vi.end(); ++vi)
-    {
-      for (std::size_t j = 0; j < gdim; j++)
-        fv_coords(k, j) = *(vi->x() + j);
-      ++k;
-    }
-
-    Eigen::Array<double, 1, Eigen::Dynamic> pv_coords(gdim);
+    unsigned int i = 0;
     for (CellIterator ci(*fi); !ci.end(); ++ci)
     {
-      // std::cout<<"Neighbor cells"<<ci->index()<<std::endl;
-      ci->get_vertex_coordinates(cvertex_coords);
+      const unsigned int* cell_facets = ci->entities(tdim - 1);
 
-      // Now check if we can find any mismatching vertices
-      bool outward_pointing
-          = true; // By default, we assume outward pointing normal
-      for (std::size_t l = 0; l < (gdim + 1) * gdim; l += gdim)
+      // Find which facet this is in the cell
+      const std::size_t local_index
+          = std::find(cell_facets, cell_facets + num_cell_facets, fi->index())
+            - cell_facets;
+      assert(local_index < num_cell_facets);
+
+      // Get cell vertex opposite facet
+      Vertex v(*mesh, ci->entities(0)[local_index]);
+
+      // Take vector from facet midpoint to opposite vertex
+      // and compare to facet normal.
+      const Point q = v.point() - facet_mp;
+      const double dir = q.dot(facet_n);
+      assert(std::abs(dir) > 1e-10);
+      bool outward_pointing = (dir < 0);
+
+      // Make sure that the facet normal is always outward pointing
+      // from Cell 0.
+      if (!outward_pointing and i == 0)
       {
-        Eigen::Map<Eigen::Array<double, 1, Eigen::Dynamic>> cv_coords(
-            cvertex_coords.data() + l, gdim);
-        pv_coords = cv_coords - fv_coords.row(0);
-
-        double l2diff
-            = std::inner_product(facet_n_coords.begin(), facet_n_coords.end(),
-                                 pv_coords.data(), 0.0);
-        if (l2diff > 1E-10)
-        {
-          outward_pointing = false;
-          break;
-        }
+        facet_n *= -1.0;
+        outward_pointing = true;
       }
 
-      // Store relevant data
-      cellfcell.push_back(ci->index());
+      // Store outward normal bool for safety check (below)
       outward_normal.push_back(outward_pointing);
+      ++i;
     }
 
     // Perform some safety checks
@@ -257,10 +238,6 @@ void advect_particles::set_facets_info()
     }
     else if (fi->num_entities(tdim) == 2)
     {
-      if (cellfcell[0] == cellfcell[1])
-        dolfin_error("advect_particles.cpp::set_facets_info",
-                     "get correct facet 2 cell connectivity.",
-                     "Neighboring cells ");
       if (outward_normal[0] == outward_normal[1])
       {
         dolfin_error(
@@ -277,7 +254,7 @@ void advect_particles::set_facets_info()
     }
 
     // Store info in facets_info variable
-    facet_info finf({*fi, facet_mp, facet_n, cellfcell, outward_normal});
+    facet_info finf({facet_mp, facet_n});
     facets_info.push_back(finf);
   } // End facet iterator
 }
@@ -580,28 +557,18 @@ advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
   for (unsigned int i = 0; i < c.num_entities(tdim - 1); ++i)
   {
     std::size_t fidx = c.entities(tdim - 1)[i];
+    Facet f(*mesh, fidx);
+
     Point normal = facets_info[fidx].normal;
 
-    // Make sure normal is outward pointing
-    std::vector<std::size_t>::iterator it;
-    it = std::find(facets_info[fidx].cells.begin(),
-                   facets_info[fidx].cells.end(), cidx);
-    std::size_t it_idx = std::distance(facets_info[fidx].cells.begin(), it);
-    if (it_idx == facets_info[fidx].cells.size())
-    {
-      dolfin_error("advect_particles.cpp::time2intersect",
-                   "did not find matching facet cell connectivity", "Unknown");
-    }
-    else
-    {
-      bool outward_normal = facets_info[fidx].outward[it_idx];
-      if (!outward_normal)
-        normal *= -1.;
-    }
+    // Normal points outward from Cell 0, so reverse if this is Cell 1 of the
+    // Facet
+    if (f.entities(tdim)[0] != cidx)
+      normal *= -1.0;
 
     // Compute distance to point. For procedure, see Haworth (2010). Though it
     // is slightly modified
-    double h = facets_info[fidx].facet.distance(xp);
+    double h = f.distance(xp);
 
     // double dtintd = std::max(0., h / (up.dot(normal)) ); //See Haworth
     double denom = up.dot(normal);
@@ -881,6 +848,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
     else
     {
       Facet f(*mesh, target_facet);
+      const unsigned int* fcells = f.entities(tdim);
 
       // Two options: if internal (==2) else if boundary
       if (f.num_entities(tdim) == 2)
@@ -889,14 +857,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
         _P->push_particle(dt_int, up, cidx, *pidx);
 
         // Update index of receiving cell
-        for (std::size_t cidx_iter : facets_info[target_facet].cells)
-        {
-          if (cidx_iter != cidx_recv)
-          {
-            cidx_recv = cidx_iter;
-            break;
-          }
-        }
+        cidx_recv = (fcells[0] == cidx_recv) ? fcells[1] : fcells[0];
 
         // Update remaining time
         dt_rem -= dt_int;

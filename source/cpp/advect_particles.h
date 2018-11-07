@@ -31,11 +31,8 @@ namespace dolfin{
 
     typedef struct facet_info_t
     {
-      Facet facet;
       Point midpoint;
       Point normal;
-      std::vector<std::size_t> cells;
-      std::vector<bool> outward;
     } facet_info;
 
     class advect_particles
