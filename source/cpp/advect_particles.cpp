@@ -17,10 +17,6 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
     */
     set_bfacets(type1);
 
-    // If run in parallel, then get interior facet indices
-    if (MPI::size(_P->mesh()->mpi_comm()) > 1)
-      int_facets = interior_facets();
-
     // Set facet and cell2facet info
     cell2facet.resize(_P->mesh()->num_cells());
     set_facets_info();
@@ -95,8 +91,6 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
 
     set_bfacets(bmesh, type1, indices1);
     set_bfacets(bmesh, type2, indices2);
-    if (MPI::size(_P->mesh()->mpi_comm()) > 1)
-      int_facets = interior_facets();
 
     // Length should amount to size of boundary mesh, works in 3D?
     if((obc_facets.size() + cbc_facets.size() + pbc_facets.size()) != bmesh.num_cells())
@@ -174,10 +168,8 @@ void advect_particles::set_facets_info()
   //      2       Cells
   //
 
-  std::size_t _cdim = _P->mesh()->topology().dim();
+  std::size_t tdim = _P->mesh()->topology().dim();
   std::size_t gdim = _P->mesh()->geometry().dim();
-  std::size_t _fdim = _cdim - 1;
-  std::size_t _vdim = _fdim - 1;
 
   for (FacetIterator fi(*(_P->mesh())); !fi.end(); ++fi )
   {
@@ -238,7 +230,7 @@ void advect_particles::set_facets_info()
     if (cellfcell.size() == 1)
     {
       // Then the facet index must be in one of boundary facet lists
-      if ((std::find(int_facets.begin(), int_facets.end(), fi->index()) != int_facets.end()) &&
+      if (fi->num_global_entities(tdim) != 2 &&
           (std::find(obc_facets.begin(), obc_facets.end(), fi->index()) != obc_facets.end()) &&
           (std::find(cbc_facets.begin(), cbc_facets.end(), fi->index()) != cbc_facets.end()) &&
           (std::find(pbc_facets.begin(), pbc_facets.end(), fi->index()) != pbc_facets.end())   )
@@ -359,8 +351,10 @@ std::vector<std::size_t> advect_particles::interior_facets()
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
 {
-  const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
-  const std::size_t gdim = _P->mesh()->geometry().dim();
+  const Mesh* mesh = _P->mesh();
+  const MPI_Comm mpi_comm = mesh->mpi_comm();
+  const std::size_t gdim = mesh->geometry().dim();
+  const std::size_t tdim = mesh->topology().dim();
 
   std::size_t num_processes = MPI::size(mpi_comm);
 
@@ -420,12 +414,11 @@ void advect_particles::do_step(double dt)
               }
               else
               {
-                const Facet f = facets_info[target_facet].facet;
-                const std::size_t D = _P->mesh()->topology().dim();
-                const unsigned int* facet_cells = f.entities(D);
+                const Facet f(*mesh, target_facet);
+                const unsigned int* facet_cells = f.entities(tdim);
 
                 // Two options: if internal (==2) else if boundary
-                if (f.num_entities(D) == 2)
+                if (f.num_entities(tdim) == 2)
                 {
                   // Then we cross facet which has a neighboring cell
                   _P->push_particle(dt_int, up, ci->index(), i);
@@ -447,10 +440,10 @@ void advect_particles::do_step(double dt)
                     }
                   }
                 }
-                else if (f.num_entities(D) == 1)
+                else if (f.num_entities(tdim) == 1)
                 {
                   // Then we hit a boundary, but which type?
-                  if (std::find(int_facets.begin(), int_facets.end(),  target_facet) != int_facets.end())
+                  if (f.num_global_entities(tdim) == 2) // Internal boundary (between processes)
                   {
                     // Then it is an internal boundary
                     // Do a full push
@@ -734,8 +727,11 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
     double dt_rem = dt;
     //std::size_t cidx_recv = cidx;
 
-    const std::size_t mpi_size = MPI::size(_P->mesh()->mpi_comm());
-    const std::size_t gdim = _P->mesh()->geometry().dim();
+    const Mesh* mesh = _P->mesh();
+    const std::size_t mpi_size = MPI::size(mesh->mpi_comm());
+    const std::size_t gdim = mesh->geometry().dim();
+    const std::size_t tdim = mesh->topology().dim();
+
     std::size_t cidx_recv = std::numeric_limits<std::size_t>::max();
 
     if (step == 0)
@@ -806,8 +802,10 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
         }
         else
         {
+          Facet f(*mesh, target_facet);
+
           // Two options: if internal (==2) else if boundary
-          if (facets_info[target_facet].cells.size() == 2 )
+          if (f.num_entities(tdim) == 2 )
           {
             // Then we cross facet which has a neighboring cell
             _P->push_particle(dt_int, up, cidx, *pidx);
@@ -840,10 +838,10 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx, 
               }
             }
           }
-          else if (facets_info[target_facet].cells.size() == 1)
+          else if (f.num_entities(tdim) == 1)
           {
             // Then we hit a boundary, but which type?
-            if(std::find(int_facets.begin(), int_facets.end(), target_facet) != int_facets.end())
+            if (f.num_global_entities(tdim) == 2) // Internal boundary between processes
             {
               _P->push_particle(dt_rem, up, cidx, *pidx);
               dt_rem *= 0.;

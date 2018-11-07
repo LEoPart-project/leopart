@@ -29,8 +29,6 @@
 
 namespace dolfin{
 
-  //    typedef std::tuple<Facet, Point, Point, std::vector<std::size_t>, std::vector<bool> > facet_info;
-
     typedef struct facet_info_t
     {
       Facet facet;
@@ -86,9 +84,8 @@ namespace dolfin{
         std::vector<std::size_t> boundary_facets(const BoundaryMesh& bmesh, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
         std::vector<std::size_t> interior_facets();
 
-        // Initialize interior, open, closed and periodic facets
-        std::vector<std::size_t> int_facets, obc_facets,
-                                 cbc_facets, pbc_facets;
+        // Initialize open, closed and periodic facets
+        std::vector<std::size_t> obc_facets, cbc_facets, pbc_facets;
         std::vector<std::vector<double>>  pbc_lims;     // Coordinates of limits
         bool pbc_active = false;
 
