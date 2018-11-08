@@ -20,7 +20,7 @@ jobs:
             python3 -m flake8 source/
       - run:
           name: Flake8 on tests
-          command:
+          command: |
             python3 -m flake8 unit_tests/test_2d_project.py
             python3 -m flake8 unit_tests/test_3d_advect.py
             python3 -m flake8 unit_tests/test_3d_project.py
