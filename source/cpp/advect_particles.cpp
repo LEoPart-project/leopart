@@ -963,63 +963,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
   } // end_while
 }
 //-----------------------------------------------------------------------------
-advect_particles::~advect_particles() {}
-//
-//-----------------------------------------------------------------------------
-//
-//      RUNGE KUTTA 2
-//
-//-----------------------------------------------------------------------------
-//
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                       const std::string type1,
-                       const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, pbc_limits, update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-    const std::string type1,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-    const std::string type2,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-    const std::string type1,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-    const std::string type2,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       pbc_limits, update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-void advect_rk2::do_step(double dt)
+void advect_particles::do_step_rk(double dt)
 {
   if (dt <= 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
@@ -1108,9 +1052,68 @@ void advect_rk2::do_step(double dt)
       _P->particle_communicator_push();
   }
 }
+
+//-----------------------------------------------------------------------------
+advect_particles::~advect_particles() {}
+//
+//-----------------------------------------------------------------------------
+//
+//      RUNGE KUTTA 2
+//
+//-----------------------------------------------------------------------------
+//
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+                       const std::string type1,
+                       const std::string update_particle)
+    : advect_particles(P, U, uhi, type1, update_particle)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk2::advect_rk2(
+    particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+    const std::string update_particle)
+    : advect_particles(P, U, uhi, type1, pbc_limits, update_particle)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk2::advect_rk2(
+    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+    const std::string type1,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+    const std::string type2,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+    const std::string update_particle)
+    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
+                       update_particle)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk2::advect_rk2(
+    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+    const std::string type1,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+    const std::string type2,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+    const std::string update_particle)
+    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
+                       pbc_limits, update_particle)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+void advect_rk2::do_step(double dt) { do_step_rk(dt); }
 //-----------------------------------------------------------------------------
 advect_rk2::~advect_rk2() {}
-//
+
 //-----------------------------------------------------------------------------
 //
 //      RUNGE KUTTA 3
@@ -1165,93 +1168,6 @@ advect_rk3::advect_rk3(
   init_weights();
 }
 //-----------------------------------------------------------------------------
-void advect_rk3::do_step(double dt)
-{
-  if (dt <= 0.)
-    dolfin_error("advect_particles.cpp::step", "set timestep.",
-                 "Timestep should be > 0.");
-
-  const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
-  const std::size_t gdim = _P->mesh()->geometry().dim();
-  std::size_t num_processes = MPI::size(mpi_comm);
-
-  std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
-  std::size_t num_substeps = 3;
-
-  for (std::size_t step = 0; step < num_substeps; step++)
-  {
-    // Needed for local reloc
-    std::vector<std::size_t> reloc_local_c;
-    std::vector<particle> reloc_local_p;
-
-    for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
-    {
-      if (step == 0)
-      { // Restrict once per cell, once per timestep
-        std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, uh);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
-      }
-
-      // Loop over particles
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
-      {
-        std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-        Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
-                                   _element);
-
-        // Compute value at point using expansion coeffs and basis matrix, first
-        // convert to Eigen matrix
-        Eigen::Map<Eigen::MatrixXd> basis_mat(
-            basis_matrix.data(), _value_size_loc, _space_dimension);
-        Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
-        Eigen::VectorXd u_p = basis_mat * exp_coeffs;
-
-        Point up(gdim, u_p.data());
-
-        // Reset position to the original position
-        _P->set_property(ci->index(), i, 0,
-                         _P->property(ci->index(), i, xp0_idx));
-
-        if (step == 0)
-          _P->set_property(ci->index(), i, up0_idx, up * weights[step]);
-        else
-        {
-          Point up0 = _P->property(ci->index(), i, up0_idx);
-
-          if (up0[0] == std::numeric_limits<double>::max())
-            continue;
-
-          if (step == num_substeps - 1)
-            up = up0 + up * weights[step];
-          else
-            _P->set_property(ci->index(), i, up0_idx, up0 + up * weights[step]);
-        }
-
-        // Do substep
-        do_substep(dt * dti[step], up, ci->index(), &i, step, num_substeps,
-                   xp0_idx, up0_idx, reloc_local_c, reloc_local_p);
-      }
-    }
-
-    // Local relocate
-    for (std::size_t i = 0; i < reloc_local_c.size(); i++)
-    {
-      if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-        _P->add_particle(reloc_local_c[i], reloc_local_p[i]);
-      else
-      {
-        dolfin_error("advection_rk3.cpp::do_step",
-                     "find a hosting cell on local process", "Unknown");
-      }
-    }
-
-    // Global relocate
-    if (num_processes > 1)
-      _P->particle_communicator_push();
-  }
-}
+void advect_rk3::do_step(double dt) { do_step_rk(dt); }
 //-----------------------------------------------------------------------------
 advect_rk3::~advect_rk3() {}

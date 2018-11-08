@@ -73,6 +73,9 @@ namespace dolfin{
     protected:
         particles* _P;
 
+        // Step forward in time dt using Runge-Kutta implementation
+        void do_step_rk(double dt);
+
         void set_facets_info();
         void set_bfacets(const std::string btype);
         void set_bfacets(const BoundaryMesh& bmesh, const std::string btype, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
@@ -91,6 +94,7 @@ namespace dolfin{
         // Timestepping scheme related
         std::vector<double> dti;
         std::vector<double> weights;
+        std::size_t xp0_idx, up0_idx;
 
         std::size_t _space_dimension, _value_size_loc;
 
@@ -151,7 +155,6 @@ namespace dolfin{
         // Something on particle updaters
 
     private:
-        std::size_t xp0_idx, up0_idx;
 
         void update_particle_template()
         {
@@ -200,7 +203,6 @@ namespace dolfin{
         void do_step(double dt);
 
     private:
-        std::size_t xp0_idx, up0_idx;
 
         void update_particle_template()
         {
