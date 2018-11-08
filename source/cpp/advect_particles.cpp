@@ -1029,8 +1029,17 @@ void advect_rk2::do_step(double dt)
   std::size_t gdim = _P->mesh()->geometry().dim();
   std::size_t num_processes = MPI::size(mpi_comm);
 
-  std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
-  std::size_t num_substeps = 2;
+  std::size_t num_substeps = weights.size();
+  assert(weights.size() == dti.size());
+
+  std::vector<double> coeffs_storage;
+  std::vector<double> coeffs;
+  for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
+  {
+    // Restrict once per cell, once per timestep
+    Utils::return_expansion_coeffs(coeffs, *ci, uh);
+    coeffs_storage.insert(coeffs_storage.end(), coeffs.begin(), coeffs.end());
+  }
 
   for (std::size_t step = 0; step < num_substeps; step++)
   {
@@ -1040,14 +1049,6 @@ void advect_rk2::do_step(double dt)
 
     for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
     {
-      if (step == 0)
-      { // Restrict once per cell, once per timestep
-        std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, uh);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
-      }
-
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
@@ -1060,7 +1061,8 @@ void advect_rk2::do_step(double dt)
         Eigen::Map<Eigen::MatrixXd> basis_mat(
             basis_matrix.data(), _value_size_loc, _space_dimension);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs_storage.data() + ci->index() * _space_dimension,
+            _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());

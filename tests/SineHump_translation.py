@@ -18,7 +18,7 @@ import os
 
 # Load from package
 from DolfinParticles import (particles, advect_particles, PDEStaticCondensation,
-                             RegularRectangle, FormsPDEMap, SineHump)
+                             advect_rk2, RegularRectangle, FormsPDEMap, SineHump)
 
 #set_log_level(PROGRESS)
 comm = pyMPI.COMM_WORLD
@@ -129,7 +129,7 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         property_idx = 1 # Scalar quantity is stored at slot 1
 
         # Initialize advection class, simple forward Euler suffices
-        ap  = advect_particles(p, V, uh, 'periodic', lims.flatten(), 'none')
+        ap  = advect_rk2(p, V, uh, 'periodic', lims.flatten(), 'none')
 
         # Define the variational (projection problem)
         W_e    = FiniteElement("DG", mesh.ufl_cell(), k)
