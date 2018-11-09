@@ -113,7 +113,7 @@ s = comm.bcast(s, root=0)
 
 p = particles(x, [s], mesh)
 # Initialize advection class, use RK3 scheme
-ap  = advect_rk3(p, V, uh, 'closed', 'none')
+ap  = advect_rk3(p, V, uh, 'closed')
 # Init projection
 lstsq_psi = l2projection(p,W,1)
 #Add/delete particles, where bounds are respected

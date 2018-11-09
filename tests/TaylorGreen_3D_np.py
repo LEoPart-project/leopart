@@ -207,7 +207,7 @@ lims = np.array( [[xmin, xmin, ymin, ymax, zmin, zmax],[xmax, xmax, ymin, ymax, 
 # the second slot will be to store old velocities at particle level
 property_idx = 1
 p   = particles(x, [s,s], mesh)
-ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten(), 'none')
+ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten())
 
 # Particle management
 AD = AddDelete(p, 15, 25, [Udiv, duh0])

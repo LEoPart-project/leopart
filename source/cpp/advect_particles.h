@@ -41,28 +41,24 @@ namespace dolfin{
     public:
         // Constructors
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                         const std::string type1,
-                         const std::string update_particle = "none");
+                         const std::string type1);
 
         // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const std::string type1,
-                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                         const std::string update_particle = "none");
+                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
         // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const BoundaryMesh& bmesh, const std::string type1,
                          Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-                         const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                         const std::string update_particle = "none");
+                         const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
 
         // Document
         advect_particles(particles& P, FunctionSpace& U, Function& uhi,
                          const BoundaryMesh& bmesh, const std::string type1, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
                          const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                         const std::string update_particle = "none" );
+                         Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
         // Step forward in time dt
         void do_step(double dt);
@@ -85,9 +81,6 @@ namespace dolfin{
         std::vector<std::size_t> obc_facets, cbc_facets, pbc_facets;
         std::vector<std::vector<double>>  pbc_lims;     // Coordinates of limits
         bool pbc_active = false;
-
-        // Update particle info?
-        const std::string update_particle;
 
         // Timestepping scheme related
         std::vector<double> dti;
@@ -128,21 +121,17 @@ namespace dolfin{
     {
     public:
         // Constructors
+        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const std::string type1);
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-                   const std::string update_particle = "none" );
-        advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                   const std::string update_particle = "none" );
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1, const std::string type2,
-                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                   const std::string update_particle = "none" );
+                   Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
 
         advect_rk2(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1, const std::string type2,
                    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                   const std::string update_particle = "none" );
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
         // Destructor
          ~advect_rk2();
@@ -179,21 +168,17 @@ namespace dolfin{
     {
     public:
         // Constructors
+        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const std::string type1);
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-                   const std::string update_particle = "none" );
-        advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                   const std::string update_particle = "none" );
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-                   const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                   const std::string update_particle = "none" );
+                   const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
 
         advect_rk3(particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh, const std::string type1,
                    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
                    const std::string type2, Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                   const std::string update_particle = "none" );
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
         // Destructor
          ~advect_rk3();
