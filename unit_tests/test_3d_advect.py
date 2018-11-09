@@ -1,6 +1,6 @@
 # Author/license stamp goes here
 
-from dolfin import (UnitCubeMesh, BoundaryMesh, VectorFunctionSpace, Function, Constant, Point)
+from dolfin import (UnitCubeMesh, VectorFunctionSpace, Function, Constant, Point)
 from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles,
                              RandomBox)
 from mpi4py import MPI as pyMPI
@@ -33,11 +33,11 @@ def test_advect_periodic(advection_scheme):
     p = particles(x, [x*0, x**2], mesh)
 
     if advection_scheme == 'euler':
-        ap= advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
     elif advection_scheme == 'rk2':
-        ap= advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
     elif advection_scheme == 'rk3':
-        ap= advect_rk3(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_rk3(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
     t = 0.
