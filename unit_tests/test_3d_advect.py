@@ -33,11 +33,11 @@ def test_advect_periodic(advection_scheme):
     p = particles(x, [x*0, x**2], mesh)
 
     if advection_scheme == 'euler':
-        ap = advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_particles(p, V, v, 'periodic', lims.flatten())
     elif advection_scheme == 'rk2':
-        ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
     elif advection_scheme == 'rk3':
-        ap = advect_rk3(p, V, v, 'periodic', lims.flatten(), 'none')
+        ap = advect_rk3(p, V, v, 'periodic', lims.flatten())
 
     xp0 = p.positions()
     t = 0.
