@@ -103,7 +103,6 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Generate mesh
         mesh = RectangleMesh.create([Point(xmin,ymin), Point(xmax,ymax)], [nx, nx], CellType.Type.triangle)
-        bmesh= BoundaryMesh(mesh, 'exterior')
 
         # Velocity and initial condition
         V               = VectorFunctionSpace(mesh,'CG', 1)
@@ -130,7 +129,7 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         property_idx = 1 # Scalar quantity is stored at slot 1
 
         # Initialize advection class, simple forward Euler suffices
-        ap  = advect_particles(p, V, uh, bmesh, 'periodic', lims.flatten(), 'none')
+        ap  = advect_particles(p, V, uh, 'periodic', lims.flatten(), 'none')
 
         # Define the variational (projection problem)
         W_e    = FiniteElement("DG", mesh.ufl_cell(), k)

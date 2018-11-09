@@ -77,7 +77,6 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
             mesh = refine(mesh)
             n /= 2
         print("Mesh (", nx, ") contains ", mesh.num_cells(), " cells")
-        bmesh= BoundaryMesh(mesh, 'exterior')
 
         # Velocity and initial condition
         V   = VectorFunctionSpace(mesh,'DG', 3)
@@ -103,7 +102,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         property_idx = 1 # Scalar quantity is stored at slot 1
 
         # Initialize advection class, use RK3 scheme
-        ap  = advect_rk3(p, V, uh, bmesh, 'open', 'none')
+        ap  = advect_rk3(p, V, uh, 'open', 'none')
 
         # Define the variational (projection problem)
         W_e    = FiniteElement("DG", mesh.ufl_cell(), k)

@@ -103,7 +103,6 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Generate mesh
         mesh = RectangleMesh.create([Point(xmin,ymin), Point(xmax,ymax)], [nx, nx], CellType.Type.triangle)
-        bmesh= BoundaryMesh(mesh, 'exterior')
 
         # Velocity and initial condition
         V               = VectorFunctionSpace(mesh,'CG', 1)
@@ -129,7 +128,7 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         property_idx = 1 # Scalar quantity is stored at slot 1
 
         # Initialize advection class, simple forward Euler suffices
-        ap  = advect_particles(p, V, uh, bmesh, 'periodic', lims.flatten(), 'none')
+        ap  = advect_particles(p, V, uh, 'periodic', lims.flatten(), 'none')
 
         # Define the variational (projection problem)
         W_e    = FiniteElement("DG", mesh.ufl_cell(), k)
@@ -156,10 +155,10 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h.cpp_object(), property_idx)
-        
+
         # Add/Delete particles
         AD = AddDelete(p, 10, 20, [psi0_h])
-        
+
         step = 0
         area_0   = assemble(psi0_h*dx)
         timer    = Timer()
@@ -169,15 +168,15 @@ for i, (k,l,kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         timer.start()
         while step < num_steps:
             step += 1
-            
+
             #Add/delete particles, must be done before advection!
             #AD.do_sweep()
-            
+
             # Advect particle, assemble and solve pde projection
             ap.do_step(float(dt))
-            
+
             AD.do_sweep_weighted()
-            
+
             pde_projection.assemble(True, True)
             pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(), lambda_h.cpp_object(), 'none', 'default')
             # Update old solution

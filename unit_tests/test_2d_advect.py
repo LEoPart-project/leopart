@@ -52,13 +52,13 @@ def compute_convergence(iterator, errorlist):
 def decorate_advect_particle(my_func):
     def wrapper():
         mesh = UnitSquareMesh(10, 10)
-        bmesh  = BoundaryMesh(mesh, 'exterior')
+        bmesh = BoundaryMesh(mesh, 'exterior')
 
-        vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'), degree=3)
+        vexpr = Expression(('-pi*(x[1] - 0.5)', 'pi*(x[0]-0.5)'), degree=3)
         V = VectorFunctionSpace(mesh, "CG", 1)
         x = np.array([[0.25, 0.25]])
         dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
-        return my_func(mesh,bmesh, V, vexpr, x, dt_list)
+        return my_func(mesh, bmesh, V, vexpr, x, dt_list)
     return wrapper
 
 
@@ -68,9 +68,8 @@ def test_advect_particle():
 
     # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10, 10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
 
-    vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'), degree=3)
+    vexpr = Expression(('-pi*(x[1] - 0.5)', 'pi*(x[0]-0.5)'), degree=3)
     V = VectorFunctionSpace(mesh, "CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
@@ -81,10 +80,10 @@ def test_advect_particle():
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        ap= advect_particles(p, V, v, bmesh, 'closed', 'none')
+        ap = advect_particles(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
         t = 0.
-        while t<2.-1e-12:
+        while t < 2.-1e-12:
             ap.do_step(dt)
             t += dt
 
@@ -101,11 +100,10 @@ def test_advect_particle_rk2():
         print('Run advect_particle_rk2')
 
     # Rotate one particle, and compute the error
-    mesh = UnitSquareMesh(10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
+    mesh = UnitSquareMesh(10, 10)
 
-    vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Expression(('-pi*(x[1] - 0.5)', 'pi*(x[0]-0.5)'), degree=3)
+    V = VectorFunctionSpace(mesh, "CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
 
@@ -114,32 +112,32 @@ def test_advect_particle_rk2():
     error_list = []
 
     for dt in dt_list:
-        p = particles(x, [x,x], mesh)
-        ap= advect_rk2(p, V, v, bmesh, 'closed', 'none')
+        p = particles(x, [x, x], mesh)
+        ap = advect_rk2(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
 
         t = 0.
-        while t<2.-1e-12:
+        while t < 2.-1e-12:
             ap.do_step(dt)
             t += dt
 
         xp_end = p.positions()
-        error_list.append( np.linalg.norm(xp_0 - xp_end) )
+        error_list.append(np.linalg.norm(xp_0 - xp_end))
 
     if not all(eps == 0 for eps in error_list):
         rate = compute_convergence(dt_list, error_list)
-        assert any( i > 1.95 for i in rate)
+        assert any(i > 1.95 for i in rate)
+
 
 def test_advect_particle_rk3():
     if comm.Get_rank() == 0:
         print('Run advect_particle_rk3')
 
     # Rotate one particle, and compute the error
-    mesh = UnitSquareMesh(10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
+    mesh = UnitSquareMesh(10, 10)
 
-    vexpr = Expression(('-pi*(x[1] - 0.5)','pi*(x[0]-0.5)'),degree=3)
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Expression(('-pi*(x[1] - 0.5)', 'pi*(x[0]-0.5)'), degree=3)
+    V = VectorFunctionSpace(mesh, "CG", 1)
     x = np.array([[0.25, 0.25]])
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
 
@@ -148,192 +146,178 @@ def test_advect_particle_rk3():
 
     error_list = []
     for dt in dt_list:
-        p = particles(x, [x,x], mesh)
-        ap= advect_rk3(p, V, v, bmesh, 'closed', 'none')
+        p = particles(x, [x, x], mesh)
+        ap = advect_rk3(p, V, v, 'closed', 'none')
         xp_0 = p.positions()
 
         t = 0.
-        while t<2.-1e-12:
+        while t < 2.-1e-12:
             ap.do_step(dt)
             t += dt
 
         xp_end = p.positions()
-        error_list.append( np.linalg.norm(xp_0 - xp_end) )
+        error_list.append(np.linalg.norm(xp_0 - xp_end))
 
     if not all(eps == 0 for eps in error_list):
         rate = compute_convergence(dt_list, error_list)
-        assert any( i > 2.9 for i in rate)
+        assert any(i > 2.9 for i in rate)
+
 
 def decorate_periodic_tests(my_func):
     def wrapper():
-        xmin = 0.; xmax = 1.
-        ymin = 0.; ymax = 1.
+        xmin = 0.
+        xmax = 1.
+        ymin = 0.
+        ymax = 1.
 
-        mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-        bmesh  = BoundaryMesh(mesh,'exterior')
+        mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
-        lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
-                         [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
+        lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
+                         [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 
-        vexpr = Constant((1.,1.))
-        V = VectorFunctionSpace(mesh,"CG", 1)
+        vexpr = Constant((1., 1.))
+        V = VectorFunctionSpace(mesh, "CG", 1)
 
-        x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
+        x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
         x = comm.bcast(x, root=0)
-        dt= 0.05
+        dt = 0.05
 
-        xp0, xpE = my_func(mesh,bmesh,lims,V, vexpr,x,dt)
+        xp0, xpE = my_func(mesh, lims, V, vexpr, x, dt)
 
-        xp0_root = comm.gather( xp0, root = 0)
-        xpE_root = comm.gather( xpE, root = 0)
+        xp0_root = comm.gather(xp0, root=0)
+        xpE_root = comm.gather(xpE, root=0)
 
         if comm.Get_rank() == 0:
-            xp0_root = np.float32( np.vstack(xp0_root) )
-            xpE_root = np.float32( np.vstack(xpE_root) )
+            xp0_root = np.float32(np.vstack(xp0_root))
+            xpE_root = np.float32(np.vstack(xpE_root))
             error = np.linalg.norm(xp0_root - xpE_root)
             if error > 1e-10:
-                raise Exception("Error too high in function "+my_func.__name__)
+                raise Exception("Error too high in function " + my_func.__name__)
         return
     return wrapper
 
+
 def test_advect_particle_periodic():
-    xmin = 0.; xmax = 1.
-    ymin = 0.; ymax = 1.
+    xmin = 0.
+    xmax = 1.
+    ymin = 0.
+    ymax = 1.
 
-    mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
+    mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
-    lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
-                         [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
+    lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
+                     [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 
-    vexpr = Constant((1.,1.))
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Constant((1., 1.))
+    V = VectorFunctionSpace(mesh, "CG", 1)
 
-    x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
+    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
     x = comm.bcast(x, root=0)
-    dt= 0.05
+    dt = 0.05
 
     v = Function(V)
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap= advect_particles(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    ap = advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
-    t  = 0.
+    t = 0.
     while t < 1.-1e-12:
         ap.do_step(dt)
         t += dt
     xpE = p.positions()
 
     # Check if position correct
-    xp0_root = comm.gather( xp0, root = 0)
-    xpE_root = comm.gather( xpE, root = 0)
+    xp0_root = comm.gather(xp0, root=0)
+    xpE_root = comm.gather(xpE, root=0)
 
     if comm.Get_rank() == 0:
-        xp0_root = np.float32( np.vstack(xp0_root) )
-        xpE_root = np.float32( np.vstack(xpE_root) )
+        xp0_root = np.float32(np.vstack(xp0_root))
+        xpE_root = np.float32(np.vstack(xpE_root))
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
+
 
 def test_advect_particle_periodic_rk2():
-    xmin = 0.; xmax = 1.
-    ymin = 0.; ymax = 1.
+    xmin = 0.
+    xmax = 1.
+    ymin = 0.
+    ymax = 1.
 
-    mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
+    mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
-    lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
-                         [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
+    lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
+                     [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 
-    vexpr = Constant((1.,1.))
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Constant((1., 1.))
+    V = VectorFunctionSpace(mesh, "CG", 1)
 
-    x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
+    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
     x = comm.bcast(x, root=0)
-    dt= 0.05
+    dt = 0.05
 
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [x*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    p = particles(x, [x * 0, x**2], mesh)
+    ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
-    t  = 0.
-    while t<1.-1e-12:
+    t = 0.
+    while t < 1.-1e-12:
         ap.do_step(dt)
         t += dt
     xpE = p.positions()
 
     # Check if position correct
-    xp0_root = comm.gather( xp0, root = 0)
-    xpE_root = comm.gather( xpE, root = 0)
+    xp0_root = comm.gather(xp0, root=0)
+    xpE_root = comm.gather(xpE, root=0)
 
     if comm.Get_rank() == 0:
-        xp0_root = np.float32( np.vstack(xp0_root) )
-        xpE_root = np.float32( np.vstack(xpE_root) )
+        xp0_root = np.float32(np.vstack(xp0_root))
+        xpE_root = np.float32(np.vstack(xpE_root))
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
+
 
 def test_advect_particle_periodic_rk3():
-    xmin = 0.; xmax = 1.
-    ymin = 0.; ymax = 1.
+    xmin = 0.
+    xmax = 1.
+    ymin = 0.
+    ymax = 1.
 
-    mesh = RectangleMesh(Point(xmin,ymin),Point(xmax, ymax), 10,10)
-    bmesh  = BoundaryMesh(mesh,'exterior')
+    mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
-    lims = np.array([[xmin, xmin, ymin, ymax],[xmax, xmax, ymin, ymax],
-                         [xmin, xmax, ymin, ymin],[xmin, xmax, ymax, ymax]])
+    lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
+                     [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 
-    vexpr = Constant((1.,1.))
-    V = VectorFunctionSpace(mesh,"CG", 1)
+    vexpr = Constant((1., 1.))
+    V = VectorFunctionSpace(mesh, "CG", 1)
 
-    x = RandomRectangle(Point(0.05, 0.05), Point(0.15,0.15)).generate([3, 3])
+    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
     x = comm.bcast(x, root=0)
-    dt= 0.05
+    dt = 0.05
 
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [x[:,0]*0, x**2], mesh)
-    ap= advect_rk2(p, V, v, bmesh, 'periodic', lims.flatten(), 'none')
+    p = particles(x, [x[:, 0] * 0, x**2], mesh)
+    ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
 
     xp0 = p.positions()
-    t  = 0.
-    while t<1.-1e-12:
+    t = 0.
+    while t < 1.-1e-12:
         ap.do_step(dt)
         t += dt
     xpE = p.positions()
 
     # Check if position correct
-    xp0_root = comm.gather( xp0, root = 0)
-    xpE_root = comm.gather( xpE, root = 0)
+    xp0_root = comm.gather(xp0, root=0)
+    xpE_root = comm.gather(xpE, root=0)
 
     if comm.Get_rank() == 0:
-        xp0_root = np.float32( np.vstack(xp0_root) )
-        xpE_root = np.float32( np.vstack(xpE_root) )
+        xp0_root = np.float32(np.vstack(xp0_root))
+        xpE_root = np.float32(np.vstack(xpE_root))
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
-
-def main():
-    # One particle tests
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Run single particle tests'))
-    advect_particle()
-    advect_particle_rk2()
-    advect_particle_rk3()
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Passed single particle tests'))
-
-    # Periodic domain particle tests
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Run periodic particle tests'))
-    advect_particle_periodic()
-    advect_particle_periodic_rk2()
-    advect_particle_periodic_rk3()
-    if comm.Get_rank() == 0:
-        print ('{:=^72}'.format('Passed periodic particle tests'))
-
-if __name__ == "__main__":
-    main()

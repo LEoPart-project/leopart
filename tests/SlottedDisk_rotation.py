@@ -86,7 +86,6 @@ mesh = Mesh('circle.xml')
 mesh = refine(mesh)
 mesh = refine(mesh)
 mesh = refine(mesh)
-bmesh  = BoundaryMesh(mesh,'exterior')
 
 # Set slotted disk
 psi0_expr = SlottedDisk(radius = rdisk, center = [xc, yc], width = rwidth, depth = 0.,
@@ -113,7 +112,7 @@ s = comm.bcast(s, root=0)
 
 p = particles(x, [s], mesh)
 # Initialize advection class, use RK3 scheme
-ap  = advect_rk3(p, V, uh, bmesh, 'closed', 'none')
+ap  = advect_rk3(p, V, uh, 'closed', 'none')
 # Init projection
 lstsq_psi = l2projection(p,W,1)
 

@@ -139,7 +139,6 @@ xmin, ymin, zmin = geometry['xmin'], geometry['ymin'], geometry['zmin']
 xmax, ymax, zmax = geometry['xmax'], geometry['ymax'], geometry['zmax']
 
 mesh = BoxMesh(MPI.comm_world, Point(xmin,ymin,zmin), Point(xmax,ymax,zmax), nx, ny, nz)
-bmesh= BoundaryMesh(mesh, 'exterior')
 pbc  = PeriodicBoundary(geometry)
 
 # xdmf output
@@ -205,8 +204,8 @@ lims = np.array( [[xmin, xmin, ymin, ymax, zmin, zmax],[xmax, xmax, ymin, ymax, 
 # Particle specific momentum is stored at slot 1
 # the second slot will be to store old velocities at particle level
 property_idx = 1
-p   = particles(x, [s,s], mesh)
-ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten(), 'none')
+p   = particles(x, [s, s], mesh)
+ap  = advect_rk3(p, W_2, Udiv, 'periodic', lims.flatten(), 'none')
 
 # Particle management
 AD = AddDelete(p, 15, 25, [Udiv, duh0])
