@@ -62,6 +62,9 @@ private:
   // TODO: Method needs careful checking
   void check_bounded_update(Point& pfeval, const std::size_t idx_func);
 
+  // Access to particles
+  particles* _P;
+
   // Min/Max number of particles
   std::size_t _np_min, _np_max;
 
@@ -72,8 +75,6 @@ private:
   std::vector<std::size_t> _pbound;
   std::vector<double> _bounds;
 
-  // Access to particles
-  particles* _P;
 };
 } // namespace dolfin
 #endif // ADDDELETE_H

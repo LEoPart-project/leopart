@@ -121,7 +121,7 @@ inline double solve_quadprog(MatrixXd& G, VectorXd& g0, const MatrixXd& CE,
                              const VectorXd& ce0, const MatrixXd& CI,
                              const VectorXd& ci0, VectorXd& x)
 {
-  int i, j, k, l; /* indices */
+  int i, k, l; /* indices */
   int ip, me, mi;
   int n = g0.size();
   int p = ce0.size();
@@ -137,14 +137,14 @@ inline double solve_quadprog(MatrixXd& G, VectorXd& g0, const MatrixXd& CE,
   double t, t1, t2; /* t is the step length, which is the minimum of the partial
                      * step length t1 and the full step length t2 */
   VectorXi A(m + p), A_old(m + p), iai(m + p);
-  int q;
+  //  int q;
   int iq, iter = 0;
   bool iaexcl[m + p];
 
   me = p; /* number of equality constraints */
   mi = m; /* number of inequality constraints */
-  q = 0;  /* size of the active set A (containing the indices of the active
-             constraints) */
+  //  q = 0;  /* size of the active set A (containing the indices of the active
+  //             constraints) */
 
   /*
    * Preprocessing phase
@@ -263,7 +263,7 @@ l1:
       <= mi * std::numeric_limits<double>::epsilon() * c1 * c2 * 100.0)
   {
     /* numerically there are not infeasibilities anymore */
-    q = iq;
+    //    q = iq;
     return f_value;
   }
 
@@ -283,7 +283,7 @@ l2: /* Step 2: check for feasibility and determine a new S-pair */
   }
   if (ss >= 0.0)
   {
-    q = iq;
+    //    q = iq;
     return f_value;
   }
 
@@ -353,7 +353,7 @@ l2a: /* Step 2a: determine step direction */
   {
     /* QPP is infeasible */
     // FIXME: unbounded to raise
-    q = iq;
+    //    q = iq;
     return inf;
   }
   /* case (ii): step in dual space */
@@ -453,7 +453,7 @@ inline bool add_constraint(MatrixXd& R, MatrixXd& J, VectorXd& d, int& iq,
 #ifdef TRACE_SOLVER
   std::cerr << "Add constraint " << iq << '/';
 #endif
-  int i, j, k;
+  int j, k;
   double cc, ss, h, t1, t2, xny;
 
   /* we have to find the Givens rotation which will reduce the element

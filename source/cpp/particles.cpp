@@ -14,7 +14,7 @@ particles::particles(
                                   Eigen::RowMajor>>
         p_array,
     const std::vector<unsigned int>& p_template, const Mesh& mesh)
-    : _mesh(&mesh), _mpi_comm(mesh.mpi_comm()), _ptemplate(p_template)
+    : _mesh(&mesh), _ptemplate(p_template), _mpi_comm(mesh.mpi_comm())
 {
   // Note: p_array is 2D [num_particles, property_data]
 
@@ -36,7 +36,7 @@ particles::particles(
   _plen = offset.back();
 
   // Loop over particles:
-  for (std::size_t i = 0; i < p_array.rows(); i++)
+  for (Eigen::Index i = 0; i < p_array.rows(); i++)
   {
     // Position and get hosting cell
     Point xp(_Ndim, p_array.row(i).data());

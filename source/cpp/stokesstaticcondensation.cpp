@@ -322,8 +322,8 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal,
   else
   {
     // Iterative solver
-    std::size_t num_it
-        = solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
+    //    std::size_t num_it =
+    solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
     // if(MPI::rank(mpi_comm) == 0) std::cout<<"Number of
     // iterations"<<num_it<<std::endl;
   }
