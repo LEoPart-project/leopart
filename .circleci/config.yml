@@ -19,6 +19,11 @@ jobs:
           command:
             python3 -m flake8 source/
       - run:
+          name: Flake8 on tests
+          command: |
+            python3 -m flake8 unit_tests/test*
+            python3 -m flake8 tests/scalar_advection/
+      - run:
           name: Installing DolfinParticles
           command: |
             cd source/cpp && cmake . && make

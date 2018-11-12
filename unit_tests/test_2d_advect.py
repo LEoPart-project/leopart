@@ -80,7 +80,7 @@ def test_advect_particle():
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        ap = advect_particles(p, V, v, 'closed', 'none')
+        ap = advect_particles(p, V, v, 'closed')
         xp_0 = p.positions()
         t = 0.
         while t < 2.-1e-12:
@@ -113,7 +113,7 @@ def test_advect_particle_rk2():
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        ap = advect_rk2(p, V, v, 'closed', 'none')
+        ap = advect_rk2(p, V, v, 'closed')
         xp_0 = p.positions()
 
         t = 0.
@@ -147,7 +147,7 @@ def test_advect_particle_rk3():
     error_list = []
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        ap = advect_rk3(p, V, v, 'closed', 'none')
+        ap = advect_rk3(p, V, v, 'closed')
         xp_0 = p.positions()
 
         t = 0.
@@ -219,7 +219,7 @@ def test_advect_particle_periodic():
     v.assign(vexpr)
 
     p = particles(x, [x*0, x**2], mesh)
-    ap = advect_particles(p, V, v, 'periodic', lims.flatten(), 'none')
+    ap = advect_particles(p, V, v, 'periodic', lims.flatten())
 
     xp0 = p.positions()
     t = 0.
@@ -261,7 +261,7 @@ def test_advect_particle_periodic_rk2():
     v.assign(vexpr)
 
     p = particles(x, [x * 0, x**2], mesh)
-    ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
+    ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
 
     xp0 = p.positions()
     t = 0.
@@ -303,7 +303,7 @@ def test_advect_particle_periodic_rk3():
     v.assign(vexpr)
 
     p = particles(x, [x[:, 0] * 0, x**2], mesh)
-    ap = advect_rk2(p, V, v, 'periodic', lims.flatten(), 'none')
+    ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
 
     xp0 = p.positions()
     t = 0.
