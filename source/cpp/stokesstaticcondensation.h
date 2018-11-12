@@ -3,11 +3,16 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
-
 #ifndef STOKESSTATICCONDENSATION_H
 #define STOKESSTATICCONDENSATION_H
 
 #include <Eigen/Dense>
+#include <iostream>
+#include <memory>
+#include <ufc.h>
+#include <vector>
+
+#include <dolfin/common/ArrayView.h>
 #include <dolfin/fem/Assembler.h>
 #include <dolfin/fem/AssemblerBase.h>
 #include <dolfin/fem/DirichletBC.h>
@@ -17,15 +22,9 @@
 #include <dolfin/fem/UFC.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
-#include <iostream>
-#include <ufc.h>
-#include <vector>
-
-#include <dolfin/common/ArrayView.h>
 #include <dolfin/la/Matrix.h>
 #include <dolfin/la/Vector.h>
 #include <dolfin/la/solve.h>
-
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/MeshEntity.h>
