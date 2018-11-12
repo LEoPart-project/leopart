@@ -12,7 +12,6 @@ from dolfin import *
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
-from mshr import *
 import matplotlib.pyplot as plt
 
 # Load from package
@@ -30,12 +29,12 @@ r       = 0.5            # Radius of domain
 sigma   = Constant(0.1) # stdev of Gaussian
 
 # Mesh/particle properties, use safe number of particles
-nx_list   = [8, 16, 32, 64]
+nx_list   = [1, 2, 4, 8, 16, 32]
 #pres_list = [120 * pow(2,i) for i in range(len(nx_list))]
 pres_list = [60 * pow(2,i) for i in range(len(nx_list))]
 
 # Polynomial order
-k_list = [1]          # Third order does not make sense for 3rd order advection scheme
+k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
@@ -74,9 +73,13 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         num_steps = np.rint(Tend/float(dt))
         #num_steps = 1
 
-        # Generate mesh
-        domain = Circle(Point(x0,y0),r, nx*4)
-        mesh = generate_mesh(domain,nx)
+        # Generate mesh 
+        mesh = Mesh('./../meshes/circle_0.xml')
+        n = nx
+        while (n > 1):
+            mesh = refine(mesh)
+            n /= 2
+        print("Mesh (", nx, ") contains ", mesh.num_cells(), " cells")
 
         # Velocity and initial condition
         V   = VectorFunctionSpace(mesh,'DG', 3)

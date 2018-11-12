@@ -28,7 +28,7 @@ r       = 0.5            # Radius of domain
 sigma   = Constant(0.1) # stdev of Gaussian
 
 # Mesh/particle properties, use safe number of particles
-nx_list   = [1, 2]
+nx_list   = [1, 2, 4, 8, 16, 32]
 pres_list = [120 * pow(2,i) for i in range(len(nx_list))]
 
 # Polynomial order
@@ -71,7 +71,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
         num_steps = np.rint(Tend/float(dt))
 
         # Generate mesh
-        mesh = Mesh('circle.xml')
+        mesh = Mesh('./../meshes/circle_0.xml')
         n = nx
         while (n > 1):
             mesh = refine(mesh)
@@ -149,7 +149,7 @@ for (k,l,kbar) in zip(k_list, l_list, kbar_list):
             pde_projection.apply_boundary(bc)
             pde_projection.solve_problem(psibar_h.cpp_object(),
                                          psi_h.cpp_object(), lambda_h.cpp_object(),
-                                         'none', 'default')
+                                         'gmres', 'hypre_amg')
             # Update old solution
             assign(psi0_h, psi_h)
 
