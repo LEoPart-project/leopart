@@ -23,6 +23,7 @@ jobs:
           command: |
             python3 -m flake8 unit_tests/test*
             python3 -m flake8 tests/scalar_advection/
+            python3 -m flake8 tests/single_phase_ns/
       - run:
           name: Installing DolfinParticles
           command: |

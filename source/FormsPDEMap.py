@@ -1,4 +1,9 @@
-import dolfin
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 from dolfin import (FacetNormal, Constant, TestFunction, TrialFunction,
                     inner, outer, dot, grad, dx, ds, dS, Form, conditional, ge)
 import numpy as np
