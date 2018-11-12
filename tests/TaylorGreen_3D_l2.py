@@ -13,7 +13,11 @@ from DolfinParticles import (particles, advect_rk3, RandomBox,
                              FormsPDEMap, FormsStokes)
 import os
 
-set_log_level(20)
+# parameters["krylov_solver"]["monitor_convergence"] = True
+# parameters["krylov_solver"]["report"] = True
+#parameters.parse()
+
+#set_log_level(10)
 
 comm = pyMPI.COMM_WORLD
 
@@ -85,19 +89,20 @@ def assign_particle_values(x, u_exact):
 
 ################# USER INPUT #############
 geometry = {'xmin': -1., 'ymin': -1., 'zmin': -1, 'xmax': 1., 'ymax': 1., 'zmax': 1.}
+#geometry = {'xmin': -np.pi, 'ymin': -np.pi., 'zmin': -np.pi, 'xmax': np.pi, 'ymax': np.pi, 'zmax': np.pi}
 
 # Mesh resolution
-nx, ny, nz = 32, 32, 32
+nx, ny, nz = 48, 48, 48
 
 # Particle resolution
-pres = 250
+pres = 200
 
 # Time stepping
-Tend = 1.5
-dt = Constant(2.5e-2)
+Tend = 7.5
+dt = Constant(1.25e-2)
 
 # Viscosity
-nu = Constant(1e-3)
+nu = Constant(1. /(np.pi * float(1600))) #Constant(1e-3)
 
 # Stokes related
 k       = 1
@@ -118,7 +123,9 @@ theta_p    = 0.5
 mode  = 1.
 
 # Directory for output
-outdir_base = './../results/TaylorGreen_3D_lores/'
+outdir_base = './../results/TaylorGreen_3D_l2_nx48/'
+output_table = outdir_base+'output_table.txt'
+store_step  = 8
 ###################################
 
 U_exact = (' U*sin(mode*pi*(x[0])) * cos(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
@@ -136,7 +143,14 @@ mesh = BoxMesh(MPI.comm_world, Point(xmin,ymin,zmin), Point(xmax,ymax,zmax), nx,
 bmesh= BoundaryMesh(mesh, 'exterior')
 pbc  = PeriodicBoundary(geometry)
 
-# xdmf output
+# Set output/xdmf output
+if comm.rank == 0:
+    if not os.path.exists(outdir_base):
+        os.makedirs(outdir_base)
+        
+    with open(output_table, "w") as write_file:
+        write_file.write("%-12s %-20s %-20s \n" % ("Time level", "Kinetic energy", "Vorticity"))
+        
 xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base+"u.xdmf")
 xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base+"p.xdmf")
 xdmf_curl = XDMFFile(mesh.mpi_comm(), outdir_base+"curl.xdmf")
@@ -183,6 +197,17 @@ Udiv.assign(u_exact)
 
 curl_func = Function(W_2)
 
+# Store zero level
+curl_func.assign(project(curl(u0_a), W_2) )
+
+e_kin = 0.5 * assemble(dot(u0_a, u0_a) * dx)
+enstrophy = 0.5 * assemble(dot(curl_func, curl_func) * dx )
+
+if comm.rank == 0:
+    with open(output_table, "a") as write_file:
+        write_file.write("%-12.5g %-20.6g %-20.6g \n" % (float(0.), float(e_kin), float(enstrophy)))
+
+
 # Initialize particles
 if comm.Get_rank() == 0:
     x    =  RandomBox(Point(xmin, ymin, zmin), Point(xmax, ymax, zmax)).generate([pres, pres, pres])
@@ -203,29 +228,32 @@ property_idx = 1
 p   = particles(x, [s,s], mesh)
 ap  = advect_rk3(p, W_2, Udiv, bmesh, 'periodic', lims.flatten(), 'none')
 
+if comm.Get_rank() == 0:
+    print("Particles initialized")
+
 # Particle management
-AD = AddDelete(p, 15, 25, [Udiv, duh0])
+AD = AddDelete(p, 10, 20, [Udiv, duh0])
 
 # Forms PDE map
-funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
-forms_adv      = FormsPDEMap(mesh, funcspace_dict, beta_map=Constant(1e-5)).forms_theta_nlinear(u0_a, ubar0_a, dt, \
-                    theta_map = Constant(1.0), theta_L = theta_L, duh0 = duh0, duh00 = duh00)
-pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
-                                                                                   forms_adv['H_a'],
-                                                                                   forms_adv['B_a'],
-                                               forms_adv['Q_a'], forms_adv['R_a'], forms_adv['S_a'],
-                                                                                        property_idx)
+#funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
+#forms_adv      = FormsPDEMap(mesh, funcspace_dict, beta_map=Constant(1e-5)).forms_theta_nlinear(u0_a, ubar0_a, dt, \
+#                    theta_map = Constant(1.0), theta_L = theta_L, duh0 = duh0, duh00 = duh00)
+#pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
+#                                                                                  forms_adv['H_a'],
+#                                                                                   forms_adv['B_a'],
+#                                               forms_adv['Q_a'], forms_adv['R_a'], forms_adv['S_a'],
+#                                                                                        property_idx)
 
 # Forms Stokes
 # Set pressure in corner to zero
 bc1 = DirichletBC(mixedG.sub(1), Constant(0), Corner(geometry), "pointwise")
 bcs = [bc1]
 
-forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady_laplacian(ustar,dt,nu,f)
+forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
 
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
                                                          forms_stokes['B_S'],
-                                    forms_stokes['Q_S'], forms_stokes['S_S'])
+                                    forms_stokes['Q_S'], forms_stokes['S_S'], bcs)
 
 lstsq_u = l2projection(p, W_2, 1)
 
@@ -258,6 +286,10 @@ while step < num_steps:
     t1 = Timer("[P] l2 projection")
     lstsq_u.project(ustar.cpp_object())
     del(t1)
+
+    if comm.Get_rank() == 0:
+        print("Finished local l2 projection")
+    
     # Do constrained projection
     #t1 = Timer("[P] assemble projection")
     #pde_projection.assemble(True, True)
@@ -267,16 +299,24 @@ while step < num_steps:
     #pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'amg')
     #del(t1)
 
+    comm.barrier()
+    
     # Solve Stokes
     t1 = Timer("[P] Stokes assemble ")
     ssc.assemble_global_system(True)
-    for bc in bcs:
-        ssc.apply_boundary(bc)
     del(t1)
+    #comm.barrier()
+
+    #print("Apply BC")
+    #for bc in bcs:
+    #    ssc.apply_boundary(bc)
+    #del(t1)
+        
     t1 = Timer("[P] Stokes solve")
     ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "hypre_amg")
+    #ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
     del(t1)
-
+    
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
 
@@ -288,14 +328,25 @@ while step < num_steps:
     #p.increment(Udiv.cpp_object(), ustar, 1)
     p.increment(Udiv.cpp_object(), ustar.cpp_object(), np.array([1,2], dtype = np.uintp), theta_p, step)
 
-    if step == 2: theta_L.assign(theta_next)
-    
-    xdmf_u.write(Uh.sub(0), t)
-    xdmf_p.write(Uh.sub(1), t)
+    if step == 2:
+        theta_L.assign(theta_next)
 
-    # Compute vorticity
+    # Compute vorticity                                                                                                                                                                              
     curl_func.assign( project(curl(Uh.sub(0)), W_2) )
-    xdmf_curl.write(curl_func, t)
+
+    if step % store_step is 0:
+        xdmf_u.write(Uh.sub(0), t)
+        xdmf_p.write(Uh.sub(1), t)
+
+        # Compute vorticity
+        xdmf_curl.write(curl_func, t)
+
+    e_kin = 0.5 * assemble(dot(Uh.sub(0), Uh.sub(0)) * dx)
+    enstrophy = 0.5 * assemble(dot(curl_func, curl_func) * dx )
+
+    if comm.rank == 0:
+        with open(output_table, "a") as write_file:
+            write_file.write("%-12.5g %-20.6g %-20.6g \n" % (float(t), float(e_kin), float(enstrophy)))
 
 timer.stop()
 
@@ -304,10 +355,13 @@ ex = as_vector((1., 0., 0.))
 ey = as_vector((0., 1., 0.))
 ez = as_vector((0., 0., 1.))
 
-momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey) + + dot(Uh.sub(0), ez)) * dx )
+momentum = assemble( (dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey) + dot(Uh.sub(0), ez)) * dx )
 
 if comm.Get_rank() == 0:
     print("Momentum "+str(momentum))
     print("Elapsed time "+str(timer.elapsed()[0]))
 
 list_timings(TimingClear.keep, [TimingType.wall])
+time_table = timings(TimingClear.keep, [TimingType.wall])
+with open(outdir_base+"timings.log", "w") as out:
+    out.write(time_table.str(True))

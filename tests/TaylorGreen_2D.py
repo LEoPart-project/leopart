@@ -68,7 +68,7 @@ ny      = 128 #64
 pres    = 960 #480
 
 # Time stepping
-Tend    = .2
+Tend    = .05
 dt      = Constant(1.25e-2) #Constant(1.25e-2)
 
 # Viscosity
@@ -196,7 +196,7 @@ pde_projection = PDEStaticCondensation(mesh,p, forms_adv['N_a'], forms_adv['G_a'
 bc1 = DirichletBC(mixedG.sub(1), Constant(0), Corner(geometry), "pointwise")
 bcs = [bc1]
 
-forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady_laplacian(ustar,dt,nu,f)
+forms_stokes   = FormsStokes(mesh,mixedL,mixedG, alpha).forms_unsteady(ustar,dt,nu,f)
 
 ssc = StokesStaticCondensation(mesh, forms_stokes['A_S'],forms_stokes['G_S'],
                                                          forms_stokes['B_S'], 
@@ -289,3 +289,6 @@ if comm.Get_rank() == 0:
     print('Elapsed time '+str(timer.elapsed()[0]))
 
 list_timings(TimingClear.keep, [TimingType.wall])
+time_table = timings(TimingClear.keep, [TimingType.wall])
+with open(outdir_base+"timings.log", "w") as out:
+    out.write(time_table.str(True))

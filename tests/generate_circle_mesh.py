@@ -17,9 +17,23 @@ geom.add_circle(
 
 points, cells, _, _, _ = pygmsh.generate_mesh(geom)
 
+# Route via meshio fails since lxml is missing?! 
 import meshio
 # Prune topology and save 2D
 cells = {'triangle':cells['triangle']}
-# points = points[:,:2]
+points = points[:,:2]
 
 meshio.write_points_cells("circle.xml", points, cells)
+
+
+# The rout via dolfin-convert works
+#mesh_data = pygmsh.generate_mesh(geom, geo_filename="mesh.geo")
+#import os
+#from dolfin import (Mesh)
+
+#os.system("gmsh -2 mesh.geo")
+#os.system("dolfin-convert mesh.msh mesh.xml")
+#mesh = Mesh("mesh.xml")
+
+
+
