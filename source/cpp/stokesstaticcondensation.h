@@ -74,13 +74,13 @@ private:
   void test_rank(const Form& a, const std::size_t rank);
 
   // Private Attributes
+  const Mesh* mesh;
   const Form* A;
-  const Form* G;
   const Form* B;
+  const Form* G;
   const Form* Q;
   const Form* S;
   const Form* GT;
-  const Mesh* mesh;
 
   bool assume_symmetric;
 
