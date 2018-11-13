@@ -30,8 +30,9 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-nx_list = [1, 2, 4, 8, 16]
-pres_list = [60 * pow(2, i) for i in range(len(nx_list))]
+i_list = [i for i in range(5)]
+nx_list = [pow(2, i) for i in i_list]
+pres_list = [60 * pow(2, i) for i in i_list]
 
 # Polynomial order
 k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
@@ -43,8 +44,8 @@ Uh = np.pi
 
 # Timestepping info, Tend corresponds to 2 rotations
 Tend = 2.
-dt_list = [Constant(0.08/(pow(2, i))) for i in range(len(nx_list))]
-storestep_list = [1 * pow(2, i) for i in range(len(dt_list))]
+dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
+storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
 outdir_base = './../../results/GaussianPulse_Rotation_AddDelete/'
