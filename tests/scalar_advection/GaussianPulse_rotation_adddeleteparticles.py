@@ -152,7 +152,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             if comm.rank == 0:
                 print("Step "+str(step))
-                
+
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
             AD.do_sweep()
