@@ -17,10 +17,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    * "periodic"   --> periodic bc (additional info on extent required)
    * "closed"     --> closed boundary
    */
-  set_bfacets(type1);
-
-  // Set facet and cell2facet info
-  set_facets_info();
+  // Set facet info
+  set_facets_info(type1);
 
   // Set some other useful info
   _space_dimension = _element->space_dimension();
@@ -84,24 +82,9 @@ advect_particles::advect_particles(
                  "Are boundary 1 and boundary 2 of the same type?");
   }
 
-  set_bfacets(bmesh, type1, indices1);
-  set_bfacets(bmesh, type2, indices2);
-
-  // Length should amount to size of boundary mesh, works in 3D?
-  if ((obc_facets.size() + cbc_facets.size() + pbc_facets.size())
-      != bmesh.num_cells())
-  {
-    std::cout << "Boundary mesh num cells " << bmesh.num_cells() << std::endl;
-    std::cout << "Size open " << obc_facets.size() << std::endl;
-    std::cout << "Size closed " << cbc_facets.size() << std::endl;
-    std::cout << "Size period " << pbc_facets.size() << std::endl;
-    dolfin_error("advect_particles.cpp::advect_particles", "set boundary parts",
-                 "Size of different boundary parts does not add up to boundary "
-                 "mesh size");
-  }
-
   // Set facet info
-  set_facets_info();
+  set_facets_info(type1);
+  set_bfacets(bmesh, type2, indices2);
 
   // Set some other useful info
   _space_dimension = _element->space_dimension();
@@ -150,7 +133,7 @@ advect_particles::advect_particles(
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_facets_info()
+void advect_particles::set_facets_info(const std::string btype)
 {
   // Cache midpoint, and normal of each facet in mesh
   // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
@@ -159,6 +142,20 @@ void advect_particles::set_facets_info()
   const Mesh* mesh = _P->mesh();
   std::size_t tdim = mesh->topology().dim();
   const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
+
+  // Type of external facet to set on all external facets
+  facet_t external_facet_type;
+  if (btype == "closed")
+    external_facet_type = facet_t::closed;
+  else if (btype == "open")
+    external_facet_type = facet_t::open;
+  else if (btype == "periodic")
+    external_facet_type = facet_t::periodic;
+  else
+  {
+    dolfin_error("advect_particles.cpp", "set external facet type",
+                 "Invalid value: %s", btype);
+  }
 
   for (FacetIterator fi(*mesh); !fi.end(); ++fi)
   {
@@ -201,26 +198,18 @@ void advect_particles::set_facets_info()
       ++i;
     }
 
-    // Perform some safety checks
+    // Internal facet
+    facet_t facet_type;
+
     if (fi->num_entities(tdim) == 1)
     {
       // Then the facet index must be in one of boundary facet lists
-      if (fi->num_global_entities(tdim) != 2
-          && (std::find(obc_facets.begin(), obc_facets.end(), fi->index())
-              != obc_facets.end())
-          && (std::find(cbc_facets.begin(), cbc_facets.end(), fi->index())
-              != cbc_facets.end())
-          && (std::find(pbc_facets.begin(), pbc_facets.end(), fi->index())
-              != pbc_facets.end()))
-      {
-        dolfin_error("advect_particles.cpp::set_facets_info",
-                     "get correct facet 2 cell connectivity.",
-                     "Detected only one cell neighbour to facet, but cannot "
-                     "find facet in boundary lists.");
-      }
+      if (fi->num_global_entities(tdim) != 2)
+        facet_type = external_facet_type;
     }
     else if (fi->num_entities(tdim) == 2)
     {
+      facet_type = facet_t::internal;
       if (outward_normal[0] == outward_normal[1])
       {
         dolfin_error(
@@ -237,53 +226,31 @@ void advect_particles::set_facets_info()
     }
 
     // Store info in facets_info variable
-    facet_info finf({facet_mp, facet_n});
+    facet_info finf({facet_mp, facet_n, facet_type});
     facets_info.push_back(finf);
   } // End facet iterator
-}
-//-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const std::string btype)
-{
-  if (btype == "closed")
-    cbc_facets = boundary_facets();
-  else if (btype == "open")
-    obc_facets = boundary_facets();
-  else if (btype == "periodic")
-    pbc_facets = boundary_facets();
-  else
-  {
-    dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type",
-                 "Set boundary type correct");
-  }
 }
 //-----------------------------------------------------------------------------
 void advect_particles::set_bfacets(
     const BoundaryMesh& bmesh, const std::string btype,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs)
 {
+  facet_t ftype;
   if (btype == "closed")
-    cbc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::closed;
   else if (btype == "open")
-    obc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::open;
   else if (btype == "periodic")
-    pbc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::periodic;
   else
   {
-    dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type",
-                 "Set boundary type correct");
+    dolfin_error("advect_particles.cpp", "set external facet type",
+                 "Invalid value: %s", btype);
   }
-}
-//-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::boundary_facets()
-{
-  // Find all exterior facets (connected to only one cell)
-  const std::size_t D = _P->mesh()->topology().dim();
-  std::vector<std::size_t> bfacet_idcs;
-  for (FacetIterator f(*(_P->mesh())); !f.end(); ++f)
-    if (f->num_global_entities(D) == 1)
-      bfacet_idcs.push_back(f->index());
 
-  return bfacet_idcs;
+  const std::vector<std::size_t> marked_facets = boundary_facets(bmesh, bidcs);
+  for (auto& idx : marked_facets)
+    facets_info[idx].type = ftype;
 }
 //-----------------------------------------------------------------------------
 std::vector<std::size_t> advect_particles::boundary_facets(
@@ -311,17 +278,6 @@ std::vector<std::size_t> advect_particles::boundary_facets(
                    "finding facets matching boundary mesh facets", "Unknown");
   }
   return bfacet_idcs;
-}
-//-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::interior_facets()
-{
-  std::vector<std::size_t> interior_fids;
-  std::size_t D = _P->mesh()->topology().dim();
-  for (FacetIterator f(*(_P->mesh())); !f.end(); ++f)
-    if (f->num_entities(D) == 1 and f->num_global_entities(D) == 2)
-      interior_fids.push_back(f->index());
-
-  return interior_fids;
 }
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
@@ -423,8 +379,7 @@ void advect_particles::do_step(double dt)
           else if (f.num_entities(tdim) == 1)
           {
             // Then we hit a boundary, but which type?
-            if (f.num_global_entities(tdim)
-                == 2) // Internal boundary (between processes)
+            if (f.num_global_entities(tdim) == 2)
             {
               // Then it is an internal boundary
               // Do a full push
@@ -442,9 +397,7 @@ void advect_particles::do_step(double dt)
               _P->particle_communicator_collect(ci->index(), i);
               i--;
             }
-            else if (std::find(obc_facets.begin(), obc_facets.end(),
-                               target_facet)
-                     != obc_facets.end())
+            else if (facets_info[target_facet].type == facet_t::open)
             {
               // Particle leaves the domain. Simply erase!
               // FIXME: additional check that particle indeed leaves domain
@@ -453,17 +406,13 @@ void advect_particles::do_step(double dt)
               dt_rem *= 0.;
               i--;
             }
-            else if (std::find(cbc_facets.begin(), cbc_facets.end(),
-                               target_facet)
-                     != cbc_facets.end())
+            else if (facets_info[target_facet].type == facet_t::closed)
             {
               // Closed BC
               apply_closed_bc(dt_int, up, ci->index(), i, target_facet);
               dt_rem -= dt_int;
             }
-            else if (std::find(pbc_facets.begin(), pbc_facets.end(),
-                               target_facet)
-                     != pbc_facets.end())
+            else if (facets_info[target_facet].type == facet_t::periodic)
             {
               // Then periodic bc
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
@@ -864,9 +813,8 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
       else if (f.num_entities(tdim) == 1)
       {
         // Then we hit a boundary, but which type?
-        if (f.num_global_entities(tdim)
-            == 2) // Internal boundary between processes
-        {
+        if (f.num_global_entities(tdim) == 2)
+        { // Internal boundary between processes
           _P->push_particle(dt_rem, up, cidx, *pidx);
           dt_rem *= 0.;
 
@@ -882,16 +830,14 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
           (*pidx)--;
           return; // Stop right here
         }
-        else if (std::find(obc_facets.begin(), obc_facets.end(), target_facet)
-                 != obc_facets.end())
+        else if (facets_info[target_facet].type == facet_t::open)
         {
           // Particle leaves the domain. Simply erase!
           apply_open_bc(cidx, *pidx);
           dt_rem *= 0.;
           (*pidx)--;
         }
-        else if (std::find(cbc_facets.begin(), cbc_facets.end(), target_facet)
-                 != cbc_facets.end())
+        else if (facets_info[target_facet].type == facet_t::closed)
         {
           apply_closed_bc(dt_int, up, cidx, *pidx, target_facet);
           dt_rem -= dt_int;
@@ -908,8 +854,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
 
           hit_cbc = true;
         }
-        else if (std::find(pbc_facets.begin(), pbc_facets.end(), target_facet)
-                 != pbc_facets.end())
+        else if (facets_info[target_facet].type == facet_t::periodic)
         {
           // TODO: add support for periodic bcs
           apply_periodic_bc(dt_rem, up, cidx, *pidx, target_facet);

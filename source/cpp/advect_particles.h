@@ -32,10 +32,21 @@
 namespace dolfin
 {
 
+// enum for external facet types
+enum class facet_t : std::uint8_t
+{
+  internal,
+  closed,
+  open,
+  periodic
+};
+
+// Facet info on each facet of mesh
 typedef struct facet_info_t
 {
   Point midpoint;
   Point normal;
+  facet_t type;
 } facet_info;
 
 class advect_particles
@@ -77,8 +88,7 @@ public:
 protected:
   particles* _P;
 
-  void set_facets_info();
-  void set_bfacets(const std::string btype);
+  void set_facets_info(const std::string btype);
   void set_bfacets(
       const BoundaryMesh& bmesh, const std::string btype,
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
@@ -87,10 +97,8 @@ protected:
   std::vector<std::size_t> boundary_facets(
       const BoundaryMesh& bmesh,
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-  std::vector<std::size_t> interior_facets();
 
-  // Initialize open, closed and periodic facets
-  std::vector<std::size_t> obc_facets, cbc_facets, pbc_facets;
+  // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
   bool pbc_active = false;
 
@@ -100,8 +108,9 @@ protected:
 
   std::size_t _space_dimension, _value_size_loc;
 
+  // Facet information
+  // (normal, midpoint, type(internal, open, closed, periodic))
   std::vector<facet_info> facets_info;
-  std::vector<std::vector<std::size_t>> cell2facet;
 
   Function* uh;
   std::shared_ptr<const FiniteElement> _element;
