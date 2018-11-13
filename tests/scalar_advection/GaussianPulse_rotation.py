@@ -30,10 +30,10 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [4] #[i for i in range(5)]
-nx_list = [pow(2,i) for i in i_list]
-pres_list = [140 * pow(2, i) for i in i_list]
-    
+i_list = [i for i in range(5)]
+nx_list = [pow(2, i) for i in i_list]
+pres_list = [160 * pow(2, i) for i in i_list]
+
 # Polynomial order
 k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
@@ -65,7 +65,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                               "L2 T_half", "Global mass T_half",
                               "L2 T_end", "Global mass T_end", "Wall clock time"))
 
-    for (i, nx, dt, pres, store_step) in zip(i_list, nx_list, dt_list, pres_list, storestep_list):
+    for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
 
@@ -153,7 +153,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             if comm.rank == 0:
                 print("Step  "+str(step))
-                
+
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
             ap.do_step(float(dt))
