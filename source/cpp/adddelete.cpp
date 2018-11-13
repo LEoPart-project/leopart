@@ -138,15 +138,16 @@ void AddDelete::insert_particles(const std::size_t Np_def,
     // Initialize random positions
     Point xp_new;
     initialize_random_position(xp_new, x_min_max, dolfin_cell);
-    Array<double> xp_array(gdim, xp_new.coordinates());
+    Eigen::Map<Eigen::VectorXd> xp_array(xp_new.coordinates(), gdim);
 
     particle pnew = {xp_new};
 
     // Eval other properties and push
     for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
     {
-      Array<double> feval(
-          _P->ptemplate(idx_func + 1)); // +1 to skip position slot
+      // +1 to skip position slot
+      Eigen::VectorXd feval(_P->ptemplate(idx_func + 1));
+
       _FList[idx_func]->eval(feval, xp_array, dolfin_cell, ufc_cell);
 
       // Convert to Point
@@ -238,9 +239,9 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
       // Eval other properties and push
       for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
       {
-        Array<double> xp_array(gdim, xp_new.coordinates());
-        Array<double> feval(
-            _P->ptemplate(idx_func + 1)); // +1 to skip position slot
+        Eigen::Map<Eigen::VectorXd> xp_array(xp_new.coordinates(), gdim);
+        // +1 to skip position slot
+        Eigen::VectorXd feval(_P->ptemplate(idx_func + 1));
         _FList[idx_func]->eval(feval, xp_array, dolfin_cell, ufc_cell);
 
         // Convert to Point
