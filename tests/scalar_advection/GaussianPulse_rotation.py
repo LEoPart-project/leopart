@@ -19,7 +19,7 @@ import os
 # Load from package
 from DolfinParticles import (particles, advect_rk3,
                              PDEStaticCondensation, RandomCircle,
-                             FormsPDEMap, GaussianPulse)
+                             FormsPDEMap, GaussianPulse, AddDelete)
 
 comm = pyMPI.COMM_WORLD
 
@@ -30,9 +30,10 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-nx_list = [1, 2, 4, 8, 16, 32]
-pres_list = [120 * pow(2, i) for i in range(len(nx_list))]
-
+i_list = [4] #[i for i in range(5)]
+nx_list = [pow(2,i) for i in i_list]
+pres_list = [140 * pow(2, i) for i in i_list]
+    
 # Polynomial order
 k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
@@ -43,8 +44,8 @@ Uh = np.pi
 
 # Timestepping info, Tend corresponds to 2 rotations
 Tend = 2.
-dt_list = [Constant(0.08/(pow(2, i))) for i in range(len(nx_list))]
-storestep_list = [1 * pow(2, i) for i in range(len(dt_list))]
+dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
+storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
 outdir_base = './../../results/GaussianPulse_Rotation/'
@@ -64,7 +65,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                               "L2 T_half", "Global mass T_half",
                               "L2 T_end", "Global mass T_end", "Wall clock time"))
 
-    for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
+    for (i, nx, dt, pres, store_step) in zip(i_list, nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
 
@@ -131,11 +132,14 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                                forms_pde['H_a'],
                                                forms_pde['B_a'],
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                               [], property_idx)
+                                               [bc], property_idx)
 
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h.cpp_object(), property_idx)
+
+        # Initialize add/delete for safety
+        AD = AddDelete(p, 15, 25, [psi0_h])
 
         step = 0
         t = 0.
@@ -147,19 +151,22 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             step += 1
             t += float(dt)
 
+            if comm.rank == 0:
+                print("Step  "+str(step))
+                
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
             ap.do_step(float(dt))
+            AD.do_sweep_failsafe(4*k)
             del(t1)
 
             t1 = Timer("[P] Assemble PDE system")
             pde_projection.assemble(True, True)
-            pde_projection.apply_boundary(bc)
+            # pde_projection.apply_boundary(bc)
             del(t1)
 
             t1 = Timer("[P] Solve PDE constrained projection")
-            pde_projection.solve_problem(psibar_h.cpp_object(),
-                                         psi_h.cpp_object(), lambda_h.cpp_object(),
+            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
                                          'mumps', 'default')
             del(t1)
 
@@ -174,6 +181,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             # Avoid getting accused of cheating, compute
             # L2 error and mass error at half rotation
             if int(np.floor(2*step - num_steps)) == 0:
+                psi0_expression.t = step * float(dt)
                 l2_error_half = sqrt(assemble(dot(psi_h - psi0_expression,
                                                   psi_h - psi0_expression)*dx))
                 area_half = assemble(psi_h*dx)

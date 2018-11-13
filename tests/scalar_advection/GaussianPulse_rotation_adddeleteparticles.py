@@ -30,7 +30,7 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-nx_list = [1, 2, 4, 8, 16, 32]
+nx_list = [1, 2, 4, 8, 16]
 pres_list = [60 * pow(2, i) for i in range(len(nx_list))]
 
 # Polynomial order
@@ -131,14 +131,14 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                                forms_pde['H_a'],
                                                forms_pde['B_a'],
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                               [], property_idx)
+                                               [bc], property_idx)
 
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h.cpp_object(), property_idx)
 
         # Initialize add/delete particle
-        AD = AddDelete(p, 10, 20, [psi0_h])
+        AD = AddDelete(p, 15, 25, [psi0_h])
 
         step = 0
         t = 0.
@@ -150,6 +150,9 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             step += 1
             t += float(dt)
 
+            if comm.rank == 0:
+                print("Step "+str(step))
+                
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
             AD.do_sweep()
@@ -159,12 +162,11 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             t1 = Timer("[P] Assemble PDE system")
             pde_projection.assemble(True, True)
-            pde_projection.apply_boundary(bc)
+            # pde_projection.apply_boundary(bc)
             del(t1)
 
             t1 = Timer("[P] Solve PDE constrained projection")
-            pde_projection.solve_problem(psibar_h.cpp_object(),
-                                         psi_h.cpp_object(), lambda_h.cpp_object(),
+            pde_projection.solve_problem(psibar_h.cpp_object(),  psi_h.cpp_object(),
                                          'mumps', 'default')
             del(t1)
 
@@ -179,6 +181,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             # Avoid getting accused of cheating, compute
             # L2 error and mass error at half rotation
             if int(np.floor(2*step - num_steps)) == 0:
+                psi0_expression.t = step * float(dt)
                 l2_error_half = sqrt(assemble(dot(psi_h - psi0_expression,
                                                   psi_h - psi0_expression)*dx))
                 area_half = assemble(psi_h*dx)
