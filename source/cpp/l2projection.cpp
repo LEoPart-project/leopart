@@ -14,14 +14,11 @@ l2projection::l2projection(particles& P, FunctionSpace& V,
   // Put an assertion here: we need to have a DG function space at the moment
   _num_subspaces = _element->num_sub_elements();
   _space_dimension = _element->space_dimension();
+
   if (_num_subspaces == 0)
-  {
     _num_dof_locs = _space_dimension;
-  }
   else
-  {
     _num_dof_locs = _space_dimension / _num_subspaces;
-  }
 
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
@@ -33,9 +30,6 @@ l2projection::l2projection(particles& P, FunctionSpace& V,
                  "Local value size (%d) mismatches particle template property "
                  "with size (%d)",
                  _value_size_loc, _P->ptemplate(_idx_pproperty));
-
-  // Initialize _mesh and the _dolfin_cells
-  _Nixp.resize(_P->mesh()->num_cells());
 }
 //-----------------------------------------------------------------------------
 l2projection::~l2projection() {}
@@ -63,22 +57,19 @@ void l2projection::project(Function& u)
     _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
-    // Store q in Nixp (actually, why?)
-    std::size_t _Npc = _P->num_cell_particles(i);
-    _Nixp[i].resize(_space_dimension, _Npc * _value_size_loc);
-    _Nixp[i] = q;
-
     // Initialize and solve for u_i
     Eigen::Matrix<double, Eigen::Dynamic, 1> u_i;
-    if (_Npc >= _num_dof_locs)
-    { // Overdetermined system, use normal equations (fast!)
-      u_i = (_Nixp[i] * (_Nixp[i].transpose())).ldlt().solve(_Nixp[i] * f);
+    if (_P->num_cell_particles(i) >= _num_dof_locs)
+    {
+      // Overdetermined system, use normal equations (fast!)
+      u_i = (q * (q.transpose())).ldlt().solve(q * f);
     }
     else
-    { // Underdetermined system, use Jacobi (slower, but more robust)
+    {
+      // Underdetermined system, use Jacobi (slower, but more robust)
       std::cout << "Underdetermined system in cell " << i
                 << ". Using Jacobie solve" << std::endl;
-      u_i = (_Nixp[i].transpose())
+      u_i = (q.transpose())
                 .jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
                 .solve(f);
     }
@@ -130,14 +121,9 @@ void l2projection::project(Function& u, const double lb, const double ub)
     _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
-    // Store q in Nixp (actually, why?)
-    std::size_t _Npc = _P->num_cell_particles(i);
-    _Nixp[i].resize(_space_dimension, _Npc * _value_size_loc);
-    _Nixp[i] = q;
-
     // Then solve bounded lstsq projection
-    Eigen::MatrixXd AtA = _Nixp[i] * (_Nixp[i].transpose());
-    Eigen::VectorXd Atf = -_Nixp[i] * f;
+    Eigen::MatrixXd AtA = q * (q.transpose());
+    Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
     solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
@@ -174,16 +160,11 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
     _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
-    // Store q in Nixp (actually, why?)
-    std::size_t _Npc = _P->num_cell_particles(i);
-    _Nixp[i].resize(_space_dimension, _Npc * _value_size_loc);
-    _Nixp[i] = q;
-
     // Compute lstsq contributions
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> qTq;
     Eigen::Matrix<double, Eigen::Dynamic, 1> qTf;
-    qTq = _Nixp[i] * _Nixp[i].transpose();
-    qTf = _Nixp[i] * f;
+    qTq = q * q.transpose();
+    qTf = q * f;
 
     // Place in matrix/vector --> Check!
     A_g.add_local(qTq.data(), celldofs.size(), celldofs.data(), celldofs.size(),
