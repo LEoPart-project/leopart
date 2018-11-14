@@ -408,7 +408,7 @@ void particles::relocate()
   for (CellIterator ci(*(_mesh)); !ci.end(); ++ci)
   {
     // Loop over particles in cell
-    for (int i = 0; i < num_cell_particles(ci->index()); i++)
+    for (unsigned int i = 0; i < num_cell_particles(ci->index()); i++)
     {
       Point xp = _cell2part[ci->index()][i][0];
 
