@@ -349,15 +349,12 @@ void advect_particles::do_step(double dt)
       // FIXME: It might be better to use 'pointer iterator here' as we need to
       // erase from cell2part vector now we decrement iterator int when needed
 
-      std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-
-      Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
+      Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+      Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                  _element);
 
       // Compute value at point using expansion coeffs and basis matrix, first
       // convert to Eigen matrix
-      Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(),
-                                            _value_size_loc, _space_dimension);
       Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), _space_dimension);
       Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
@@ -1040,14 +1037,12 @@ void advect_rk2::do_step(double dt)
 
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
-        std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-        Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
+        Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                    _element);
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
-        Eigen::Map<Eigen::MatrixXd> basis_mat(
-            basis_matrix.data(), _value_size_loc, _space_dimension);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
             coeffs_storage[ci->index()].data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
@@ -1177,15 +1172,12 @@ void advect_rk3::do_step(double dt)
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
-        std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-
-        Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
+        Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                    _element);
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
-        Eigen::Map<Eigen::MatrixXd> basis_mat(
-            basis_matrix.data(), _value_size_loc, _space_dimension);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
             coeffs_storage[ci->index()].data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
