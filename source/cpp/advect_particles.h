@@ -88,9 +88,6 @@ namespace dolfin{
         std::vector<std::vector<double>>  pbc_lims;     // Coordinates of limits
         bool pbc_active = false;
 
-        // Update particle info?
-        const std::string update_particle;
-
         // Timestepping scheme related
         std::vector<double> dti;
         std::vector<double> weights;
@@ -106,6 +103,9 @@ namespace dolfin{
 
         // Must receive a point xp
         std::tuple<std::size_t, double> time2intersect(std::size_t cidx, double dt, const Point xp, const Point up);
+
+        // Update particle info?
+        const std::string update_particle;
 
         // Consider placing in particle class
         //void push_particle(const double dt, const Point& up, const std::size_t cidx, const std::size_t pidx);
