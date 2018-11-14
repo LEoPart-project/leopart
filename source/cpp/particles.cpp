@@ -14,7 +14,7 @@ particles::particles(
                                   Eigen::RowMajor>>
         p_array,
     const std::vector<unsigned int>& p_template, const Mesh& mesh)
-    : _mesh(&mesh), _mpi_comm(mesh.mpi_comm()), _ptemplate(p_template)
+    : _mesh(&mesh), _ptemplate(p_template), _mpi_comm(mesh.mpi_comm())
 {
   // Note: p_array is 2D [num_particles, property_data]
 
@@ -36,7 +36,7 @@ particles::particles(
   _plen = offset.back();
 
   // Loop over particles:
-  for (std::size_t i = 0; i < p_array.rows(); i++)
+  for (Eigen::Index i = 0; i < p_array.rows(); i++)
   {
     // Position and get hosting cell
     Point xp(_Ndim, p_array.row(i).data());
@@ -74,7 +74,7 @@ void particles::interpolate(const Function& phih,
     value_size_loc *= phih.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idx])
-    dolfin_error("particles::get_particle_contributions", "get property idx",
+    dolfin_error("particles::interpolate", "get property idx",
                  "Local value size mismatches particle template property");
 
   for (CellIterator cell(*(_mesh)); !cell.end(); ++cell)
@@ -83,12 +83,10 @@ void particles::interpolate(const Function& phih,
     Utils::return_expansion_coeffs(coeffs, *cell, &phih);
     for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
-      std::vector<double> basis_matrix(space_dimension * value_size_loc);
-      Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
-                                 phih.function_space()->element());
+      Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
+      Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
+                                 *cell, phih.function_space()->element());
 
-      Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc,
-                                            space_dimension);
       Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), space_dimension);
       Eigen::VectorXd phi_p = basis_mat * exp_coeffs;
 
@@ -117,7 +115,7 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
     value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idx])
-    dolfin_error("particles::get_particle_contributions", "get property idx",
+    dolfin_error("particles::increment", "get property idx",
                  "Local value size mismatches particle template property");
 
   for (CellIterator cell(*(_mesh)); !cell.end(); ++cell)
@@ -132,12 +130,10 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
 
     for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
-      std::vector<double> basis_matrix(space_dimension * value_size_loc);
-      Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
-                                 phih_new.function_space()->element());
+      Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
+      Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
+                                 *cell, phih_new.function_space()->element());
 
-      Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc,
-                                            space_dimension);
       Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), space_dimension);
       Eigen::VectorXd delta_phi = basis_mat * exp_coeffs;
 
@@ -182,7 +178,7 @@ void particles::increment(
     value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idcs[0]])
-    dolfin_error("particles::get_particle_contributions", "get property idx",
+    dolfin_error("particles::increment", "get property idx",
                  "Local value size mismatches particle template property");
 
   for (CellIterator cell(*(_mesh)); !cell.end(); ++cell)
@@ -197,12 +193,10 @@ void particles::increment(
 
     for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
-      std::vector<double> basis_matrix(space_dimension * value_size_loc);
-      Utils::return_basis_matrix(basis_matrix, x(cell->index(), pidx), *cell,
-                                 phih_new.function_space()->element());
+      Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
+      Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
+                                 *cell, phih_new.function_space()->element());
 
-      Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(), value_size_loc,
-                                            space_dimension);
       Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), space_dimension);
       Eigen::VectorXd delta_phi = basis_mat * exp_coeffs;
 
@@ -519,7 +513,7 @@ void particles::get_particle_contributions(
 
   // Get cell index and num particles
   std::size_t cidx = dolfin_cell.index();
-  std::size_t _Npc = num_cell_particles(cidx);
+  std::size_t Npc = num_cell_particles(cidx);
 
   // Get and set cell data
   std::vector<double> vertex_coordinates;
@@ -528,40 +522,27 @@ void particles::get_particle_contributions(
   dolfin_cell.get_cell_data(ufc_cell);
 
   // Resize return values
-  q.resize(space_dimension, _Npc * value_size_loc);
-  f.resize(_Npc * value_size_loc);
+  q.resize(space_dimension, Npc * value_size_loc);
+  f.resize(Npc * value_size_loc);
 
-  if (_Npc > 0)
+  if (Npc > 0)
   {
-    for (std::size_t pidx = 0; pidx < _Npc; pidx++)
+    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+        basis_matrix(space_dimension, value_size_loc);
+    for (std::size_t pidx = 0; pidx < Npc; pidx++)
     {
-      double basis_matrix[space_dimension][value_size_loc];
+      std::size_t lb = pidx * value_size_loc;
+
       element->evaluate_basis_all(
-          &basis_matrix[0][0], x(cidx, pidx).coordinates(),
+          basis_matrix.data(), x(cidx, pidx).coordinates(),
           vertex_coordinates.data(), ufc_cell.orientation);
 
-      // Then insert in Eigen matrix and vector (rewrite this ugly loop!?)
-      // Loop over number of cell dofs:
-      for (std::size_t kk = 0; kk < space_dimension; kk++)
-      {
-        std::size_t lb = pidx * value_size_loc;
-        std::size_t m = 0; // Local counter
-        // Place in matrix and vector
-        for (std::size_t l = lb; l < lb + value_size_loc; l++)
-        {
-          q(kk, l) = basis_matrix[kk][m];
-          f(l) = _cell2part[cidx][pidx][property_idx][m];
-          m++; // Increment local iterator
-        }
-      }
+      // Place in matrix
+      q.block(0, lb, space_dimension, value_size_loc) = basis_matrix;
 
-      // TODO: TEST ME
-      // element->evaluate_basis_all(&q(0,0),
-      // _cell2part[cidx][pidx][0].coordinates(),
-      //                             vertex_coordinates.data(),
-      //                             ufc_cell.orientation);
-
-      // Fill the vector
+      // Place in vector
+      for (std::size_t m = 0; m < value_size_loc; ++m)
+        f(m + lb) = _cell2part[cidx][pidx][property_idx][m];
     }
   }
   else

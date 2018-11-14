@@ -48,12 +48,8 @@ public:
 protected:
   particles* _P; // Pointer object to particles
 
-  std::vector<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-      _Nixp;
-
-  std::shared_ptr<const GenericDofMap> _dofmap;
   std::shared_ptr<const FiniteElement> _element;
+  std::shared_ptr<const GenericDofMap> _dofmap;
   std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
 
   // Workaround to access tuple elements
