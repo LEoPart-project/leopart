@@ -378,9 +378,11 @@ void advect_particles::do_step(double dt)
           }
           else if (f.num_entities(tdim) == 1)
           {
+            const facet_t ftype = facets_info[target_facet].type;
             // Then we hit a boundary, but which type?
             if (f.num_global_entities(tdim) == 2)
             {
+              assert(ftype == facet_t::internal);
               // Then it is an internal boundary
               // Do a full push
               _P->push_particle(dt_rem, up, ci->index(), i);
@@ -397,7 +399,7 @@ void advect_particles::do_step(double dt)
               _P->particle_communicator_collect(ci->index(), i);
               i--;
             }
-            else if (facets_info[target_facet].type == facet_t::open)
+            else if (ftype == facet_t::open)
             {
               // Particle leaves the domain. Simply erase!
               // FIXME: additional check that particle indeed leaves domain
@@ -406,13 +408,13 @@ void advect_particles::do_step(double dt)
               dt_rem *= 0.;
               i--;
             }
-            else if (facets_info[target_facet].type == facet_t::closed)
+            else if (ftype == facet_t::closed)
             {
               // Closed BC
               apply_closed_bc(dt_int, up, ci->index(), i, target_facet);
               dt_rem -= dt_int;
             }
-            else if (facets_info[target_facet].type == facet_t::periodic)
+            else if (ftype == facet_t::periodic)
             {
               // Then periodic bc
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
@@ -812,9 +814,11 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
       }
       else if (f.num_entities(tdim) == 1)
       {
+        const facet_t ftype = facets_info[target_facet].type;
         // Then we hit a boundary, but which type?
         if (f.num_global_entities(tdim) == 2)
         { // Internal boundary between processes
+          assert(ftype == facet_t::internal);
           _P->push_particle(dt_rem, up, cidx, *pidx);
           dt_rem *= 0.;
 
@@ -830,14 +834,14 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
           (*pidx)--;
           return; // Stop right here
         }
-        else if (facets_info[target_facet].type == facet_t::open)
+        else if (ftype == facet_t::open)
         {
           // Particle leaves the domain. Simply erase!
           apply_open_bc(cidx, *pidx);
           dt_rem *= 0.;
           (*pidx)--;
         }
-        else if (facets_info[target_facet].type == facet_t::closed)
+        else if (ftype == facet_t::closed)
         {
           apply_closed_bc(dt_int, up, cidx, *pidx, target_facet);
           dt_rem -= dt_int;
@@ -854,7 +858,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
 
           hit_cbc = true;
         }
-        else if (facets_info[target_facet].type == facet_t::periodic)
+        else if (ftype == facet_t::periodic)
         {
           // TODO: add support for periodic bcs
           apply_periodic_bc(dt_rem, up, cidx, *pidx, target_facet);
