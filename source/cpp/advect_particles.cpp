@@ -19,6 +19,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    */
   // Set facet info
   set_facets_info();
+
+  // Set all external facets to type1
   set_bfacets(type1);
 
   // Set some other useful info
@@ -85,7 +87,10 @@ advect_particles::advect_particles(
 
   // Set facet info
   set_facets_info();
-  set_bfacets(bmesh, type1, indices1);
+
+  // Set all external facets to type1
+  set_bfacets(type1);
+  // Set marked external facets to type2
   set_bfacets(bmesh, type2, indices2);
 
   // Set some other useful info
@@ -215,6 +220,7 @@ void advect_particles::set_facets_info()
 //-----------------------------------------------------------------------------
 void advect_particles::set_bfacets(std::string btype)
 {
+
   // Type of external facet to set on all external facets
   facet_t external_facet_type;
   if (btype == "closed")
@@ -235,6 +241,8 @@ void advect_particles::set_bfacets(std::string btype)
   {
     if (fi->num_global_entities(tdim) == 1)
       facets_info[fi->index()].type = external_facet_type;
+    else
+      facets_info[fi->index()].type = facet_t::internal;
   }
 }
 //-----------------------------------------------------------------------------
