@@ -160,7 +160,9 @@ void advect_particles::set_facets_info()
     Point facet_mp = fi->midpoint();
     std::vector<bool> outward_normal;
 
-    unsigned int i = 0;
+    // FIXME: could just look at first cell only, simplifies code
+
+    int i = 0;
     for (CellIterator ci(*fi); !ci.end(); ++ci)
     {
       const unsigned int* cell_facets = ci->entities(tdim - 1);
@@ -194,6 +196,7 @@ void advect_particles::set_facets_info()
       ++i;
     }
 
+    // Safety check
     if (fi->num_entities(tdim) == 2)
     {
       if (outward_normal[0] == outward_normal[1])
@@ -203,12 +206,6 @@ void advect_particles::set_facets_info()
             "get correct facet normal direction",
             "The normal cannot be of same direction for neighboring cells");
       }
-    }
-    else
-    {
-      dolfin_error("advect_particles.cpp::set_facets_info",
-                   "get connecting cells",
-                   "Each facet should neighbor at max two cells.");
     }
 
     // Store info in facets_info array
