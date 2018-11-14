@@ -92,9 +92,9 @@ private:
   */
 
   // Private Attributes
-  const Form *N, *G, *L, *H, *B, *Q, *R, *S;
   const Mesh* mesh;
   particles* _P;
+  const Form *N, *G, *L, *H, *B, *Q, *R, *S;
 
   const MPI_Comm mpi_comm;
   Matrix A_g;
@@ -102,22 +102,24 @@ private:
 
   std::shared_ptr<const FiniteElement> _element;
   std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
-  // TODO: set _idx_pproperty
-  const std::size_t _idx_pproperty;
 
   std::vector<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
       invKS_list;
   std::vector<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-      Ge_list;
+      LHe_list;
   std::vector<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-      LHe_list;
+      Ge_list;
   std::vector<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
       Be_list;
   std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> Re_list, QRe_list;
+
+  // TODO: set _idx_pproperty
+  const std::size_t _idx_pproperty;
+
   std::vector<std::shared_ptr<const DirichletBC>> bcs;
 
   // FIXME needed for momentum based l2 map

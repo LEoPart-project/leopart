@@ -36,7 +36,8 @@ public:
                    vertex_coordinates.data(), ufc_cell);
   }
 
-  static void return_basis_matrix(std::vector<double>& basis_matrix,
+  // Compute basis matrix directly to pointer address
+  static void return_basis_matrix(double* basis_matrix,
                                   const Point xp, const Cell& dolfin_cell,
                                   std::shared_ptr<const FiniteElement> element)
   {
@@ -45,10 +46,11 @@ public:
     ufc::cell ufc_cell;
     dolfin_cell.get_cell_data(ufc_cell);
 
-    element->evaluate_basis_all(basis_matrix.data(), xp.coordinates(),
+    element->evaluate_basis_all(basis_matrix, xp.coordinates(),
                                 vertex_coordinates.data(),
                                 ufc_cell.orientation);
   }
+
 
   static void cell_bounding_box(std::vector<double>& x_min_max,
                                 const std::vector<double>& coordinates,

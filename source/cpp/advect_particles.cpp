@@ -174,7 +174,6 @@ void advect_particles::set_facets_info()
 
   const Mesh* mesh = _P->mesh();
   std::size_t tdim = mesh->topology().dim();
-  std::size_t gdim = mesh->geometry().dim();
   const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
   for (FacetIterator fi(*mesh); !fi.end(); ++fi)
@@ -313,7 +312,7 @@ std::vector<std::size_t> advect_particles::boundary_facets(
   std::size_t* val = boundary_facets.values();
   std::vector<std::size_t> bfacet_idcs;
 
-  for (std::size_t i = 0; i < bidcs.size(); i++)
+  for (Eigen::Index i = 0; i < bidcs.size(); i++)
   {
     // Return the facet index on the parent mesh
     bfacet_idcs.push_back(*(val + bidcs[i]));
@@ -350,20 +349,17 @@ void advect_particles::do_step(double dt)
     Utils::return_expansion_coeffs(coeffs, *ci, uh);
 
     // Loop over particles in cell
-    for (int i = 0; i < _P->num_cell_particles(ci->index()); i++)
+    for (unsigned int i = 0; i < _P->num_cell_particles(ci->index()); i++)
     {
       // FIXME: It might be better to use 'pointer iterator here' as we need to
       // erase from cell2part vector now we decrement iterator int when needed
 
-      std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-
-      Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
+      Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+      Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                  _element);
 
       // Compute value at point using expansion coeffs and basis matrix, first
       // convert to Eigen matrix
-      Eigen::Map<Eigen::MatrixXd> basis_mat(basis_matrix.data(),
-                                            _value_size_loc, _space_dimension);
       Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), _space_dimension);
       Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
@@ -996,14 +992,12 @@ void advect_particles::do_step_rk(double dt)
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
-        std::vector<double> basis_matrix(_space_dimension * _value_size_loc);
-        Utils::return_basis_matrix(basis_matrix, _P->x(ci->index(), i), *ci,
+        Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                    _element);
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
-        Eigen::Map<Eigen::MatrixXd> basis_mat(
-            basis_matrix.data(), _value_size_loc, _space_dimension);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
             coeffs_storage.data() + ci->index() * _space_dimension,
             _space_dimension);
