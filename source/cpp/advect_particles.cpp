@@ -19,7 +19,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    */
   set_bfacets(type1);
 
-  // Set facet and cell2facet info
+  // Set facet info
   set_facets_info();
 
   // Set some other useful info
@@ -525,6 +525,13 @@ void advect_particles::do_step(double dt)
   // Relocate global
   if (num_processes > 1)
     _P->particle_communicator_push();
+}
+//-----------------------------------------------------------------------------
+void advect_particles::update_facets_info()
+{
+  // Clear and set facets info to support moving meshes
+  facets_info.clear();
+  set_facets_info();
 }
 //-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>

@@ -40,7 +40,8 @@ PYBIND11_MODULE(particle_wrapper, m)
                const double, const std::size_t))
                & dolfin::particles::increment)
       .def("positions", &dolfin::particles::positions)
-      .def("get_property", &dolfin::particles::get_property);
+      .def("get_property", &dolfin::particles::get_property)
+      .def("relocate", &dolfin::particles::relocate);
 
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
@@ -62,7 +63,8 @@ PYBIND11_MODULE(particle_wrapper, m)
            const std::string,
            Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def("do_step", &dolfin::advect_particles::do_step);
+      .def("do_step", &dolfin::advect_particles::do_step)
+      .def("update_facets_info", &dolfin::advect_particles::update_facets_info);
 
   py::class_<dolfin::advect_rk2>(m, "advect_rk2")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
@@ -84,7 +86,8 @@ PYBIND11_MODULE(particle_wrapper, m)
            const std::string,
            Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def("do_step", &dolfin::advect_rk2::do_step);
+      .def("do_step", &dolfin::advect_rk2::do_step)
+      .def("update_facets_info", &dolfin::advect_rk2::update_facets_info);
 
   py::class_<dolfin::advect_rk3>(m, "advect_rk3")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
@@ -106,7 +109,8 @@ PYBIND11_MODULE(particle_wrapper, m)
            const std::string,
            Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def("do_step", &dolfin::advect_rk3::do_step);
+      .def("do_step", &dolfin::advect_rk3::do_step)
+      .def("update_facets_info", &dolfin::advect_rk3::update_facets_info);
 
   py::class_<dolfin::l2projection>(m, "l2projection")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,

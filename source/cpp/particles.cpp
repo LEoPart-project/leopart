@@ -398,6 +398,74 @@ void particles::particle_communicator_push()
   }
 }
 
+void particles::relocate()
+{
+  // Method to relocate particles on moving mesh
+
+  // Update bounding boxes
+  const std::size_t num_processes = MPI::size(_mpi_comm);
+  update_bounding_boxes();
+
+  // Init relocate local
+  std::vector<std::size_t> reloc_local_c;
+  std::vector<particle> reloc_local_p;
+
+  // Loop over particles
+  for (CellIterator ci(*(_mesh)); !ci.end(); ++ci)
+  {
+    // Loop over particles in cell
+    for (int i = 0; i < num_cell_particles(ci->index()); i++)
+    {
+      Point xp = _cell2part[ci->index()][i][0];
+
+      // If cell does not contain particle, then find new cell
+      if (!ci->contains(xp))
+      {
+        // Do entity collision
+        std::size_t cell_id
+            = _mesh
+                ->bounding_box_tree()
+                ->compute_first_entity_collision(xp);
+
+        if (cell_id != std::numeric_limits<unsigned int>::max())
+        {
+          // Then stay local
+          reloc_local_c.push_back(cell_id);
+          reloc_local_p.push_back(get_particle(ci->index(), i));
+          delete_particle(ci->index(), i);
+        }
+        else if (num_processes > 1)
+        {
+          // Then push to parallel
+           particle_communicator_collect(ci->index(), i);
+        }
+        else
+        {
+          // Particle can escape through moving boundary
+          // if so, delete particle here when run in serial
+          delete_particle(ci->index(), i);
+        }
+      }
+    }
+  }
+
+  // Do the local relocation
+  for (std::size_t i = 0; i < reloc_local_c.size(); ++i)
+  {
+    if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
+      add_particle(reloc_local_c[i], reloc_local_p[i]);
+    else
+    {
+      dolfin_error("particles.cpp::relocate_particles",
+                   "find a hosting cell on local process", "Unknown");
+    }
+  }
+
+  // Do the global push
+  if (num_processes > 1)
+    particle_communicator_push();
+}
+
 bool particles::in_bounding_box(const std::vector<double>& point,
                                 const std::vector<double>& bounding_box,
                                 const double tol)
