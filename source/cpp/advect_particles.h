@@ -88,7 +88,9 @@ public:
 protected:
   particles* _P;
 
-  void set_facets_info(const std::string btype);
+  void set_facets_info();
+
+  void set_bfacets(const std::string btype);
   void set_bfacets(
       const BoundaryMesh& bmesh, const std::string btype,
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);

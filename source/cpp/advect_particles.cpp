@@ -18,7 +18,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    * "closed"     --> closed boundary
    */
   // Set facet info
-  set_facets_info(type1);
+  set_facets_info();
+  set_bfacets(type1);
 
   // Set some other useful info
   _space_dimension = _element->space_dimension();
@@ -83,7 +84,8 @@ advect_particles::advect_particles(
   }
 
   // Set facet info
-  set_facets_info(type1);
+  set_facets_info();
+  set_bfacets(bmesh, type1, indices1);
   set_bfacets(bmesh, type2, indices2);
 
   // Set some other useful info
@@ -133,7 +135,7 @@ advect_particles::advect_particles(
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_facets_info(const std::string btype)
+void advect_particles::set_facets_info()
 {
   // Cache midpoint, and normal of each facet in mesh
   // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
@@ -143,19 +145,8 @@ void advect_particles::set_facets_info(const std::string btype)
   std::size_t tdim = mesh->topology().dim();
   const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
-  // Type of external facet to set on all external facets
-  facet_t external_facet_type;
-  if (btype == "closed")
-    external_facet_type = facet_t::closed;
-  else if (btype == "open")
-    external_facet_type = facet_t::open;
-  else if (btype == "periodic")
-    external_facet_type = facet_t::periodic;
-  else
-  {
-    dolfin_error("advect_particles.cpp", "set external facet type",
-                 "Invalid value: %s", btype);
-  }
+  // Information for each facet of the mesh
+  facets_info.resize(mesh->num_entities(tdim - 1));
 
   for (FacetIterator fi(*mesh); !fi.end(); ++fi)
   {
@@ -198,18 +189,8 @@ void advect_particles::set_facets_info(const std::string btype)
       ++i;
     }
 
-    // Internal facet
-    facet_t facet_type;
-
-    if (fi->num_entities(tdim) == 1)
+    if (fi->num_entities(tdim) == 2)
     {
-      // Then the facet index must be in one of boundary facet lists
-      if (fi->num_global_entities(tdim) != 2)
-        facet_type = external_facet_type;
-    }
-    else if (fi->num_entities(tdim) == 2)
-    {
-      facet_type = facet_t::internal;
       if (outward_normal[0] == outward_normal[1])
       {
         dolfin_error(
@@ -225,10 +206,36 @@ void advect_particles::set_facets_info(const std::string btype)
                    "Each facet should neighbor at max two cells.");
     }
 
-    // Store info in facets_info variable
-    facet_info finf({facet_mp, facet_n, facet_type});
-    facets_info.push_back(finf);
+    // Store info in facets_info array
+    const std::size_t index = fi->index();
+    facets_info[index].midpoint = facet_mp;
+    facets_info[index].normal = facet_n;
   } // End facet iterator
+}
+//-----------------------------------------------------------------------------
+void advect_particles::set_bfacets(std::string btype)
+{
+  // Type of external facet to set on all external facets
+  facet_t external_facet_type;
+  if (btype == "closed")
+    external_facet_type = facet_t::closed;
+  else if (btype == "open")
+    external_facet_type = facet_t::open;
+  else if (btype == "periodic")
+    external_facet_type = facet_t::periodic;
+  else
+  {
+    dolfin_error("advect_particles.cpp", "set external facet type",
+                 "Invalid value: %s", btype);
+  }
+
+  const Mesh* mesh = _P->mesh();
+  const std::size_t tdim = mesh->topology().dim();
+  for (FacetIterator fi(*mesh); !fi.end(); ++fi)
+  {
+    if (fi->num_global_entities(tdim) == 1)
+      facets_info[fi->index()].type = external_facet_type;
+  }
 }
 //-----------------------------------------------------------------------------
 void advect_particles::set_bfacets(
