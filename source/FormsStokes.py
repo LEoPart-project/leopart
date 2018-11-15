@@ -239,7 +239,7 @@ class FormsStokes:
 
     def __test_functions(self):
         w, q = TestFunctions(self.mixedL)
-        wbar, qbar = TrialFunctions(self.mixedG)
+        wbar, qbar = TestFunctions(self.mixedG)
         return (w, q, wbar, qbar)
 
     def __trial_functions(self):
