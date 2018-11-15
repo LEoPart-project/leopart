@@ -18,7 +18,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    * "closed"     --> closed boundary
    */
   // Set facet info
-  set_facets_info();
+  update_facets_info();
 
   // Set all external facets to type1
   set_bfacets(type1);
@@ -86,7 +86,7 @@ advect_particles::advect_particles(
   }
 
   // Set facet info
-  set_facets_info();
+  update_facets_info();
 
   // Set all external facets to type1
   set_bfacets(type1);
@@ -140,7 +140,7 @@ advect_particles::advect_particles(
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_facets_info()
+void advect_particles::update_facets_info()
 {
   // Cache midpoint, and normal of each facet in mesh
   // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
@@ -202,7 +202,7 @@ void advect_particles::set_facets_info()
       if (outward_normal[0] == outward_normal[1])
       {
         dolfin_error(
-            "advect_particles.cpp::set_facets_info",
+            "advect_particles.cpp::update_facets_info",
             "get correct facet normal direction",
             "The normal cannot be of same direction for neighboring cells");
       }
@@ -484,12 +484,6 @@ void advect_particles::do_step(double dt)
   // Relocate global
   if (num_processes > 1)
     _P->particle_communicator_push();
-}
-//-----------------------------------------------------------------------------
-void advect_particles::update_facets_info()
-{
-  // Update set_facets_info to support moving meshes
-  set_facets_info();
 }
 //-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>

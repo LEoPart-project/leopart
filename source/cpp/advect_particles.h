@@ -91,8 +91,6 @@ public:
 protected:
   particles* _P;
 
-  void set_facets_info();
-
   void set_bfacets(const std::string btype);
   void set_bfacets(
       const BoundaryMesh& bmesh, const std::string btype,
@@ -148,7 +146,7 @@ protected:
                   std::vector<particle>& reloc_local_p);
 };
 
-class advect_rk2 : protected advect_particles
+class advect_rk2 : public advect_particles
 {
 public:
   // Constructors
@@ -174,12 +172,6 @@ public:
 
   // Step forward in time dt
   void do_step(double dt);
-
-  // Update facet info on moving mesh
-  void update_facets_info()
-  {
-    advect_particles::update_facets_info();
-  }
 
   // Destructor
   ~advect_rk2();
@@ -208,7 +200,7 @@ private:
   }
 };
 
-class advect_rk3 : protected advect_particles
+class advect_rk3 : public advect_particles
 {
 public:
   // Constructors
@@ -234,12 +226,6 @@ public:
 
   // Step forward in time dt
   void do_step(double dt);
-
-  // Update facet info on moving mesh
-  void update_facets_info()
-  {
-    advect_particles::update_facets_info();
-  }
 
   // Destructor
   ~advect_rk3();
