@@ -82,6 +82,9 @@ public:
   // Step forward in time dt
   void do_step(double dt);
 
+  // Update facet info on moving mesh
+  void update_facets_info();
+
   // Destructor
   ~advect_particles();
 
@@ -169,12 +172,17 @@ public:
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
-  // Destructor
-  ~advect_rk2();
-
+  // Step forward in time dt
   void do_step(double dt);
 
-  // Something on particle updaters
+  // Update facet info on moving mesh
+  void update_facets_info()
+  {
+    advect_particles::update_facets_info();
+  }
+
+  // Destructor
+  ~advect_rk2();
 
 private:
   std::size_t xp0_idx, up0_idx;
@@ -224,10 +232,17 @@ public:
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
+  // Step forward in time dt
+  void do_step(double dt);
+
+  // Update facet info on moving mesh
+  void update_facets_info()
+  {
+    advect_particles::update_facets_info();
+  }
+
   // Destructor
   ~advect_rk3();
-
-  void do_step(double dt);
 
 private:
   std::size_t xp0_idx, up0_idx;

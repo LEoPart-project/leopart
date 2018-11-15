@@ -486,6 +486,12 @@ void advect_particles::do_step(double dt)
     _P->particle_communicator_push();
 }
 //-----------------------------------------------------------------------------
+void advect_particles::update_facets_info()
+{
+  // Update set_facets_info to support moving meshes
+  set_facets_info();
+}
+//-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>
 advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
                                  const Point up)
