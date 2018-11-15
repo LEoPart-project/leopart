@@ -229,7 +229,7 @@ void advect_particles::set_bfacets(std::string btype)
   else
   {
     dolfin_error("advect_particles.cpp", "set external facet type",
-                 "Invalid value: %s", btype);
+                 "Invalid value: %s", btype.c_str());
   }
 
   const Mesh* mesh = _P->mesh();
@@ -257,7 +257,7 @@ void advect_particles::set_bfacets(
   else
   {
     dolfin_error("advect_particles.cpp", "set external facet type",
-                 "Invalid value: %s", btype);
+                 "Invalid value: %s", btype.c_str());
   }
 
   const std::vector<std::size_t> marked_facets = boundary_facets(bmesh, bidcs);
