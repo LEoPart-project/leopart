@@ -136,7 +136,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
-        p.interpolate(psi0_h.cpp_object(), property_idx)
+        p.interpolate(psi0_h, property_idx)
 
         # Initialize add/delete for safety
         AD = AddDelete(p, 15, 25, [psi0_h])
@@ -166,8 +166,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             del(t1)
 
             t1 = Timer("[P] Solve PDE constrained projection")
-            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                         'mumps', 'default')
+            pde_projection.solve_problem(psibar_h, psi_h, 'mumps', 'default')
             del(t1)
 
             t1 = Timer("[P] Update and store")
