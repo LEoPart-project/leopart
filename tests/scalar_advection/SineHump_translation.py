@@ -56,7 +56,7 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0., 0.
 xmax, ymax = 1., 1.
-i_list = [5]
+i_list = [0, 1, 2, 3, 4]
 nx_list = [8 * pow(2, i) for i in i_list]
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],

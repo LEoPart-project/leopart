@@ -11,8 +11,7 @@
 
 from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function, FunctionSpace,
                     Expression, Point, DirichletBC, assign, sqrt, dot, assemble, dx,
-                    refine, XDMFFile, Timer, TimingType, TimingClear, timings, set_log_level,
-                    parameters)
+                    refine, XDMFFile, Timer, TimingType, TimingClear, timings, set_log_level)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
@@ -25,8 +24,6 @@ from DolfinParticles import (particles, advect_rk3,
 set_log_level(10)
 comm = pyMPI.COMM_WORLD
 
-# parameters["ghost_mode"] = "shared_facet"
-
 # Geometric properties
 x0, y0 = 0., 0.
 xc, yc = -0.15, 0.
@@ -34,7 +31,7 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [1] #[i for i in range(5)]
+i_list = [i for i in range(5)]
 nx_list = [pow(2, i) for i in i_list]
 pres_list = [160 * pow(2, i) for i in i_list]
 
@@ -166,7 +163,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             t1 = Timer("[P] Assemble PDE system")
             # pde_projection.assemble_state_rhs()
-            
+
             pde_projection.assemble(True, True)
             # pde_projection.apply_boundary(bc)
             quit()
