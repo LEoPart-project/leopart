@@ -65,7 +65,7 @@ lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
 lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 
 # Particle resolution, just 2 particles per cell
-pres_list = [15 * pow(2, i) for i in range(len(nx_list))]
+pres_list = [45 * i // 8 for i in nx_list]
 
 # Polynomial orders: k_list --> state variable, l_list --> Lagrange multiplier
 k_list = [1, 2, 3]
@@ -77,8 +77,8 @@ ux, vy = '1', '1'
 
 # Timestepping info
 Tend = 1.
-dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
-storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
+dt_list = [Constant(0.8 / i) for i in nx_list]
+storestep_list = [5 * i // 8 for i in nx_list]
 
 # Directory for output
 outdir_base = './../../results/PeriodicPulse_Translation_adddelete/'
