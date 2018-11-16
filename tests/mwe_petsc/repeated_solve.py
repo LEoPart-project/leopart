@@ -10,7 +10,7 @@
 
 from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function, FunctionSpace,
                     Expression, Point, DirichletBC, assign, sqrt, dot, assemble, dx,
-                    refine, XDMFFile, Timer, TimingType, TimingClear, timings)
+                    refine, Timer, TimingType, TimingClear, list_timings)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
@@ -45,23 +45,6 @@ Uh = np.pi
 Tend = 2.
 dt = Constant(0.08/(pow(2, resolution_level)))
 
-# Directory for output
-outdir_base = './../../results/mwe_petsc/'
-
-# Then start the loop over the tests set-ups
-outdir = outdir_base+'k'+str(k)+'l'+str(lm)+'kbar'+str(kbar)+'_nproc'+str(comm.Get_size())+'/'
-
-output_table = outdir+'output_table.txt'
-if comm.rank == 0:
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    with open(output_table, "w") as write_file:
-        write_file.write("%-12s %-15s %-20s %-10s %-20s %-20s %-10s %-20s \n" %
-                         ("Time step", "Number of cells", "Number of particles",
-                          "L2 T_half", "Global mass T_half",
-                          "L2 T_end", "Global mass T_end", "Wall clock time"))
-
 if comm.Get_rank() == 0:
     print("Starting computation with grid resolution "+str(nx))
 
@@ -74,8 +57,6 @@ n = nx
 while (n > 1):
     mesh = refine(mesh)
     n /= 2
-
-output_field = XDMFFile(mesh.mpi_comm(), outdir+"psi_h_nx"+str(nx)+".xdmf")
 
 # Velocity and initial condition
 V = VectorFunctionSpace(mesh, 'DG', 3)
@@ -182,24 +163,4 @@ area_end = assemble(psi_h*dx)
 if comm.Get_rank() == 0:
     print("l2 error "+str(l2_error))
 
-    # Store in error error table
-    num_cells_t = mesh.num_entities_global(2)
-    num_particles = len(x)
-    try:
-        area_error_half = np.float64((area_half-area_0))
-    except BaseException:
-        area_error_half = float('NaN')
-        l2_error_half = float('NaN')
-
-    area_error_end = np.float64((area_end-area_0))
-
-    with open(output_table, "a") as write_file:
-        write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g %-20.2e %-20.3g %-20.3g \n" %
-                         (float(dt), int(num_cells_t), int(num_particles),
-                          float(l2_error_half), np.float64(area_error_half),
-                          float(l2_error), np.float64(area_error_end),
-                          np.float(timer.elapsed()[0])))
-
-time_table = timings(TimingClear.keep, [TimingType.wall])
-with open(outdir+"timings"+str(nx)+".log", "w") as out:
-    out.write(time_table.str(True))
+list_timings(TimingClear.keep, [TimingType.wall])
