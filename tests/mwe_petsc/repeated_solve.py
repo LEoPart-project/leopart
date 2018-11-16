@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (C) 2018 Jakob Maljaars
-# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
-#
-# SPDX-License-Identifier: LGPL-3.0-or-later
-
 """
     MWE for petsc-issue
 """
@@ -13,7 +7,6 @@ from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function
                     refine, Timer, TimingType, TimingClear, list_timings)
 from mpi4py import MPI as pyMPI
 import numpy as np
-import os
 
 # Load from package
 from DolfinParticles import (particles, PDEStaticCondensation, RandomCircle,
@@ -38,10 +31,10 @@ k = 2
 lm = 0
 kbar = k
 
-# Magnitude solid body rotation .
-Uh = np.pi
+# Set advective transport to 0
+Uh = 0.
 
-# Timestepping info, Tend corresponds to 2 rotations
+# Timestepping info
 Tend = 2.
 dt = Constant(0.08/(pow(2, resolution_level)))
 
@@ -110,13 +103,16 @@ pde_projection = PDEStaticCondensation(mesh, p,
 
 # Set initial condition at mesh and particles
 psi0_h.interpolate(psi0_expression)
-p.interpolate(psi0_h.cpp_object(), property_idx)
+p.interpolate(psi0_h, property_idx)
+
+# Just assemble once
+pde_projection.assemble(True, True)
 
 step = 0
 t = 0.
-area_0 = assemble(psi0_h*dx)
 timer = Timer()
 
+# Just repeatedly solve same system
 timer.start()
 while step < num_steps:
     step += 1
@@ -124,41 +120,16 @@ while step < num_steps:
 
     if comm.rank == 0:
         print("Step  "+str(step))
-
-    t1 = Timer("[P] Assemble PDE system")
-
-    # Assembling only at tstep 0
-    if step == 1:
-        pde_projection.assemble(True, True)
-
-    # pde_projection.apply_boundary(bc)
-    del(t1)
-    comm.Barrier()
+    
     t1 = Timer("[P] Solve PDE constrained projection")
-    pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                 'mumps', 'default')
+    pde_projection.solve_problem(psibar_h, psi_h, 'mumps', 'default')
     del(t1)
-
-    t1 = Timer("[P] Update and store")
-    # Update old solution
-    assign(psi0_h, psi_h)
-
-    # Avoid getting accused of cheating, compute
-    # L2 error and mass error at half rotation
-    if int(np.floor(2*step - num_steps)) == 0:
-        psi0_expression.t = step * float(dt)
-        l2_error_half = sqrt(assemble(dot(psi_h - psi0_expression,
-                                          psi_h - psi0_expression)*dx))
-        area_half = assemble(psi_h*dx)
-    del(t1)
+    
 timer.stop()
 
-# Compute error (we should accurately recover initial condition)
+# Compute error (we should remain at initial condition)
 psi0_expression.t = step * float(dt)
 l2_error = sqrt(assemble(dot(psi_h - psi0_expression, psi_h - psi0_expression)*dx))
-
-# The global mass conservation error should be zero
-area_end = assemble(psi_h*dx)
 
 if comm.Get_rank() == 0:
     print("l2 error "+str(l2_error))
