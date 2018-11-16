@@ -83,7 +83,7 @@ def test_l2projection(polynomial_order, in_expression):
 
     vh = Function(V)
     lstsq_rho = l2projection(p, V, property_idx)
-    lstsq_rho.project(vh.cpp_object())
+    lstsq_rho.project(vh)
 
     error_sq = abs(assemble(dot(v_exact - vh, v_exact - vh)*dx))
     assert error_sq < 1e-15
@@ -115,7 +115,7 @@ def test_l2projection_bounded(polynomial_order, lb, ub):
 
     vh = Function(V)
     lstsq_rho = l2projection(p, V, property_idx)
-    lstsq_rho.project(vh.cpp_object(), lb, ub)
+    lstsq_rho.project(vh, lb, ub)
 
     # Assert if it stays within bounds
     assert np.any(vh.vector().get_local() < ub + 1e-12)
@@ -160,7 +160,7 @@ def test_pde_constrained(polynomial_order, in_expression):
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [s], mesh)
-    p.interpolate(psi0_h.cpp_object(), 1)
+    p.interpolate(psi0_h, 1)
 
     # Initialize forms
     FuncSpace_adv = {'FuncSpace_local': W, 'FuncSpace_lambda': T, 'FuncSpace_bar': Wbar}
@@ -175,8 +175,7 @@ def test_pde_constrained(polynomial_order, in_expression):
 
     # Assemble and solve
     pde_projection.assemble(True, True)
-    pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(), lambda_h.cpp_object(),
-                                 'none', 'default')
+    pde_projection.solve_problem(psibar_h, psi_h, lambda_h, 'none', 'default')
 
     error_psih = abs(assemble((psi_h - psi0_h) * (psi_h - psi0_h) * dx))
     error_lamb = abs(assemble(lambda_h * lambda_h * dx))

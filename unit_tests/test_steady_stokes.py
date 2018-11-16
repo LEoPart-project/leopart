@@ -94,7 +94,7 @@ def test_steady_stokes(k):
         # Assemble global system and incorporates bcs
         ssc.assemble_global_system(True)
         # Solve using mumps
-        ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+        ssc.solve_problem(Uhbar, Uh, "mumps", "default")
 
         # Compute velocity/pressure/local div error
         uh, ph = Uh.split()

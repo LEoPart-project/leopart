@@ -1,14 +1,15 @@
 // Author: Jakob Maljaars
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+// Copyright: (c) 2018
+// License: GNU Lesser GPL version 3 or any later version
 
 #include "advect_particles.h"
 using namespace dolfin;
 
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U,
-                                   Function& uhi, const std::string type1,
-                                   const std::string update_particle)
-    : _P(&P), uh(&uhi), _element(U.element()), update_particle(update_particle)
+                                   Function& uhi, const std::string type1)
+    : _P(&P), uh(&uhi), _element(U.element())
 {
   /*
    * Following types are distinguished:
@@ -16,31 +17,24 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
    * "periodic"   --> periodic bc (additional info on extent required)
    * "closed"     --> closed boundary
    */
-  set_bfacets(type1);
+  // Set facet info
+  update_facets_info();
 
-  // Set facet and cell2facet info
-  set_facets_info();
+  // Set all external facets to type1
+  set_bfacets(type1);
 
   // Set some other useful info
   _space_dimension = _element->space_dimension();
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
-
-  // Check input of particle update
-  if (this->update_particle != "none" && this->update_particle != "vector"
-      && this->update_particle != "scalar" && this->update_particle != "both")
-    dolfin_error("advect_particles.cpp::advect_particles",
-                 "could not set particle property updater",
-                 "Provide any of: none, scalar, vector, both");
 }
 //-----------------------------------------------------------------------------
 // Using delegate constructors here
 advect_particles::advect_particles(
     particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles::advect_particles(P, U, uhi, type1, update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+    : advect_particles::advect_particles(P, U, uhi, type1)
 {
   std::size_t gdim = _P->mesh()->geometry().dim();
 
@@ -81,9 +75,8 @@ advect_particles::advect_particles(
     const std::string type1,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
     const std::string type2,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    const std::string update_particle)
-    : _P(&P), uh(&uhi), _element(U.element()), update_particle(update_particle)
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2)
+    : _P(&P), uh(&uhi), _element(U.element())
 {
   if (type1 == type2)
   {
@@ -92,37 +85,19 @@ advect_particles::advect_particles(
                  "Are boundary 1 and boundary 2 of the same type?");
   }
 
-  set_bfacets(bmesh, type1, indices1);
-  set_bfacets(bmesh, type2, indices2);
-
-  // Length should amount to size of boundary mesh, works in 3D?
-  if ((obc_facets.size() + cbc_facets.size() + pbc_facets.size())
-      != bmesh.num_cells())
-  {
-    std::cout << "Boundary mesh num cells " << bmesh.num_cells() << std::endl;
-    std::cout << "Size open " << obc_facets.size() << std::endl;
-    std::cout << "Size closed " << cbc_facets.size() << std::endl;
-    std::cout << "Size period " << pbc_facets.size() << std::endl;
-    dolfin_error("advect_particles.cpp::advect_particles", "set boundary parts",
-                 "Size of different boundary parts does not add up to boundary "
-                 "mesh size");
-  }
-
   // Set facet info
-  set_facets_info();
+  update_facets_info();
+
+  // Set all external facets to type1
+  set_bfacets(type1);
+  // Set marked external facets to type2
+  set_bfacets(bmesh, type2, indices2);
 
   // Set some other useful info
   _space_dimension = _element->space_dimension();
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
-
-  // Check input of particle update
-  if (this->update_particle != "none" && this->update_particle != "vector"
-      && this->update_particle != "scalar" && this->update_particle != "both")
-    dolfin_error("advect_particles.cpp::advect_particles",
-                 "could not set particle property updater",
-                 "Provide any of: none, scalar, vector, both");
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(
@@ -131,10 +106,9 @@ advect_particles::advect_particles(
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
     const std::string type2,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles::advect_particles(P, U, uhi, bmesh, type1, indices1,
-                                         type2, indices2, update_particle)
+                                         type2, indices2)
 {
   std::size_t gdim = _P->mesh()->geometry().dim();
 
@@ -166,7 +140,7 @@ advect_particles::advect_particles(
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_facets_info()
+void advect_particles::update_facets_info()
 {
   // Cache midpoint, and normal of each facet in mesh
   // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
@@ -176,6 +150,9 @@ void advect_particles::set_facets_info()
   std::size_t tdim = mesh->topology().dim();
   const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
+  // Information for each facet of the mesh
+  facets_info.resize(mesh->num_entities(tdim - 1));
+
   for (FacetIterator fi(*mesh); !fi.end(); ++fi)
   {
     // Get and store facet normal and facet midpoint
@@ -183,7 +160,9 @@ void advect_particles::set_facets_info()
     Point facet_mp = fi->midpoint();
     std::vector<bool> outward_normal;
 
-    unsigned int i = 0;
+    // FIXME: could just look at first cell only, simplifies code
+
+    int i = 0;
     for (CellIterator ci(*fi); !ci.end(); ++ci)
     {
       const unsigned int* cell_facets = ci->entities(tdim - 1);
@@ -217,59 +196,50 @@ void advect_particles::set_facets_info()
       ++i;
     }
 
-    // Perform some safety checks
-    if (fi->num_entities(tdim) == 1)
-    {
-      // Then the facet index must be in one of boundary facet lists
-      if (fi->num_global_entities(tdim) != 2
-          && (std::find(obc_facets.begin(), obc_facets.end(), fi->index())
-              != obc_facets.end())
-          && (std::find(cbc_facets.begin(), cbc_facets.end(), fi->index())
-              != cbc_facets.end())
-          && (std::find(pbc_facets.begin(), pbc_facets.end(), fi->index())
-              != pbc_facets.end()))
-      {
-        dolfin_error("advect_particles.cpp::set_facets_info",
-                     "get correct facet 2 cell connectivity.",
-                     "Detected only one cell neighbour to facet, but cannot "
-                     "find facet in boundary lists.");
-      }
-    }
-    else if (fi->num_entities(tdim) == 2)
+    // Safety check
+    if (fi->num_entities(tdim) == 2)
     {
       if (outward_normal[0] == outward_normal[1])
       {
         dolfin_error(
-            "advect_particles.cpp::set_facets_info",
+            "advect_particles.cpp::update_facets_info",
             "get correct facet normal direction",
             "The normal cannot be of same direction for neighboring cells");
       }
     }
-    else
-    {
-      dolfin_error("advect_particles.cpp::set_facets_info",
-                   "get connecting cells",
-                   "Each facet should neighbor at max two cells.");
-    }
 
-    // Store info in facets_info variable
-    facet_info finf({facet_mp, facet_n});
-    facets_info.push_back(finf);
+    // Store info in facets_info array
+    const std::size_t index = fi->index();
+    facets_info[index].midpoint = facet_mp;
+    facets_info[index].normal = facet_n;
   } // End facet iterator
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const std::string btype)
+void advect_particles::set_bfacets(std::string btype)
 {
+
+  // Type of external facet to set on all external facets
+  facet_t external_facet_type;
   if (btype == "closed")
-    cbc_facets = boundary_facets();
+    external_facet_type = facet_t::closed;
   else if (btype == "open")
-    obc_facets = boundary_facets();
+    external_facet_type = facet_t::open;
   else if (btype == "periodic")
-    pbc_facets = boundary_facets();
+    external_facet_type = facet_t::periodic;
   else
   {
-    dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type",
-                 "Set boundary type correct");
+    dolfin_error("advect_particles.cpp", "set external facet type",
+                 "Invalid value: %s", btype.c_str());
+  }
+
+  const Mesh* mesh = _P->mesh();
+  const std::size_t tdim = mesh->topology().dim();
+  for (FacetIterator fi(*mesh); !fi.end(); ++fi)
+  {
+    if (fi->num_global_entities(tdim) == 1)
+      facets_info[fi->index()].type = external_facet_type;
+    else
+      facets_info[fi->index()].type = facet_t::internal;
   }
 }
 //-----------------------------------------------------------------------------
@@ -277,29 +247,22 @@ void advect_particles::set_bfacets(
     const BoundaryMesh& bmesh, const std::string btype,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs)
 {
+  facet_t ftype;
   if (btype == "closed")
-    cbc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::closed;
   else if (btype == "open")
-    obc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::open;
   else if (btype == "periodic")
-    pbc_facets = boundary_facets(bmesh, bidcs);
+    ftype = facet_t::periodic;
   else
   {
-    dolfin_error("advect_particles.cpp::set_bfacets", "Unknown boundary type",
-                 "Set boundary type correct");
+    dolfin_error("advect_particles.cpp", "set external facet type",
+                 "Invalid value: %s", btype.c_str());
   }
-}
-//-----------------------------------------------------------------------------
-std::vector<std::size_t> advect_particles::boundary_facets()
-{
-  // Find all exterior facets (connected to only one cell)
-  const std::size_t D = _P->mesh()->topology().dim();
-  std::vector<std::size_t> bfacet_idcs;
-  for (FacetIterator f(*(_P->mesh())); !f.end(); ++f)
-    if (f->num_global_entities(D) == 1)
-      bfacet_idcs.push_back(f->index());
 
-  return bfacet_idcs;
+  const std::vector<std::size_t> marked_facets = boundary_facets(bmesh, bidcs);
+  for (auto& idx : marked_facets)
+    facets_info[idx].type = ftype;
 }
 //-----------------------------------------------------------------------------
 std::vector<std::size_t> advect_particles::boundary_facets(
@@ -424,10 +387,11 @@ void advect_particles::do_step(double dt)
           }
           else if (f.num_entities(tdim) == 1)
           {
+            const facet_t ftype = facets_info[target_facet].type;
             // Then we hit a boundary, but which type?
-            if (f.num_global_entities(tdim)
-                == 2) // Internal boundary (between processes)
+            if (f.num_global_entities(tdim) == 2)
             {
+              assert(ftype == facet_t::internal);
               // Then it is an internal boundary
               // Do a full push
               _P->push_particle(dt_rem, up, ci->index(), i);
@@ -444,9 +408,7 @@ void advect_particles::do_step(double dt)
               _P->particle_communicator_collect(ci->index(), i);
               i--;
             }
-            else if (std::find(obc_facets.begin(), obc_facets.end(),
-                               target_facet)
-                     != obc_facets.end())
+            else if (ftype == facet_t::open)
             {
               // Particle leaves the domain. Simply erase!
               // FIXME: additional check that particle indeed leaves domain
@@ -455,17 +417,13 @@ void advect_particles::do_step(double dt)
               dt_rem *= 0.;
               i--;
             }
-            else if (std::find(cbc_facets.begin(), cbc_facets.end(),
-                               target_facet)
-                     != cbc_facets.end())
+            else if (ftype == facet_t::closed)
             {
               // Closed BC
               apply_closed_bc(dt_int, up, ci->index(), i, target_facet);
               dt_rem -= dt_int;
             }
-            else if (std::find(pbc_facets.begin(), pbc_facets.end(),
-                               target_facet)
-                     != pbc_facets.end())
+            else if (ftype == facet_t::periodic)
             {
               // Then periodic bc
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
@@ -865,10 +823,11 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
       }
       else if (f.num_entities(tdim) == 1)
       {
+        const facet_t ftype = facets_info[target_facet].type;
         // Then we hit a boundary, but which type?
-        if (f.num_global_entities(tdim)
-            == 2) // Internal boundary between processes
-        {
+        if (f.num_global_entities(tdim) == 2)
+        { // Internal boundary between processes
+          assert(ftype == facet_t::internal);
           _P->push_particle(dt_rem, up, cidx, *pidx);
           dt_rem *= 0.;
 
@@ -884,16 +843,14 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
           (*pidx)--;
           return; // Stop right here
         }
-        else if (std::find(obc_facets.begin(), obc_facets.end(), target_facet)
-                 != obc_facets.end())
+        else if (ftype == facet_t::open)
         {
           // Particle leaves the domain. Simply erase!
           apply_open_bc(cidx, *pidx);
           dt_rem *= 0.;
           (*pidx)--;
         }
-        else if (std::find(cbc_facets.begin(), cbc_facets.end(), target_facet)
-                 != cbc_facets.end())
+        else if (ftype == facet_t::closed)
         {
           apply_closed_bc(dt_int, up, cidx, *pidx, target_facet);
           dt_rem -= dt_int;
@@ -910,8 +867,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
 
           hit_cbc = true;
         }
-        else if (std::find(pbc_facets.begin(), pbc_facets.end(), target_facet)
-                 != pbc_facets.end())
+        else if (ftype == facet_t::periodic)
         {
           // TODO: add support for periodic bcs
           apply_periodic_bc(dt_rem, up, cidx, *pidx, target_facet);
@@ -1057,9 +1013,8 @@ advect_particles::~advect_particles() {}
 //-----------------------------------------------------------------------------
 //
 advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                       const std::string type1,
-                       const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, update_particle)
+                       const std::string type1)
+    : advect_particles(P, U, uhi, type1)
 {
   update_particle_template();
   init_weights();
@@ -1067,9 +1022,20 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(
     particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, pbc_limits, update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+    : advect_particles(P, U, uhi, type1, pbc_limits)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk2::advect_rk2(
+    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+    const std::string type1,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+    const std::string type2,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2)
+    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2)
 {
   update_particle_template();
   init_weights();
@@ -1081,24 +1047,9 @@ advect_rk2::advect_rk2(
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
     const std::string type2,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    const std::string update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-    const std::string type1,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-    const std::string type2,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       pbc_limits, update_particle)
+                       pbc_limits)
 {
   update_particle_template();
   init_weights();
@@ -1115,9 +1066,8 @@ advect_rk2::~advect_rk2() {}
 //-----------------------------------------------------------------------------
 //
 advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-                       const std::string type1,
-                       const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, update_particle)
+                       const std::string type1)
+    : advect_particles(P, U, uhi, type1)
 {
   update_particle_template();
   init_weights();
@@ -1125,9 +1075,20 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
 //-----------------------------------------------------------------------------
 advect_rk3::advect_rk3(
     particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, type1, pbc_limits, update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+    : advect_particles(P, U, uhi, type1, pbc_limits)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk3::advect_rk3(
+    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
+    const std::string type1,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
+    const std::string type2,
+    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2)
+    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2)
 {
   update_particle_template();
   init_weights();
@@ -1139,24 +1100,9 @@ advect_rk3::advect_rk3(
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
     const std::string type2,
     Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    const std::string update_particle)
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       update_particle)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(
-    particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-    const std::string type1,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-    const std::string type2,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-    const std::string update_particle)
-    : advect_particles(P, U, uhi, bmesh, type1, indices1, type2, indices2,
-                       pbc_limits, update_particle)
+                       pbc_limits)
 {
   update_particle_template();
   init_weights();

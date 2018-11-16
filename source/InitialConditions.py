@@ -7,7 +7,7 @@
 from dolfin import UserExpression, pi
 import numpy as np
 
-__all__ = ['GaussianPulse', 'SineHump']
+__all__ = ['GaussianPulse', 'SineHump', 'CosineHill']
 
 
 class GaussianPulse(UserExpression):
@@ -53,3 +53,24 @@ class SineHump(UserExpression):
         U, t = self.U, self.t
         value[0] = np.sin(2*pi*(x[0] - xc - U[0]*t)) * \
             np.sin(2*pi*(x[1]-yc - U[1]*t))
+
+
+class CosineHill(UserExpression):
+    def __init__(self, radius, center, amplitude, **kwargs):
+        self.r = radius
+        self.center = center
+        self.amplitude = amplitude
+        # TODO: make time dependent (again?)
+        # self.U = U
+        # self.t = time
+        super().__init__(self, **kwargs)
+
+    def eval(self, value, x):
+        xc, yc = self.center[0], self.center[1]
+        # TODO: make time dependent (again)?
+        # U, t = self.U, self.t
+        r = min(np.sqrt(pow(x[0] - xc, 2) + pow(x[1] - yc, 2)), self.r) / self.r
+        value[0] = self.amplitude * (1 + np.cos(np.pi * r))
+
+    def value_shape(self):
+        return ()
