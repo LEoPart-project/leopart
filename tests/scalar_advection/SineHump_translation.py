@@ -56,14 +56,15 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0., 0.
 xmax, ymax = 1., 1.
-nx_list = [8, 16, 32, 64, 128]
+i_list = [5]
+nx_list = [8 * pow(2, i) for i in i_list]
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 
 # Particle resolution, approx 15 particles per cell
-pres_list = [45 * pow(2, i) for i in range(len(nx_list))]
+pres_list = [45 * pow(2, i) for i in i_list]
 
 # Polynomial orders: k_list: state variable, l_list: Lagrange multiplier
 k_list = [1, 2, 3]
@@ -179,7 +180,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             del(t2)
             t3 = Timer('[P] Projection particles')
             pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                         lambda_h.cpp_object(), 'gmres', 'hypre_amg')
+                                         lambda_h.cpp_object(), 'mumps', 'default')
             del(t3)
             t2 = Timer('[P] Assign & output')
             # Update old solution

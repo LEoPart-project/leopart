@@ -22,10 +22,10 @@ from DolfinParticles import (particles, advect_rk3,
                              PDEStaticCondensation, RandomCircle,
                              FormsPDEMap, GaussianPulse, AddDelete)
 
-set_log_level(10)
+# set_log_level(10)
 comm = pyMPI.COMM_WORLD
 
-# parameters["ghost_mode"] = "shared_facet"
+parameters["ghost_mode"] = "shared_facet"
 
 # Geometric properties
 x0, y0 = 0., 0.
@@ -34,12 +34,12 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [1] #[i for i in range(5)]
+i_list = [4] #[i+1 for i in range(4)]
 nx_list = [pow(2, i) for i in i_list]
 pres_list = [160 * pow(2, i) for i in i_list]
 
 # Polynomial order
-k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
+k_list = [2, 1]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
@@ -52,7 +52,7 @@ dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_Rotation/'
+outdir_base = './../../results/GaussianPulse_Rotation_1/'
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
@@ -166,12 +166,13 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             t1 = Timer("[P] Assemble PDE system")
             # pde_projection.assemble_state_rhs()
-            
-            pde_projection.assemble(True, True)
-            # pde_projection.apply_boundary(bc)
-            quit()
-            del(t1)
 
+            if step == 1:
+                pde_projection.assemble(True, True)
+
+            # pde_projection.apply_boundary(bc)
+            del(t1)
+            comm.Barrier()
             t1 = Timer("[P] Solve PDE constrained projection")
             pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
                                          'mumps', 'default')
