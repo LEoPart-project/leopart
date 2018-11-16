@@ -1,5 +1,8 @@
 """
     MWE for petsc-issue
+    fails for resolution_level = 4 
+    and running
+    mpirun -np 32 python3 repeated_solve.py
 """
 
 from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function, FunctionSpace,
