@@ -32,10 +32,21 @@
 namespace dolfin
 {
 
+// enum for external facet types
+enum class facet_t : std::uint8_t
+{
+  internal,
+  closed,
+  open,
+  periodic
+};
+
+// Facet info on each facet of mesh
 typedef struct facet_info_t
 {
   Point midpoint;
   Point normal;
+  facet_t type;
 } facet_info;
 
 class advect_particles
@@ -71,13 +82,15 @@ public:
   // Step forward in time dt
   void do_step(double dt);
 
+  // Update facet info on moving mesh
+  void update_facets_info();
+
   // Destructor
   ~advect_particles();
 
 protected:
   particles* _P;
 
-  void set_facets_info();
   void set_bfacets(const std::string btype);
   void set_bfacets(
       const BoundaryMesh& bmesh, const std::string btype,
@@ -87,10 +100,8 @@ protected:
   std::vector<std::size_t> boundary_facets(
       const BoundaryMesh& bmesh,
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-  std::vector<std::size_t> interior_facets();
 
-  // Initialize open, closed and periodic facets
-  std::vector<std::size_t> obc_facets, cbc_facets, pbc_facets;
+  // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
   bool pbc_active = false;
 
@@ -100,8 +111,9 @@ protected:
 
   std::size_t _space_dimension, _value_size_loc;
 
+  // Facet information
+  // (normal, midpoint, type(internal, open, closed, periodic))
   std::vector<facet_info> facets_info;
-  std::vector<std::vector<std::size_t>> cell2facet;
 
   Function* uh;
   std::shared_ptr<const FiniteElement> _element;
@@ -134,7 +146,7 @@ protected:
                   std::vector<particle>& reloc_local_p);
 };
 
-class advect_rk2 : protected advect_particles
+class advect_rk2 : public advect_particles
 {
 public:
   // Constructors
@@ -158,12 +170,11 @@ public:
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
-  // Destructor
-  ~advect_rk2();
-
+  // Step forward in time dt
   void do_step(double dt);
 
-  // Something on particle updaters
+  // Destructor
+  ~advect_rk2();
 
 private:
   std::size_t xp0_idx, up0_idx;
@@ -189,7 +200,7 @@ private:
   }
 };
 
-class advect_rk3 : protected advect_particles
+class advect_rk3 : public advect_particles
 {
 public:
   // Constructors
@@ -213,10 +224,11 @@ public:
       Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
+  // Step forward in time dt
+  void do_step(double dt);
+
   // Destructor
   ~advect_rk3();
-
-  void do_step(double dt);
 
 private:
   std::size_t xp0_idx, up0_idx;

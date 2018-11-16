@@ -119,6 +119,9 @@ namespace dolfin
     // Particle pusher, required in parallel
     void particle_communicator_push();
 
+    // Relocate particles, required on moving meshes
+    void relocate();
+
   private:
 
       std::vector<std::vector<particle>> _comm_snd;
@@ -135,8 +138,6 @@ namespace dolfin
                                   const double tol);
 
       std::vector<double> unpack_particle(const particle part);
-
-      // TODO: locate/relocate funcionality
 
       // Attributes
       const Mesh* _mesh;

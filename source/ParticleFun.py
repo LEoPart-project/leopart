@@ -1,4 +1,5 @@
 import numpy as np
+import dolfin.cpp as cpp
 from mpi4py import MPI as pyMPI
 
 # __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
@@ -44,6 +45,20 @@ class particles(compiled_module.particles):
                                            mesh)
         self.ptemplate = particle_template
         return
+
+    def interpolate(self, *args):
+        a = list(args)
+        if not isinstance(a[0], cpp.function.Function):
+            a[0] = a[0]._cpp_object
+        super().interpolate(*tuple(a))
+
+    def increment(self, *args):
+        a = list(args)
+        if not isinstance(a[0], cpp.function.Function):
+            a[0] = a[0]._cpp_object
+        if not isinstance(a[1], cpp.function.Function):
+            a[1] = a[1]._cpp_object
+        super().increment(*tuple(a))
 
     def __call__(self, *args):
         return self.eval(*args)
@@ -101,16 +116,40 @@ class l2projection(compiled_module.l2projection):
         a[1] = a[1]._cpp_object
         super().__init__(*tuple(a))
 
+    def project(self, *args):
+        a = list(args)
+        if not isinstance(a[0], cpp.function.Function):
+            a[0] = a[0]._cpp_object
+        super().project(*tuple(a))
+
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class StokesStaticCondensation(compiled_module.StokesStaticCondensation):
+    def solve_problem(self, *args):
+        a = list(args)
+        for i, arg in enumerate(a):
+            # Check because number of functions is either 2 or 3
+            if not isinstance(arg, str):
+                if not isinstance(arg, cpp.function.Function):
+                    a[i] = a[i]._cpp_object
+        super().solve_problem(*tuple(a))
+
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class PDEStaticCondensation(compiled_module.PDEStaticCondensation):
+    def solve_problem(self, *args):
+        a = list(args)
+        for i, arg in enumerate(a):
+            # Check because number of functions is either 2 or 3
+            if not isinstance(arg, str):
+                if not isinstance(arg, cpp.function.Function):
+                    a[i] = a[i]._cpp_object
+        super().solve_problem(*tuple(a))
+
     def __call__(self, *args):
         return self.eval(*args)
 

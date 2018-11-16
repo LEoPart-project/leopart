@@ -106,7 +106,7 @@ def test_unsteady_stokes():
         for bc in bcs:
             ssc.apply_boundary(bc)
 
-        ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), 'none', 'default')
+        ssc.solve_problem(Uhbar, Uh, 'none', 'default')
         assign(U0, Uh)
         assign(ustar, U0.sub(0))
         assign(Uhbar0, Uhbar)
