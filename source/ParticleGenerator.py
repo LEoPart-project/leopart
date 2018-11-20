@@ -7,7 +7,7 @@ import numpy as np
 from math import sqrt
 from itertools import product
 from mpi4py import MPI as pyMPI
-from dolfin import Mesh, cells, vertices
+from dolfin import cells, vertices
 
 __all__ = ['RandomRectangle', 'RandomCircle', 'RandomBox', 'RandomSphere',
            'RegularRectangle', 'RegularBox']
@@ -202,7 +202,9 @@ class RegularBox(RandomGenerator):
 
         return points_inside
 
+
 class MeshGenerator(object):
+    """Generate particles in an existing Mesh."""
     def __init__(self, mesh):
         self.mesh = mesh
 
@@ -212,7 +214,7 @@ class MeshGenerator(object):
             x = np.random.random()
             y = np.random.random()
             if (x + y) > 1.0:
-                x, y = 1.0 - x, 1.0 -y
+                x, y = 1.0 - x, 1.0 - y
             z = 1.0 - x - y
             return (x, y, z)
 
@@ -233,9 +235,8 @@ class MeshGenerator(object):
         v = 1 - s - t - u
         return (s, t, u, v)
 
-
     def generate(self, N):
-        """Generate a random set of N points per cell in a given Mesh."""
+        """Generate a random set of N points per cell."""
 
         # TODO - number of points per cell could be random too, with a minimum
         # value, and should be related to the cell volume.
