@@ -3,6 +3,7 @@ build/
 results/
 deprecate/
 CMakeFiles/
+private_tests/
 
 # Files
 *.pyc
