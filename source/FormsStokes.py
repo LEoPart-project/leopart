@@ -55,9 +55,9 @@ class FormsStokes:
         '''
 
         ufl_forms = self.__ufl_forms(nu, f)
-        return self.__get_form_dict(ufl_forms['A_S'], ufl_forms['G_S'],
-                                    ufl_forms['G_ST'], ufl_forms['B_S'],
-                                    ufl_forms['Q_S'], ufl_forms['S_S'])
+        return self.__fem_forms(ufl_forms['A_S'], ufl_forms['G_S'],
+                                ufl_forms['G_ST'], ufl_forms['B_S'],
+                                ufl_forms['Q_S'], ufl_forms['S_S'])
 
     def forms_unsteady(self, ustar, dt, nu, f):
         '''
@@ -76,9 +76,9 @@ class FormsStokes:
         ufl_forms['A_S'] += A
         ufl_forms['Q_S'] += Q
 
-        return self.__get_form_dict(ufl_forms['A_S'], ufl_forms['G_S'],
-                                    ufl_forms['G_ST'], ufl_forms['B_S'],
-                                    ufl_forms['Q_S'], ufl_forms['S_S'])
+        return self.__fem_forms(ufl_forms['A_S'], ufl_forms['G_S'],
+                                ufl_forms['G_ST'], ufl_forms['B_S'],
+                                ufl_forms['Q_S'], ufl_forms['S_S'])
 
     def forms_multiphase(self, rho, ustar, dt, mu, f):
         '''
@@ -97,9 +97,9 @@ class FormsStokes:
         ufl_forms['A_S'] += A
         ufl_forms['Q_S'] += Q
 
-        return self.__get_form_dict(ufl_forms['A_S'], ufl_forms['G_S'],
-                                    ufl_forms['G_ST'], ufl_forms['B_S'],
-                                    ufl_forms['Q_S'], ufl_forms['S_S'])
+        return self.__fem_forms(ufl_forms['A_S'], ufl_forms['G_S'],
+                                ufl_forms['G_ST'], ufl_forms['B_S'],
+                                ufl_forms['Q_S'], ufl_forms['S_S'])
 
     def facet_integral(self, integrand):
         return integrand('-')*dS + integrand('+')*dS + integrand*ds
@@ -163,7 +163,7 @@ class FormsStokes:
         return {'A_S': A_S, 'G_S': G_S, 'G_ST': G_ST,
                 'B_S': B_S, 'Q_S': Q_S, 'S_S': S_S}
 
-    def __get_form_dict(self, A_S, G_S, G_ST, B_S, Q_S, S_S):
+    def __fem_forms(self, A_S, G_S, G_ST, B_S, Q_S, S_S):
         # Turn into forms
         A_S = Form(A_S)
         G_S = Form(G_S)
