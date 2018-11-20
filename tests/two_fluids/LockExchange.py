@@ -50,12 +50,12 @@ kbar = k
 alpha = Constant(6.*k*k)
 
 # Time stepping
-T_end = 10.
+T_end = 2.5
 dt = Constant(5e-2)
 num_steps = int(T_end // float(dt))
 
 # Directory for output
-outdir_base = './../results/LockExchange/'
+outdir_base = './../../results/LockExchange/'
 
 # Helper vectors
 ex = as_vector([1.0, 0.0])
