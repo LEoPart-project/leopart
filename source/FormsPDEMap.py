@@ -20,7 +20,6 @@ class FormsPDEMap:
         self.n = FacetNormal(mesh)
         self.beta_map = beta_map
         self.ds = ds
-        self.form_dict = None
         self.gdim = mesh.geometry().dim()
 
     def forms_theta_linear(self, psih0, uh, dt, theta_map,
@@ -37,26 +36,14 @@ class FormsPDEMap:
         psi_star = psih0 + (1-theta_L)*dpsi00 + theta_L * dpsi0
 
         # LHS contributions
-        # g = Constant((0, -9.81))
         gamma = conditional(ge(dot(uh, n), 0), 0, 1)
 
         # Standard formulation
         N_a = facet_integral(beta_map*dot(psi, w)) \
             + zeta * dot(grad(psi), grad(w)) * dx
-
-        # WORKAROUND: dolfin2017 jit-compiler issue with uh*dx
-        # with uh not being from HDiv Trace
-        if dolfin.__version__ != '2016.1.0':
-            warnings.warn("You are using a dolfin version > 2016.1.0. This is only tested for "
-                          "piecewise constant Lagrange multiplier field, so ignore gradient term.")
-            G_a = dot(lamb, w)/dt * dx \
-                + theta_map * (1-gamma) * dot(uh, n) * \
-                lamb * w * self.ds(neumann_idx)
-        else:
-            G_a = dot(lamb, w)/dt * dx - theta_map * dot(uh, grad(lamb))*w*dx  \
-                + theta_map * (1-gamma) * dot(uh, n) * \
-                lamb * w * self.ds(neumann_idx)
-
+        G_a = dot(lamb, w)/dt * dx - theta_map * dot(uh, grad(lamb))*w*dx  \
+            + theta_map * (1-gamma) * dot(uh, n) * \
+            lamb * w * self.ds(neumann_idx)
         L_a = -facet_integral(beta_map * dot(psibar, w))  # \
         H_a = facet_integral(dot(uh, n)*psibar * tau) \
             - dot(uh, n)*psibar * tau * self.ds(neumann_idx)
@@ -64,18 +51,10 @@ class FormsPDEMap:
 
         # RHS contributions
         Q_a = dot(Constant(0), w) * dx
-
-        if dolfin.__version__ != '2016.1.0':
-            warnings.warn("You are using a dolfin version > 2016.1.0. This is only tested for"
-                          "piecewise constant Lagrange multiplier field, so ignore gradient term.")
-            R_a = dot(psi_star, tau)/dt*dx  \
-                - (1-theta_map) * (1-gamma) * dot(uh, n) * psi_star * tau * self.ds(neumann_idx) \
-                - gamma*dot(h, tau) * self.ds(neumann_idx)
-        else:
-            R_a = dot(psi_star, tau)/dt*dx  \
-                + (1-theta_map)*dot(uh, grad(tau))*psih0*dx \
-                - (1-theta_map) * (1-gamma) * dot(uh, n) * psi_star * tau * self.ds(neumann_idx) \
-                - gamma*dot(h, tau) * self.ds(neumann_idx)
+        R_a = dot(psi_star, tau)/dt*dx  \
+            + (1-theta_map)*dot(uh, grad(tau))*psih0*dx \
+            - (1-theta_map) * (1-gamma) * dot(uh, n) * psi_star * tau * self.ds(neumann_idx) \
+            - gamma*dot(h, tau) * self.ds(neumann_idx)
         S_a = facet_integral(Constant(0) * wbar)
         return self.__fem_forms(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
 
