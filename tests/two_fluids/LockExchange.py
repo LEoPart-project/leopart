@@ -5,7 +5,8 @@
 
 from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
-                    Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal)
+                    Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal,
+                    MPI, Timer, TimingClear, TimingType, timings)
 from DolfinParticles import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
                              StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
                              FormsStokes)
@@ -14,7 +15,7 @@ import numpy as np
 
 comm = pyMPI.COMM_WORLD
 
-'''./
+'''
     Density driven gravity current.
     For description of test, see Birman et al: The non-Boussinesq lock-exchange problem.
     Part 2. High-resolution simulations (2005) doi:10.1017/S002211200500503
@@ -41,8 +42,8 @@ xmin_rho1 = xmin
 xmax_rho1 = 14.
 ymin_rho1 = ymin
 ymax_rho1 = ymax
-nx, ny = 600, 20
-pres = 4200
+nx, ny = 1200, 40
+pres = 8400
 g = -9.81
 Re = 4000.
 theta_p = 0.5
@@ -67,8 +68,8 @@ kbar = k
 alpha = Constant(6.*k*k)
 
 # Time stepping
-T_end = 0.2
-dt = Constant(5e-2)
+T_end = 5.
+dt = Constant(2.5e-2)
 num_steps = int(T_end // float(dt))
 
 # Directory for output
@@ -84,7 +85,7 @@ store_step = 4
 ex = as_vector([1.0, 0.0])
 ey = as_vector([0.0, 1.0])
 
-mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), nx, ny)
+mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, ny)
 n = FacetNormal(mesh)
 
 # xdmf output
@@ -212,6 +213,9 @@ xdmf_p.write(Uh.sub(1), t)
 p.dump2file(mesh, fname_list, property_list, 'ab')
 comm.barrier()
 
+timer = Timer("[P] Total time consumed")
+timer.start()
+
 while step < num_steps:
     step += 1
     t += float(dt)
@@ -220,14 +224,20 @@ while step < num_steps:
         print("Step "+str(step)+', time = '+str(t))
 
     # Advect
+    t1 = Timer("[P] advect particles")
     ap.do_step(float(dt))
+    del(t1)
 
     # Project density and specific momentum
+    t1 = Timer("[P] density projection")
     pde_rho.assemble(True, True)
     pde_rho.solve_problem(rhobar, rho, "mumps", "default")
+    del(t1)
 
+    t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, True)
     pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+    del(t1)
 
     # Check (global) momentum conservation
     mx_change = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex))/dt * dx
@@ -239,9 +249,15 @@ while step < num_steps:
         print("Momentum change over map "+str(mt_change))
 
     # Solve Stokes
+    t1 = Timer("[P] Stokes assemble ")
     ssc.assemble_global()
-    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    del(t1)
 
+    t1 = Timer("[P] Stokes solve ")
+    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    del(t1)
+
+    t1 = Timer("[P] Update mesh fields")
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
 
@@ -251,8 +267,11 @@ while step < num_steps:
     assign(u0, ustar)
     assign(duh00, duh0)
     assign(duh0, project(Uh.sub(0)-ustar, W_2))
+    del(t1)
 
+    t1 = Timer("[P] Update particle field")
     p.increment(Udiv, ustar, np.array([2, 3], dtype=np.uintp), theta_p, step)
+    del(t1)
 
     if step == 2:
         theta_L.assign(1.0)
@@ -266,7 +285,12 @@ while step < num_steps:
         # Save particle data
         p.dump2file(mesh, fname_list, property_list, 'ab', False)
         comm.barrier()
+timer.stop()
 
 xdmf_u.close()
 xdmf_rho.close()
 xdmf_p.close()
+
+time_table = timings(TimingClear.keep, [TimingType.wall])
+with open(outdir_base+"timings"+str(nx)+".log", "w") as out:
+    out.write(time_table.str(True))
