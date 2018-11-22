@@ -1,3 +1,8 @@
+# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
+# __date__   = '2018-08'
+# __copyright__ = 'Copyright (C) 2011' + __author__
+# __license__  = 'GNU Lesser GPL version 3 or any later version'
+
 from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal)
@@ -8,6 +13,12 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 
 comm = pyMPI.COMM_WORLD
+
+'''./
+    Density driven gravity current.
+    For description of test, see Birman et al: The non-Boussinesq lock-exchange problem.
+    Part 2. High-resolution simulations (2005) doi:10.1017/S002211200500503
+'''
 
 
 class Boundaries(SubDomain):
@@ -32,17 +43,23 @@ ymin_rho1 = ymin
 ymax_rho1 = ymax
 nx, ny = 600, 20
 pres = 4200
-nu = Constant(1e-5)
+g = -9.81
+Re = 4000.
 theta_p = 0.5
 theta_L = Constant(1.0)
 
 # Specify body force
-f = Constant((0, -9.81))
+f = Constant((0, g))
 
 geometry = {'xmin': xmin_rho1, 'xmax': xmax_rho1, 'ymin': ymin_rho1, 'ymax': ymax_rho1}
 
+gamma = 0.92
 rho1 = Constant(1000.)
-rho2 = Constant(920.)
+rho2 = Constant(gamma * float(rho1))
+
+g_prime = abs(g) * (1. - gamma)
+ub = np.sqrt(g_prime * (ymax - ymin))
+nu = Constant((ub * (ymax - ymin)) / Re)
 
 # Polynomial order
 k = 1
@@ -50,12 +67,18 @@ kbar = k
 alpha = Constant(6.*k*k)
 
 # Time stepping
-T_end = 2.5
+T_end = 0.2
 dt = Constant(5e-2)
 num_steps = int(T_end // float(dt))
 
 # Directory for output
 outdir_base = './../../results/LockExchange/'
+# Particle output
+fname_list = [outdir_base+'xp.pickle',
+              outdir_base+'up.pickle',
+              outdir_base+'rhop.pickle']
+property_list = [0, 2, 1]
+store_step = 4
 
 # Helper vectors
 ex = as_vector([1.0, 0.0])
@@ -181,6 +204,14 @@ ssc = StokesStaticCondensation(mesh,
 # Loop and output
 step = 0
 t = 0.
+
+# Store tstep 0
+xdmf_rho.write(rho0, t)
+xdmf_u.write(Uh.sub(0), t)
+xdmf_p.write(Uh.sub(1), t)
+p.dump2file(mesh, fname_list, property_list, 'ab')
+comm.barrier()
+
 while step < num_steps:
     step += 1
     t += float(dt)
@@ -226,10 +257,15 @@ while step < num_steps:
     if step == 2:
         theta_L.assign(1.0)
 
-    # Set output, also throw out particle output
-    xdmf_rho.write(rho, t)
-    xdmf_u.write(Uh.sub(0), t)
-    xdmf_p.write(Uh.sub(1), t)
+    if step % store_step is 0:
+        # Set output, also throw out particle output
+        xdmf_rho.write(rho, t)
+        xdmf_u.write(Uh.sub(0), t)
+        xdmf_p.write(Uh.sub(1), t)
+
+        # Save particle data
+        p.dump2file(mesh, fname_list, property_list, 'ab', False)
+        comm.barrier()
 
 xdmf_u.close()
 xdmf_rho.close()

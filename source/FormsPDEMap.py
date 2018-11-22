@@ -7,7 +7,6 @@
 from dolfin import (FacetNormal, Constant, TestFunction, TrialFunction,
                     inner, outer, dot, grad, dx, ds, dS, Form, conditional, ge)
 import numpy as np
-import warnings
 
 
 class FormsPDEMap:
