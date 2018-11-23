@@ -248,7 +248,7 @@ class MeshGenerator(object):
 
             for i in range(N):
                 x = self._random_bary(len(pts))
-                points_inside += [a * b for (a, b) in zip(x, pts)]
+                points_inside.append(sum([a * b for (a, b) in zip(x, pts)]))
 
         points_inside = np.array(points_inside)
 

@@ -6,4 +6,4 @@ from .FormsPDEMap import FormsPDEMap
 from .FormsStokes import FormsStokes
 from .InitialConditions import GaussianPulse, SineHump
 from .ParticleGenerator import (RandomRectangle, RandomCircle, RegularRectangle,
-                                RandomBox, RegularBox)
+                                RandomBox, RegularBox, MeshGenerator)
