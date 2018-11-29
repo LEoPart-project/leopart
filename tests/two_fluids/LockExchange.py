@@ -42,8 +42,8 @@ xmin_rho1 = xmin
 xmax_rho1 = 14.
 ymin_rho1 = ymin
 ymax_rho1 = ymax
-nx, ny = 1200, 40
-pres = 8400
+nx, ny = 2000, 80
+pres = 16800
 g = -9.81
 Re = 4000.
 theta_p = 0.5
@@ -68,18 +68,31 @@ kbar = k
 alpha = Constant(6.*k*k)
 
 # Time stepping
-T_end = 5.
-dt = Constant(2.5e-2)
-num_steps = int(T_end // float(dt))
+T_star_end = 16.
+tscale = np.sqrt(g_prime / (ymax - ymin))
+T_end = T_star_end / tscale
+dt = Constant(1.25e-2/tscale)
+num_steps = int(T_end // float(dt) + 1)
+
+if comm.rank == 0:
+    print('{:=^72}'.format('Computation for gamma '+str(gamma)))
+    print('Time scale is '+str(tscale))
+    print('End time of simulation set to '+str(T_end))
+    print('Time step set to '+str(float(dt)))
+    print('Number of steps '+str(num_steps))
+
+# T_end = 16.
+# dt = Constant(2.e-2)
+# num_steps = int(T_end // float(dt) + 1)
 
 # Directory for output
-outdir_base = './../../results/LockExchange/'
+outdir_base = './../../results/LockExchange_hires/'
 # Particle output
 fname_list = [outdir_base+'xp.pickle',
               outdir_base+'up.pickle',
               outdir_base+'rhop.pickle']
 property_list = [0, 2, 1]
-store_step = 4
+store_step = 20
 
 # Helper vectors
 ex = as_vector([1.0, 0.0])
@@ -95,7 +108,7 @@ xdmf_rho = XDMFFile(mesh.mpi_comm(), outdir_base+"rho.xdmf")
 
 # Function Spaces density tracking/pressure
 T_1 = FunctionSpace(mesh, 'DG', 0)
-Q_E_Rho = FiniteElement("DG", mesh.ufl_cell(), 1)
+Q_E_Rho = FiniteElement("DG", mesh.ufl_cell(), k)
 
 # Vector valued function spaces for specific momentum tracking
 W_E_2 = VectorElement("DG", mesh.ufl_cell(), k)
@@ -210,7 +223,7 @@ t = 0.
 xdmf_rho.write(rho0, t)
 xdmf_u.write(Uh.sub(0), t)
 xdmf_p.write(Uh.sub(1), t)
-p.dump2file(mesh, fname_list, property_list, 'ab')
+p.dump2file(mesh, fname_list, property_list, 'wb')
 comm.barrier()
 
 timer = Timer("[P] Total time consumed")
