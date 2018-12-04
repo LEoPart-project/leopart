@@ -76,33 +76,33 @@ def assign_particle_values(x, u_exact):
 # store_step = 40
 
 # Medium
-xmin, xmax = 0., 1.61
-ymin, ymax = 0., 1.
-nx, ny = 161, 100
-xmin_rho1 = 0.
-xmax_rho1 = 0.6
-ymin_rho1 = 0.
-ymax_rho1 = 0.3
-pres = 1200
-res = 'medium'
-dt = Constant(1.e-3)
-store_step = 100
-
-# Hires
 # xmin, xmax = 0., 1.61
 # ymin, ymax = 0., 1.
-# nx, ny = 322, 200
+# nx, ny = 161, 100
 # xmin_rho1 = 0.
 # xmax_rho1 = 0.6
 # ymin_rho1 = 0.
 # ymax_rho1 = 0.3
-# pres = 2200
-# res = 'high'
-# dt = Constant(5.e-4)
-# store_step = 200
+# pres = 1200
+# res = 'medium'
+# dt = Constant(1.e-3)
+# store_step = 100
+
+# Hires
+xmin, xmax = 0., 1.61
+ymin, ymax = 0., 1.
+nx, ny = 322, 200
+xmin_rho1 = 0.
+xmax_rho1 = 0.6
+ymin_rho1 = 0.
+ymax_rho1 = 0.3
+pres = 2200
+res = 'high'
+dt = Constant(5.e-4)
+store_step = 200
 
 mu = 1e-2
-theta_p = 1.0
+theta_p = .5
 theta_L = Constant(1.0)
 
 probe_radius = 0.01
@@ -130,7 +130,7 @@ kbar = k
 alpha = Constant(6.*k*k)
 
 # Time stepping
-T_end = 0.01  # 1.4
+T_end = 1.4
 num_steps = int(T_end // float(dt) + 1)
 print(num_steps)
 
@@ -324,7 +324,12 @@ while step < num_steps:
 
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, True)
-    pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+
+    try:
+        pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+    except Exception:
+        # FIXME: work-around
+        lstsq_u.project(ustar)
     del(t1)
 
     # Solve Stokes
