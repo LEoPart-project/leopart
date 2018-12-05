@@ -3,6 +3,8 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <dolfin/function/Function.h>
+
 #include "pdestaticcondensation.h"
 
 using namespace dolfin;

@@ -3,7 +3,17 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/geometry/BoundingBoxTree.h>
+#include <dolfin/mesh/BoundaryMesh.h>
+#include <dolfin/mesh/Facet.h>
+#include <dolfin/mesh/Vertex.h>
+
 #include "advect_particles.h"
+#include "particle.h"
+#include "utils.h"
+
 using namespace dolfin;
 
 //-----------------------------------------------------------------------------

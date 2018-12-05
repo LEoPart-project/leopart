@@ -4,12 +4,14 @@
 // License: GNU Lesser GPL version 3 or any later version
 
 #include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
 #include <dolfin/geometry/Point.h>
 #include <dolfin/math/basic.h>
 #include <dolfin/mesh/Cell.h>
 
 #include "adddelete.h"
 #include "particles.h"
+#include "utils.h"
 
 using namespace dolfin;
 

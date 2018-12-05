@@ -3,7 +3,17 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/geometry/BoundingBoxTree.h>
+#include <dolfin/mesh/Cell.h>
+#include <dolfin/mesh/Mesh.h>
+#include <limits>
+
+#include <dolfin/fem/FiniteElement.h>
+
 #include "particles.h"
+#include "utils.h"
 
 using namespace dolfin;
 
@@ -417,9 +427,7 @@ void particles::relocate()
       {
         // Do entity collision
         std::size_t cell_id
-            = _mesh
-                ->bounding_box_tree()
-                ->compute_first_entity_collision(xp);
+            = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
 
         if (cell_id != std::numeric_limits<unsigned int>::max())
         {
@@ -431,7 +439,7 @@ void particles::relocate()
         else if (num_processes > 1)
         {
           // Then push to parallel
-           particle_communicator_collect(ci->index(), i);
+          particle_communicator_collect(ci->index(), i);
         }
         else
         {

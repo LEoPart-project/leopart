@@ -9,6 +9,8 @@
 
 namespace py = pybind11;
 
+#include <dolfin/mesh/BoundaryMesh.h>
+
 #include "adddelete.h"
 #include "advect_particles.h"
 #include "formutils.h"

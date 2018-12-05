@@ -6,28 +6,16 @@
 #ifndef FORMUTILS_H
 #define FORMUTILS_H
 
-#include "dolfin/fem/AssemblerBase.h"
-#include "dolfin/fem/LocalAssembler.h"
-#include "dolfin/fem/UFC.h"
 #include <Eigen/Dense>
-#include <dolfin/fem/Assembler.h>
-#include <dolfin/fem/DirichletBC.h>
-#include <dolfin/fem/Form.h>
-#include <dolfin/fem/GenericDofMap.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <iostream>
 #include <vector>
 
-#include <dolfin/common/Array.h>
-#include <dolfin/common/ArrayView.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
-#include <dolfin/mesh/Cell.h>
-
-#include <ufc.h>
+#include <dolfin/fem/DirichletBC.h>
 
 namespace dolfin
 {
+class Form;
+class Cell;
+
 class FormUtils
 {
   // Some utility functions for operations on dolfin Forms.

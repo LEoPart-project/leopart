@@ -3,6 +3,13 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <dolfin/fem/Form.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/fem/LocalAssembler.h>
+#include <dolfin/fem/UFC.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/mesh/Cell.h>
+
 #include "formutils.h"
 
 using namespace dolfin;

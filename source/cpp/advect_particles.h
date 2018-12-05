@@ -6,31 +6,21 @@
 #ifndef ADVECT_PARTICLES_H
 #define ADVECT_PARTICLES_H
 
-#include "particle.h"
-#include "particles.h"
-#include "utils.h"
-#include <ufc.h>
-
 #include <Eigen/Dense>
-#include <algorithm>
-#include <dolfin/fem/FiniteElement.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <dolfin/la/GenericVector.h>
-#include <dolfin/mesh/BoundaryMesh.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Facet.h>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/MeshEntity.h>
-#include <dolfin/mesh/MeshEntityIterator.h>
-#include <dolfin/mesh/MeshFunction.h>
-#include <dolfin/mesh/Vertex.h>
-#include <iostream>
-#include <limits>
-#include <numeric>
+#include <vector>
+#include <memory>
+
+#include <dolfin/geometry/Point.h>
+
+#include "particles.h"
 
 namespace dolfin
 {
+  // Forward declarations
+  class FunctionSpace;
+  class Function;
+  class BoundaryMesh;
+  class FiniteElement;
 
 // enum for external facet types
 enum class facet_t : std::uint8_t

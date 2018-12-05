@@ -6,22 +6,21 @@
 #ifndef PARTICLES_H
 #define PARTICLES_H
 
-#include "utils.h"
-#include "particle.h"
-#include <iostream>
 #include <vector>
-#include <limits>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/geometry/BoundingBoxTree.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-
-#include <dolfin/fem/FiniteElement.h>
 #include <Eigen/Dense>
+
+#include <dolfin/common/MPI.h>
+
+#include "particle.h"
 
 namespace dolfin
 {
+  // Forward declarations
+  class Function;
+  class FiniteElement;
+  class Point;
+  class Mesh;
+
   class particles
   {
 
