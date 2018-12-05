@@ -3,6 +3,27 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <iostream>
+#include <memory>
+
+#include <dolfin/fem/Assembler.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/la/GenericVector.h>
+#include <dolfin/la/Matrix.h>
+#include <dolfin/la/Vector.h>
+#include <dolfin/la/solve.h>
+#include <dolfin/mesh/Cell.h>
+#include <dolfin/mesh/Mesh.h>
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/SparseCore>
+
+#include "eigquadprog.h"
+#include "particles.h"
+
 #include "l2projection.h"
 
 using namespace dolfin;
