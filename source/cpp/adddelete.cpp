@@ -3,7 +3,13 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <dolfin/function/Function.h>
+#include <dolfin/geometry/Point.h>
+#include <dolfin/math/basic.h>
+#include <dolfin/mesh/Cell.h>
+
 #include "adddelete.h"
+#include "particles.h"
 
 using namespace dolfin;
 
