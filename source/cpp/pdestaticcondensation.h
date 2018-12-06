@@ -6,39 +6,22 @@
 #ifndef PDESTATICCONDENSATION_H
 #define PDESTATICCONDENSATION_H
 
-#include "dolfin/fem/AssemblerBase.h"
-#include "dolfin/fem/LocalAssembler.h"
-#include "dolfin/fem/UFC.h"
 #include <Eigen/Dense>
-#include <dolfin/fem/Assembler.h>
-#include <dolfin/fem/DirichletBC.h>
-#include <dolfin/fem/Form.h>
-#include <dolfin/fem/GenericDofMap.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <iostream>
+#include <memory>
 #include <vector>
 
-#include "dolfin/la/solve.h"
-#include <dolfin/common/Array.h>
-#include <dolfin/common/ArrayView.h>
+#include <dolfin/common/MPI.h>
 #include <dolfin/la/Matrix.h>
 #include <dolfin/la/Vector.h>
 
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/MeshEntity.h>
-#include <dolfin/mesh/MeshEntityIterator.h>
-#include <dolfin/mesh/MeshFunction.h>
-
-#include "advect_particles.h"
-#include "formutils.h"
-#include "particles.h"
-#include <ufc.h>
-
 namespace dolfin
 {
-template <typename T>
-class Array;
+// Forward declarations
+class Form;
+class Mesh;
+class particles;
+class Function;
+class DirichletBC;
 
 class PDEStaticCondensation
 {

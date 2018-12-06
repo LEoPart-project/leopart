@@ -3,6 +3,27 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <iostream>
+#include <memory>
+#include <vector>
+
+#include <dolfin/fem/Assembler.h>
+#include <dolfin/fem/AssemblerBase.h>
+#include <dolfin/fem/DirichletBC.h>
+#include <dolfin/fem/Form.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/la/Matrix.h>
+#include <dolfin/la/Vector.h>
+#include <dolfin/la/solve.h>
+#include <dolfin/mesh/Cell.h>
+#include <dolfin/mesh/Mesh.h>
+
+#include "advect_particles.h"
+#include "formutils.h"
+#include "particles.h"
+
 #include "pdestaticcondensation.h"
 
 using namespace dolfin;
@@ -106,22 +127,6 @@ void PDEStaticCondensation::assemble(const bool assemble_all,
     std::tie(nrowsH, ncolsH) = FormUtils::local_tensor_size(*H, *cell);
     std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*B, *cell);
 
-    //        FormUtils::local_tensor_info(*(this->N), *cell, &nrowsN,
-    //        cdof_rowsN,
-    //                                             &ncolsN, cdof_colsN);
-    //        FormUtils::local_tensor_info(*(this->G), *cell, &nrowsG,
-    //        cdof_rowsG,
-    //                                             &ncolsG, cdof_colsG);
-    //        FormUtils::local_tensor_info(*(this->L), *cell, &nrowsL,
-    //        cdof_rowsL,
-    //                                             &ncolsL, cdof_colsL);
-    //        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH,
-    //        cdof_rowsH,
-    //                                             &ncolsH, cdof_colsH);
-    //        FormUtils::local_tensor_info(*(this->B), *cell, &nrowsB,
-    //        cdof_rowsB,
-    //                                             &ncolsB, cdof_colsB);
-
     // Then do all the work
     if (assemble_all)
     {
@@ -159,13 +164,9 @@ void PDEStaticCondensation::assemble(const bool assemble_all,
     // On moving meshes we even need to reassemble the R form (on new
     // configuration)
     if (assemble_on_config)
-    {
       FormUtils::local_assembler(R_e, *(this->R), *cell, nrowsH, 1);
-    }
     else
-    {
       R_e = Re_list[cell->index()];
-    }
 
     FormUtils::local_assembler(S_e, *(this->S), *cell, nrowsB, 1);
 
@@ -241,12 +242,8 @@ void PDEStaticCondensation::assemble_state_rhs()
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
     std::size_t nrowsH, ncolsH;
-    //        ArrayView<const dolfin::la_index> cdof_rowsH, cdof_colsH;
-
     std::tie(nrowsH, ncolsH) = FormUtils::local_tensor_size(*H, *cell);
-    //        FormUtils::local_tensor_info(*(this->H), *cell, &nrowsH,
-    //        cdof_rowsH,
-    //                                             &ncolsH, cdof_colsH);
+
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> R_e;
     FormUtils::local_assembler(R_e, *(this->R), *cell, nrowsH, 1);
     Re_list[cell->index()] = R_e;
@@ -313,14 +310,6 @@ void PDEStaticCondensation::backsubtitute(const Function& Uglobal,
   {
     // Backsubstitute global solution Uglobal to get local solution Ulocal
     std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
-    //        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ,
-    //        cdof_rowsS, cdof_colsS;
-
-    //        FormUtils::local_tensor_info(*(this->Q), *cell, &nrowsQ,
-    //        cdof_rowsQ, &ncolsQ, cdof_colsQ);
-    //        FormUtils::local_tensor_info(*(this->S), *cell, &nrowsS,
-    //        cdof_rowsS, &ncolsS, cdof_colsS);
-
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);
     auto cdof_rowsQ = Q->function_space(0)->dofmap()->cell_dofs(cell->index());
@@ -346,10 +335,6 @@ void PDEStaticCondensation::backsubtitute(const Function& Uglobal,
     // Backsubstitute global solution Uglobal to get local solution Ulocal as
     // well as Lagrange multiplier Lambda
     std::size_t nrowsQ, ncolsQ, nrowsR, ncolsR, nrowsS, ncolsS;
-    //        ArrayView<const dolfin::la_index> cdof_rowsQ, cdof_colsQ,
-    //                                          cdof_rowsR, cdof_colsR,
-    //                                          cdof_rowsS, cdof_colsS;
-
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
     std::tie(nrowsR, ncolsR) = FormUtils::local_tensor_size(*R, *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);

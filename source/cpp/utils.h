@@ -6,6 +6,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <vector>
+
 #include <dolfin/fem/FiniteElement.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>

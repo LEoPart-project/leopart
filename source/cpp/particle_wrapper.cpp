@@ -3,11 +3,20 @@
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
 
+#include <Eigen/Dense>
+#include <memory>
+#include <vector>
+
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
+
+#include <dolfin/fem/Form.h>
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/mesh/BoundaryMesh.h>
 
 #include "adddelete.h"
 #include "advect_particles.h"
