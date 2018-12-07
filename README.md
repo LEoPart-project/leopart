@@ -8,8 +8,8 @@ a (locally) conservative manner. By making use of a combination of a finite elem
 Lagrangian particles, the library enables to solve hyperbolic conservation laws in an accurate
 and conservative manner, yet free of numerical diffusion.
 
-Further documentation can be found in a series of papers, we gratefully acknowledge if you cite
-one of these references when using this library:
+Further documentation can be found in a series of papers, we would be grateful if you
+cite one of these references when using this library:
 
 [2] Maljaars et al., Constrained particle-mesh projections in a hybridized discontinuous Galerkin
 framework with applications to advection-dominated flows, Submitted (2018), prerprint available at arXiv
@@ -50,48 +50,49 @@ testing. Test status is:
 ## Installation and executing the code
 1. Clone the repo via
 
-    '''
+    ```
     git clone git clone https://jakob_maljaars@bitbucket.org/jakob_maljaars/dolfinparticles.git
-    '''
+    ```
 
 2. If you want to use FEniCS in Docker, run
 
-    '''
+    ```
     [sudo] docker run -ti -v $(pwd):/home/fenics/shared quay.io/fenicsproject/stable:[2018.1.0.r1]
-    '''
+    ```
 
     from the directory where the clone is located.
 
 3. Compile the python wrapper:
 
-    '''
+    ```
     cd ./source/cpp
     cmake .
     make
     cd ../..
-    '''
+    ```
+
 4. Add library to your PYTHONPATH
 
-    '''
+    ```
     python3 setup.py install --prefix=[YOUR PYTHONPATH]
-    '''
+    ```
 
 The code runs in parallel and test found in unit_tests/tests directory can be executed as
 
-'''
+```
 mpirun -np [N] python3 [YOUR_TEST].py
-'''
+```
 
 ---
 
 ## Applications
 The code can among others be used for passive and active particle tracer modeling (on moving meshes)
 
-![alt text](figs/moving_mesh.png)
+![Alt text](/figs/moving_mesh.png)
 
 Other applications include mass and momentum conservative density trackin in multi-fluid flows:
 
-![alt text](figs/lock_exchange.png)
+![Alt text](/figs/lock_exchange.png)
 
 We encourage users to come up with other applications.
 
