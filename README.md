@@ -88,11 +88,11 @@ mpirun -np [N] python3 [YOUR_TEST].py
 ## Applications
 The code can among others be used for passive and active particle tracer modeling (on moving meshes)
 
-![Scheme](./figs/moving_mesh.png)
+![Alt text](https://bitbucket.org/jakob_maljaars/dolfinparticles/raw/2b8912878c5080883343d3e002e77df0d65eefa4/figs/moving_mesh.png)
 
 Other applications include mass and momentum conservative density trackin in multi-fluid flows:
 
-![Scheme](./figs/lock_exchange.png)
+![Alt text](https://bitbucket.org/jakob_maljaars/dolfinparticles/raw/2b8912878c5080883343d3e002e77df0d65eefa4/figs/lock_exchange.png)
 
 We encourage users to come up with other applications.
 
