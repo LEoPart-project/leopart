@@ -1,6 +1,8 @@
 import numpy as np
 import dolfin.cpp as cpp
 from mpi4py import MPI as pyMPI
+import pickle
+import os
 
 # __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
 # __date__   = '2018-08'
@@ -74,6 +76,32 @@ class particles(compiled_module.particles):
         if comm.Get_rank() == 0:
             xp_root = np.float16(np.vstack(xp_root))
             print("Number of particles is "+str(len(xp_root)))
+        return
+
+    def dump2file(self, mesh, fname_list, property_list, mode, clean_old=False):
+        if isinstance(fname_list, str) and isinstance(property_list, int):
+            fname_list = [fname_list]
+            property_list = [property_list]
+
+        assert isinstance(fname_list, list) and isinstance(property_list, list), ("Wrong dump2file"
+                                                                                  " request")
+        assert len(fname_list) == len(property_list), ('Property list and index list must '
+                                                       'have same length')
+
+        # Remove files if clean_old = True
+        if clean_old:
+            for fname in fname_list:
+                try:
+                    os.remove(fname)
+                except OSError:
+                    pass
+
+        for (property_idx, fname) in zip(property_list, fname_list):
+            property_root = comm.gather(self.return_property(mesh, property_idx).T, root=0)
+            if comm.Get_rank() == 0:
+                with open(fname, mode) as f:
+                    property_root = np.float16(np.hstack(property_root).T)
+                    pickle.dump(property_root, f)
         return
 
 

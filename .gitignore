@@ -15,7 +15,6 @@ cmake_install.cmake
 *.pvd
 *.pvtu
 *.vtu
-*.png
 
 .cache/
 htmlcov/

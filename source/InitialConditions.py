@@ -7,7 +7,30 @@
 from dolfin import UserExpression, pi
 import numpy as np
 
-__all__ = ['GaussianPulse', 'SineHump', 'CosineHill']
+__all__ = ['BinaryBlock', 'GaussianPulse', 'SineHump', 'CosineHill']
+
+
+class BinaryBlock(UserExpression):
+    """
+    Overloaded Expression which initializes a binary valued block based
+    on a given geometry dictionary with keys xmin/max, and ymin/max.
+    """
+
+    def __init__(self, geometry, value_inside, value_outside, **kwargs):
+        self.geometry = geometry
+        self.value_inside = value_inside
+        self.value_outside = value_outside
+        super().__init__(self, **kwargs)
+
+    def eval(self, value, x):
+        if((self.geometry['xmin'] <= x[0] <= self.geometry['xmax']) and
+           (self.geometry['ymin'] <= x[1] <= self.geometry['ymax'])):
+            value[0] = self.value_inside
+        else:
+            value[0] = self.value_outside
+
+    def value_shape(self):
+        return ()
 
 
 class GaussianPulse(UserExpression):
