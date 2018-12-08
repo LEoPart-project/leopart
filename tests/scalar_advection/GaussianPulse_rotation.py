@@ -11,7 +11,7 @@
 
 from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function, FunctionSpace,
                     Expression, Point, DirichletBC, assign, sqrt, dot, assemble, dx,
-                    refine, XDMFFile, Timer, TimingType, TimingClear, timings, set_log_level)
+                    refine, XDMFFile, Timer, TimingType, TimingClear, timings)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
@@ -21,7 +21,7 @@ from DolfinParticles import (particles, advect_rk3,
                              PDEStaticCondensation, RandomCircle,
                              FormsPDEMap, GaussianPulse, AddDelete)
 
-set_log_level(10)
+# set_log_level(10)
 comm = pyMPI.COMM_WORLD
 
 # Geometric properties
@@ -31,12 +31,13 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [i for i in range(5)]
+# i_list = [i for i in range(5)]
+i_list = [4]
 nx_list = [pow(2, i) for i in i_list]
 pres_list = [160 * pow(2, i) for i in i_list]
 
 # Polynomial order
-k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
+k_list = [1]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
@@ -49,7 +50,7 @@ dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_Rotation/'
+outdir_base = './../../results/GaussianPulse_Rotation_SuperLU/'
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
@@ -156,21 +157,24 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                 print("Step  "+str(step))
 
             # Advect particle, assemble and solve pde projection
-            # t1 = Timer("[P] Advect particles step")
-            # ap.do_step(float(dt))
+            t1 = Timer("[P] Advect particles step")
+            ap.do_step(float(dt))
             # AD.do_sweep_failsafe(4*k)
-            # del(t1)
+            del(t1)
 
             t1 = Timer("[P] Assemble PDE system")
             # pde_projection.assemble_state_rhs()
 
             pde_projection.assemble(True, True)
             # pde_projection.apply_boundary(bc)
-            quit()
             del(t1)
 
+            comm.barrier()
+            if comm.rank == 0:
+                print("Now to solve")
+
             t1 = Timer("[P] Solve PDE constrained projection")
-            pde_projection.solve_problem(psibar_h, psi_h, 'mumps', 'default')
+            pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'none')
             del(t1)
 
             t1 = Timer("[P] Update and store")

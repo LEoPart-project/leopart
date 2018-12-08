@@ -125,7 +125,7 @@ while step < num_steps:
         print("Step  "+str(step))
     
     t1 = Timer("[P] Solve PDE constrained projection")
-    pde_projection.solve_problem(psibar_h, psi_h, 'mumps', 'default')
+    pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'default')
     del(t1)
     
 timer.stop()

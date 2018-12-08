@@ -87,13 +87,14 @@ def assign_particle_values(x, u_exact):
 geometry = {'xmin': -np.pi, 'ymin': -np.pi, 'zmin': -np.pi, 'xmax': np.pi, 'ymax': np.pi, 'zmax': np.pi}
 
 # Mesh resolution
-nx, ny, nz = 48, 48, 48
-
+#nx, ny, nz = 48, 48, 48
+nx, ny, nz = 24, 24, 24
 # Particle resolution
-pres = 250
+#pres = 250
+pres = 150
 
 # Time stepping
-Tend = 10
+Tend = 15
 dt = Constant(2.5e-2)
 
 # Viscosity
@@ -115,7 +116,7 @@ theta_L    = Constant(theta_init)
 theta_p    = 0.5
 
 # Directory for output
-outdir_base = './../results/TaylorGreen_3D_nx48_picube/'
+outdir_base = './../results/TaylorGreen_3D_nx48_picube_superlu/'
 output_table = outdir_base+'output_table.txt'
 store_step = 10
 ###################################
@@ -272,18 +273,21 @@ while step < num_steps:
     del(t1)
 
     # Do l2 project
-    t1 = Timer("[P] l2 projection")
-    lstsq_u.project(ustar.cpp_object())
-    del(t1)
+    # t1 = Timer("[P] l2 projection")
+    # lstsq_u.project(ustar.cpp_object())
+    # del(t1)
     # Do constrained projection
-    #t1 = Timer("[P] assemble projection")
-    #pde_projection.assemble(True, True)
-    #del(t1)
-    #t1 = Timer("[P] solve projection")
-    #pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(), 'bicgstab', 'hypre_amg') 
+    t1 = Timer("[P] assemble projection")
+    pde_projection.assemble(True, True)
+    del(t1)
+    t1 = Timer("[P] solve projection")
+    pde_projection.solve_problem(ubar_a, ustar, 'superlu_dist', 'default') 
     #pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), 'gmres', 'amg')
-    #del(t1)
+    del(t1)
 
+    if comm.rank == 0:
+        print("Solved pde-map")
+        
     # Solve Stokes
     t1 = Timer("[P] Stokes assemble ")
     ssc.assemble_global_system(True)
@@ -291,7 +295,7 @@ while step < num_steps:
         ssc.apply_boundary(bc)
     del(t1)
     t1 = Timer("[P] Stokes solve")
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "gmres", "hypre_amg")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "superlu_dist", "default")
     del(t1)
 
     # Needed for particle advection

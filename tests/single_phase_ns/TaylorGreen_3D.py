@@ -94,7 +94,7 @@ def assign_particle_values(x, u_exact):
 geometry = {'xmin': -1., 'ymin': -1., 'zmin': -1, 'xmax': 1., 'ymax': 1., 'zmax': 1.}
 
 # Mesh resolution
-nx, ny, nz = 20, 20, 20
+nx, ny, nz = 32, 32, 32
 
 # Particle resolution
 pres = 150
@@ -125,7 +125,7 @@ theta_p = 0.5
 mode = 1.
 
 # Directory for output
-outdir_base = './../../results/TaylorGreen_3D_lores/'
+outdir_base = './../../results/TaylorGreen_3D_superlu/'
 #
 
 U_exact = (' U*sin(mode*pi*(x[0])) * cos(mode*pi*(x[1])) * cos(mode*pi*(x[2]))',
@@ -264,7 +264,7 @@ while step < num_steps:
     del(t1)
     t1 = Timer("[P] solve projection")
     pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(),
-                                 'mumps', 'default')
+                                 'superlu_dist', 'default')
     del(t1)
 
     # Solve Stokes
@@ -274,7 +274,7 @@ while step < num_steps:
         ssc.apply_boundary(bc)
     del(t1)
     t1 = Timer("[P] Stokes solve")
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "none")
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "superlu_dist", "none")
     del(t1)
 
     # Needed for particle advection
