@@ -570,6 +570,8 @@ void particles::get_particle_contributions(
 
 void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
 {
+  const std::size_t mpi_size = MPI::size(_mpi_comm);
+
   // Relocate local and global
   for (const auto& r : reloc)
   {
@@ -577,7 +579,7 @@ void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
     const std::size_t& pidx = r[1];
     const std::size_t& cidx_recv = r[2];
 
-    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+    if (cidx_recv == std::numeric_limits<unsigned int>::max() and mpi_size > 1)
       particle_communicator_collect(cidx, pidx);
     else
     {
@@ -596,6 +598,6 @@ void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
   }
 
   // Relocate global
-  if (MPI::size(_mpi_comm) > 1)
+  if (mpi_size > 1)
     particle_communicator_push();
 }
