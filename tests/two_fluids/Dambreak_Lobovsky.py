@@ -76,32 +76,32 @@ def assign_particle_values(x, u_exact):
 # store_step = 40
 
 # Medium
-# xmin, xmax = 0., 1.61
-# ymin, ymax = 0., 1.
-# nx, ny = 161, 100
-# xmin_rho1 = 0.
-# xmax_rho1 = 0.6
-# ymin_rho1 = 0.
-# ymax_rho1 = 0.3
-# pres = 1200
-# res = 'medium'
-# dt = Constant(1.e-3)
-# store_step = 100
-
-# Hires
 xmin, xmax = 0., 1.61
 ymin, ymax = 0., 1.
-nx, ny = 322, 200
+nx, ny = 161, 100
 xmin_rho1 = 0.
 xmax_rho1 = 0.6
 ymin_rho1 = 0.
 ymax_rho1 = 0.3
-pres = 2200
-res = 'high'
-dt = Constant(5.e-4)
-store_step = 200
+pres = 1200
+res = 'medium'
+dt = Constant(1.e-3)
+store_step = 100
 
-mu = 1e-2
+# Hires
+# xmin, xmax = 0., 1.61
+# ymin, ymax = 0., 1.
+# nx, ny = 322, 200
+# xmin_rho1 = 0.
+# xmax_rho1 = 0.6
+# ymin_rho1 = 0.
+# ymax_rho1 = 0.3
+# pres = 2200
+# res = 'high'
+# dt = Constant(5.e-4)
+# store_step = 200
+
+mu = 5e-2
 theta_p = .5
 theta_L = Constant(1.0)
 
@@ -319,14 +319,14 @@ while step < num_steps:
     # Project density and specific momentum
     t1 = Timer("[P] density projection")
     pde_rho.assemble(True, True)
-    pde_rho.solve_problem(rhobar, rho, "mumps", "default")
+    pde_rho.solve_problem(rhobar, rho, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, True)
 
     try:
-        pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+        pde_u.solve_problem(ustar_bar, ustar, "superlu_dist", "default")
     except Exception:
         # FIXME: work-around
         lstsq_u.project(ustar)
@@ -340,7 +340,7 @@ while step < num_steps:
     del(t1)
 
     t1 = Timer("[P] Stokes solve ")
-    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    ssc.solve_problem(Uhbar, Uh, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] Update mesh fields")
