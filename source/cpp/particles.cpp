@@ -338,10 +338,6 @@ void particles::particle_communicator_collect(const std::size_t cidx,
     if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
       _comm_snd[p].push_back(ptemp);
   }
-
-  // Erase particle
-  delete_particle(cidx, pidx);
-  // Decrement particle iterator (?!)
 }
 
 void particles::particle_communicator_push()

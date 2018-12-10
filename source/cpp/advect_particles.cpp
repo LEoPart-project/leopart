@@ -312,8 +312,7 @@ void advect_particles::do_step(double dt)
   std::size_t num_processes = MPI::size(mpi_comm);
 
   // Needed for local reloc
-  std::vector<std::size_t> reloc_local_c;
-  std::vector<particle> reloc_local_p;
+  std::vector<std::array<std::size_t, 3>> reloc;
 
   for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
   {
@@ -359,12 +358,7 @@ void advect_particles::do_step(double dt)
           // recent value If cidx_recv != ci->index(), particles crossed facet
           // and hence need to be relocated
           if (cidx_recv != ci->index())
-          {
-            reloc_local_c.push_back(cidx_recv);
-            reloc_local_p.push_back(_P->get_particle(ci->index(), i));
-            _P->delete_particle(ci->index(), i);
-            i--; // Decrement iterator
-          }
+            reloc.push_back({ci->index(), i, cidx_recv});
         }
         else
         {
@@ -387,12 +381,7 @@ void advect_particles::do_step(double dt)
               // Then terminate
               dt_rem = 0.0;
               if (cidx_recv != ci->index())
-              {
-                reloc_local_c.push_back(cidx_recv);
-                reloc_local_p.push_back(_P->get_particle(ci->index(), i));
-                _P->delete_particle(ci->index(), i);
-                i--; // Decrement iterator
-              }
+                reloc.push_back({ci->index(), i, cidx_recv});
             }
           }
           else if (f.num_entities(tdim) == 1)
@@ -415,17 +404,18 @@ void advect_particles::do_step(double dt)
               // internal bc-> closed bc
 
               // Go to the particle communicator
-              _P->particle_communicator_collect(ci->index(), i);
-              i--;
+              reloc.push_back(
+                  {ci->index(), i, std::numeric_limits<std::size_t>::max()});
             }
             else if (ftype == facet_t::open)
             {
               // Particle leaves the domain. Simply erase!
               // FIXME: additional check that particle indeed leaves domain
               // (u\cdotn > 0)
-              apply_open_bc(ci->index(), i);
-              dt_rem *= 0.;
-              i--;
+              // Send to "off process" (should just disappear)
+              reloc.push_back(
+                  {ci->index(), i, std::numeric_limits<std::size_t>::max()});
+              dt_rem = 0.0;
             }
             else if (ftype == facet_t::closed)
             {
@@ -438,7 +428,8 @@ void advect_particles::do_step(double dt)
               // Then periodic bc
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
               if (num_processes > 1) // Behavior in parallel
-                _P->particle_communicator_collect(ci->index(), i);
+                reloc.push_back(
+                    {ci->index(), i, std::numeric_limits<std::size_t>::max()});
               else
               {
                 // Behavior in serial
@@ -446,12 +437,9 @@ void advect_particles::do_step(double dt)
                                           ->bounding_box_tree()
                                           ->compute_first_entity_collision(
                                               _P->x(ci->index(), i));
-                reloc_local_c.push_back(cell_id);
-                reloc_local_p.push_back(_P->get_particle(ci->index(), i));
-                _P->delete_particle(ci->index(), i);
+                reloc.push_back({ci->index(), i, cell_id});
               }
-              dt_rem *= 0.;
-              i--;
+              dt_rem = 0.0;
             }
             else
             {
@@ -471,16 +459,29 @@ void advect_particles::do_step(double dt)
     }     // end for
   }       // end for
 
-  // Relocate local
-  for (std::size_t i = 0; i < reloc_local_c.size(); ++i)
+  // Relocate local and global
+  for (const auto& r : reloc)
   {
-    if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-      _P->add_particle(reloc_local_c[i], reloc_local_p[i]);
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    const std::size_t& cidx_recv = r[2];
+
+    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+      _P->particle_communicator_collect(cidx, pidx);
     else
     {
-      dolfin_error("advection.cpp::do_step",
-                   "find a hosting cell on local process", "Unknown");
+      particle p = _P->get_particle(cidx, pidx);
+      _P->add_particle(cidx_recv, p);
     }
+  }
+
+  // Sort into reverse order
+  std::sort(reloc.rbegin(), reloc.rend());
+  for (const auto& r : reloc)
+  {
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    _P->delete_particle(cidx, pidx);
   }
 
   // Debug only
@@ -711,16 +712,13 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
-                                  std::size_t* pidx, const std::size_t step,
-                                  const std::size_t num_steps,
-                                  const std::size_t xp0_idx,
-                                  const std::size_t up0_idx,
-                                  std::vector<std::size_t>& reloc_local_c,
-                                  std::vector<particle>& reloc_local_p)
+void advect_particles::do_substep(
+    double dt, Point& up, const std::size_t cidx, std::size_t pidx,
+    const std::size_t step, const std::size_t num_steps,
+    const std::size_t xp0_idx, const std::size_t up0_idx,
+    std::vector<std::array<std::size_t, 3>>& reloc)
 {
   double dt_rem = dt;
-  // std::size_t cidx_recv = cidx;
 
   const Mesh* mesh = _P->mesh();
   const std::size_t mpi_size = MPI::size(mesh->mpi_comm());
@@ -739,11 +737,11 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
     // carried
     // TODO: Can we think of smarter implementation?
     cidx_recv = _P->mesh()->bounding_box_tree()->compute_first_entity_collision(
-        _P->x(cidx, *pidx));
+        _P->x(cidx, pidx));
 
     // One alternative might be:
     // Cell cell(*(_P->_mesh), cidx);
-    // bool contain = cell.contains(_P->_cell2part[cidx][*pidx][0])
+    // bool contain = cell.contains(_P->_cell2part[cidx][pidx][0])
     // If true  cidx_recv = cidx; and continue
     // if not: do entity collision
 
@@ -751,19 +749,18 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
     // but what about multistage schemes and near closed/periodic bc's?
     if (cidx_recv == std::numeric_limits<unsigned int>::max())
     {
-      _P->push_particle(dt_rem, up, cidx, *pidx);
+      _P->push_particle(dt_rem, up, cidx, pidx);
       if (pbc_active)
-        pbc_limits_violation(cidx, *pidx);
+        pbc_limits_violation(cidx, pidx);
 
       if (step == (num_steps - 1))
       {
         // Copy current position to old position
         // so something like
-        _P->set_property(cidx, *pidx, xp0_idx, _P->x(cidx, *pidx));
+        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
       }
       // Apparently, this always lead to a communicate, but why?
-      _P->particle_communicator_collect(cidx, *pidx);
-      (*pidx)--;
+      reloc.push_back({cidx, pidx, std::numeric_limits<std::size_t>::max()});
       return; // Stop right here
     }
   }
@@ -773,30 +770,24 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
   {
     // Returns facet which is intersected and the time it takes to do so
     std::tuple<std::size_t, double> intersect_info
-        = time2intersect(cidx_recv, dt_rem, _P->x(cidx, *pidx), up);
+        = time2intersect(cidx_recv, dt_rem, _P->x(cidx, pidx), up);
     const std::size_t target_facet = std::get<0>(intersect_info);
     const double dt_int = std::get<1>(intersect_info);
 
     if (target_facet == std::numeric_limits<std::size_t>::max())
     {
       // Then remain within cell, finish time step
-      _P->push_particle(dt_rem, up, cidx, *pidx);
-      dt_rem *= 0.;
+      _P->push_particle(dt_rem, up, cidx, pidx);
+      dt_rem = 0.0;
 
       if (step == (num_steps - 1))
         // Copy current position to old position
-        _P->set_property(cidx, *pidx, xp0_idx, _P->x(cidx, *pidx));
+        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
       // If cidx_recv != ci->index(), particles crossed facet and hence need to
       // be relocated
       if (cidx_recv != cidx)
-      {
-        // Then relocate local
-        reloc_local_c.push_back(cidx_recv);
-        reloc_local_p.push_back(_P->get_particle(cidx, *pidx));
-        _P->delete_particle(cidx, *pidx);
-        (*pidx)--; // Decrement iterator
-      }
+        reloc.push_back({cidx, pidx, cidx_recv});
     }
     else
     {
@@ -807,7 +798,7 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
       if (f.num_entities(tdim) == 2)
       {
         // Then we cross facet which has a neighboring cell
-        _P->push_particle(dt_int, up, cidx, *pidx);
+        _P->push_particle(dt_int, up, cidx, pidx);
 
         // Update index of receiving cell
         cidx_recv = (fcells[0] == cidx_recv) ? fcells[1] : fcells[0];
@@ -820,15 +811,10 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
           dt_rem *= 0.;
           // Copy current position to old position
           if (step == (num_steps - 1))
-            _P->set_property(cidx, *pidx, xp0_idx, _P->x(cidx, *pidx));
+            _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
           if (cidx_recv != cidx)
-          {
-            reloc_local_c.push_back(cidx_recv);
-            reloc_local_p.push_back(_P->get_particle(cidx, *pidx));
-            _P->delete_particle(cidx, *pidx);
-            (*pidx)--; // Decrement iterator
-          }
+            reloc.push_back({cidx, pidx, cidx_recv});
         }
       }
       else if (f.num_entities(tdim) == 1)
@@ -838,31 +824,33 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
         if (f.num_global_entities(tdim) == 2)
         { // Internal boundary between processes
           assert(ftype == facet_t::internal);
-          _P->push_particle(dt_rem, up, cidx, *pidx);
-          dt_rem *= 0.;
+          _P->push_particle(dt_rem, up, cidx, pidx);
+          dt_rem = 0.0;
 
+          // Updates particle position if pbc_limits is violated
           if (pbc_active)
-            pbc_limits_violation(
-                cidx,
-                *pidx); // Updates particle position if pbc_limits is violated
+            pbc_limits_violation(cidx, pidx);
+
           // Copy current position to old position
           if (step == (num_steps - 1) || hit_cbc)
-            _P->set_property(cidx, *pidx, xp0_idx, _P->x(cidx, *pidx));
+            _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
-          _P->particle_communicator_collect(cidx, *pidx);
-          (*pidx)--;
+          reloc.push_back(
+              {cidx, pidx, std::numeric_limits<std::size_t>::max()});
+
           return; // Stop right here
         }
         else if (ftype == facet_t::open)
         {
-          // Particle leaves the domain. Simply erase!
-          apply_open_bc(cidx, *pidx);
-          dt_rem *= 0.;
-          (*pidx)--;
+          // Particle leaves the domain. Relocate to another process (particle
+          // will be discarded)
+          reloc.push_back(
+              {cidx, pidx, std::numeric_limits<std::size_t>::max()});
+          dt_rem = 0.0;
         }
         else if (ftype == facet_t::closed)
         {
-          apply_closed_bc(dt_int, up, cidx, *pidx, target_facet);
+          apply_closed_bc(dt_int, up, cidx, pidx, target_facet);
           dt_rem -= dt_int;
 
           // TODO: CHECK THIS
@@ -873,24 +861,26 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
           // TODO: UPDATE AS PARTICLE!
           std::vector<double> dummy_vel(gdim,
                                         std::numeric_limits<double>::max());
-          _P->set_property(cidx, *pidx, up0_idx, Point(gdim, dummy_vel.data()));
+          _P->set_property(cidx, pidx, up0_idx, Point(gdim, dummy_vel.data()));
 
           hit_cbc = true;
         }
         else if (ftype == facet_t::periodic)
         {
           // TODO: add support for periodic bcs
-          apply_periodic_bc(dt_rem, up, cidx, *pidx, target_facet);
+          apply_periodic_bc(dt_rem, up, cidx, pidx, target_facet);
 
           // Copy current position to old position
           if (step == (num_steps - 1))
-            _P->set_property(cidx, *pidx, xp0_idx, _P->x(cidx, *pidx));
+            _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
+          // Behavior in parallel
+          // Always do a global push
           if (mpi_size > 1)
           {
-            // Behavior in parallel
-            // Always do a global push
-            _P->particle_communicator_collect(cidx, *pidx);
+
+            reloc.push_back(
+                {cidx, pidx, std::numeric_limits<std::size_t>::max()});
           }
           else
           {
@@ -899,15 +889,12 @@ void advect_particles::do_substep(double dt, Point& up, const std::size_t cidx,
             std::size_t cell_id
                 = _P->mesh()
                       ->bounding_box_tree()
-                      ->compute_first_entity_collision(_P->x(cidx, *pidx));
+                      ->compute_first_entity_collision(_P->x(cidx, pidx));
 
-            reloc_local_c.push_back(cell_id);
-            reloc_local_p.push_back(_P->get_particle(cidx, *pidx));
-            _P->delete_particle(cidx, *pidx);
+            reloc.push_back({cidx, pidx, cell_id});
           }
 
-          dt_rem *= 0.;
-          (*pidx)--;
+          dt_rem = 0.0;
         }
         else
         {
@@ -993,8 +980,7 @@ void advect_rk2::do_step(double dt)
   for (std::size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::size_t> reloc_local_c;
-    std::vector<particle> reloc_local_p;
+    std::vector<std::array<std::size_t, 3>> reloc;
 
     for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
     {
@@ -1037,24 +1023,37 @@ void advect_rk2::do_step(double dt)
                            _P->property(ci->index(), i, xp0_idx));
 
         // Do substep
-        do_substep(dt, up, ci->index(), &i, step, num_substeps, xp0_idx,
-                   up0_idx, reloc_local_c, reloc_local_p);
+        do_substep(dt, up, ci->index(), i, step, num_substeps, xp0_idx, up0_idx,
+                   reloc);
       }
     }
 
-    // Local relocate
-    for (std::size_t i = 0; i < reloc_local_c.size(); i++)
+    // Relocate local and global
+    for (const auto& r : reloc)
     {
-      if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-        _P->add_particle(reloc_local_c[i], reloc_local_p[i]);
+      const std::size_t& cidx = r[0];
+      const std::size_t& pidx = r[1];
+      const std::size_t& cidx_recv = r[2];
+
+      if (cidx_recv == std::numeric_limits<unsigned int>::max())
+        _P->particle_communicator_collect(cidx, pidx);
       else
       {
-        dolfin_error("advection_rk2.cpp::do_step",
-                     "find a hosting cell on local process", "Unknown");
+        particle p = _P->get_particle(cidx, pidx);
+        _P->add_particle(cidx_recv, p);
       }
     }
 
-    // Global relocate
+    // Sort into reverse order
+    std::sort(reloc.rbegin(), reloc.rend());
+    for (const auto& r : reloc)
+    {
+      const std::size_t& cidx = r[0];
+      const std::size_t& pidx = r[1];
+      _P->delete_particle(cidx, pidx);
+    }
+
+    // Relocate global
     if (num_processes > 1)
       _P->particle_communicator_push();
   }
@@ -1127,8 +1126,7 @@ void advect_rk3::do_step(double dt)
   for (std::size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::size_t> reloc_local_c;
-    std::vector<particle> reloc_local_p;
+    std::vector<std::array<std::size_t, 3>> reloc;
 
     for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
     {
@@ -1183,24 +1181,37 @@ void advect_rk3::do_step(double dt)
                            _P->property(ci->index(), i, xp0_idx));
 
         // Do substep
-        do_substep(dt * dti[step], up, ci->index(), &i, step, num_substeps,
-                   xp0_idx, up0_idx, reloc_local_c, reloc_local_p);
+        do_substep(dt * dti[step], up, ci->index(), i, step, num_substeps,
+                   xp0_idx, up0_idx, reloc);
       }
     }
 
-    // Local relocate
-    for (std::size_t i = 0; i < reloc_local_c.size(); i++)
+    // Relocate local and global
+    for (const auto& r : reloc)
     {
-      if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-        _P->add_particle(reloc_local_c[i], reloc_local_p[i]);
+      const std::size_t& cidx = r[0];
+      const std::size_t& pidx = r[1];
+      const std::size_t& cidx_recv = r[2];
+
+      if (cidx_recv == std::numeric_limits<unsigned int>::max())
+        _P->particle_communicator_collect(cidx, pidx);
       else
       {
-        dolfin_error("advection_rk2.cpp::do_step",
-                     "find a hosting cell on local process", "Unknown");
+        particle p = _P->get_particle(cidx, pidx);
+        _P->add_particle(cidx_recv, p);
       }
     }
 
-    // Global relocate
+    // Sort into reverse order
+    std::sort(reloc.rbegin(), reloc.rend());
+    for (const auto& r : reloc)
+    {
+      const std::size_t& cidx = r[0];
+      const std::size_t& pidx = r[1];
+      _P->delete_particle(cidx, pidx);
+    }
+
+    // Relocate global
     if (num_processes > 1)
       _P->particle_communicator_push();
   }
