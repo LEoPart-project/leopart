@@ -567,3 +567,35 @@ void particles::get_particle_contributions(
                  cidx);
   }
 }
+
+void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
+{
+  // Relocate local and global
+  for (const auto& r : reloc)
+  {
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    const std::size_t& cidx_recv = r[2];
+
+    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+      particle_communicator_collect(cidx, pidx);
+    else
+    {
+      particle p = get_particle(cidx, pidx);
+      add_particle(cidx_recv, p);
+    }
+  }
+
+  // Sort into reverse order
+  std::sort(reloc.rbegin(), reloc.rend());
+  for (const auto& r : reloc)
+  {
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    delete_particle(cidx, pidx);
+  }
+
+  // Relocate global
+  if (MPI::size(_mpi_comm) > 1)
+    particle_communicator_push();
+}

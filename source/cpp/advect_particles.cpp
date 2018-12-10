@@ -314,7 +314,7 @@ void advect_particles::do_step(double dt)
   // Needed for local reloc
   std::vector<std::array<std::size_t, 3>> reloc;
 
-  for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
+  for (CellIterator ci(*mesh); !ci.end(); ++ci)
   {
     std::vector<double> coeffs;
     // Restrict once per cell, once per timestep
@@ -460,41 +460,7 @@ void advect_particles::do_step(double dt)
   }       // end for
 
   // Relocate local and global
-  for (const auto& r : reloc)
-  {
-    const std::size_t& cidx = r[0];
-    const std::size_t& pidx = r[1];
-    const std::size_t& cidx_recv = r[2];
-
-    if (cidx_recv == std::numeric_limits<unsigned int>::max())
-      _P->particle_communicator_collect(cidx, pidx);
-    else
-    {
-      particle p = _P->get_particle(cidx, pidx);
-      _P->add_particle(cidx_recv, p);
-    }
-  }
-
-  // Sort into reverse order
-  std::sort(reloc.rbegin(), reloc.rend());
-  for (const auto& r : reloc)
-  {
-    const std::size_t& cidx = r[0];
-    const std::size_t& pidx = r[1];
-    _P->delete_particle(cidx, pidx);
-  }
-
-  // Debug only
-  /*
-  for (std::size_t p = 0; p < num_processes; p++){
-      std::cout<<"Size of comm_snd at process "<<p<<"
-  "<<comm_snd[p].size()<<std::endl;
-  }
-  */
-
-  // Relocate global
-  if (num_processes > 1)
-    _P->particle_communicator_push();
+  _P->relocate(reloc);
 }
 //-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>
@@ -736,7 +702,7 @@ void advect_particles::do_substep(
     // same as the cell where the particle lives newest position is always
     // carried
     // TODO: Can we think of smarter implementation?
-    cidx_recv = _P->mesh()->bounding_box_tree()->compute_first_entity_collision(
+    cidx_recv = mesh->bounding_box_tree()->compute_first_entity_collision(
         _P->x(cidx, pidx));
 
     // One alternative might be:
@@ -878,7 +844,6 @@ void advect_particles::do_substep(
           // Always do a global push
           if (mpi_size > 1)
           {
-
             reloc.push_back(
                 {cidx, pidx, std::numeric_limits<std::size_t>::max()});
           }
@@ -887,9 +852,8 @@ void advect_particles::do_substep(
             // Behavior in serial
             // TODO: call particle locate
             std::size_t cell_id
-                = _P->mesh()
-                      ->bounding_box_tree()
-                      ->compute_first_entity_collision(_P->x(cidx, pidx));
+                = mesh->bounding_box_tree()->compute_first_entity_collision(
+                    _P->x(cidx, pidx));
 
             reloc.push_back({cidx, pidx, cell_id});
           }
@@ -969,12 +933,10 @@ void advect_rk2::do_step(double dt)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
 
-  const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  const Mesh* mesh = _P->mesh();
+  std::size_t gdim = mesh->geometry().dim();
 
-  std::size_t num_processes = MPI::size(mpi_comm);
-
-  std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
+  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
   std::size_t num_substeps = 2;
 
   for (std::size_t step = 0; step < num_substeps; step++)
@@ -982,7 +944,7 @@ void advect_rk2::do_step(double dt)
     // Needed for local reloc
     std::vector<std::array<std::size_t, 3>> reloc;
 
-    for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
+    for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
       if (step == 0)
       { // Restrict once per cell, once per timestep
@@ -1029,33 +991,7 @@ void advect_rk2::do_step(double dt)
     }
 
     // Relocate local and global
-    for (const auto& r : reloc)
-    {
-      const std::size_t& cidx = r[0];
-      const std::size_t& pidx = r[1];
-      const std::size_t& cidx_recv = r[2];
-
-      if (cidx_recv == std::numeric_limits<unsigned int>::max())
-        _P->particle_communicator_collect(cidx, pidx);
-      else
-      {
-        particle p = _P->get_particle(cidx, pidx);
-        _P->add_particle(cidx_recv, p);
-      }
-    }
-
-    // Sort into reverse order
-    std::sort(reloc.rbegin(), reloc.rend());
-    for (const auto& r : reloc)
-    {
-      const std::size_t& cidx = r[0];
-      const std::size_t& pidx = r[1];
-      _P->delete_particle(cidx, pidx);
-    }
-
-    // Relocate global
-    if (num_processes > 1)
-      _P->particle_communicator_push();
+    _P->relocate(reloc);
   }
 }
 //-----------------------------------------------------------------------------
@@ -1116,10 +1052,7 @@ void advect_rk3::do_step(double dt)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
 
-  const MPI_Comm mpi_comm = _P->mesh()->mpi_comm();
   const std::size_t gdim = _P->mesh()->geometry().dim();
-  std::size_t num_processes = MPI::size(mpi_comm);
-
   std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
   std::size_t num_substeps = 3;
 
@@ -1187,33 +1120,7 @@ void advect_rk3::do_step(double dt)
     }
 
     // Relocate local and global
-    for (const auto& r : reloc)
-    {
-      const std::size_t& cidx = r[0];
-      const std::size_t& pidx = r[1];
-      const std::size_t& cidx_recv = r[2];
-
-      if (cidx_recv == std::numeric_limits<unsigned int>::max())
-        _P->particle_communicator_collect(cidx, pidx);
-      else
-      {
-        particle p = _P->get_particle(cidx, pidx);
-        _P->add_particle(cidx_recv, p);
-      }
-    }
-
-    // Sort into reverse order
-    std::sort(reloc.rbegin(), reloc.rend());
-    for (const auto& r : reloc)
-    {
-      const std::size_t& cidx = r[0];
-      const std::size_t& pidx = r[1];
-      _P->delete_particle(cidx, pidx);
-    }
-
-    // Relocate global
-    if (num_processes > 1)
-      _P->particle_communicator_push();
+    _P->relocate(reloc);
   }
 }
 //-----------------------------------------------------------------------------

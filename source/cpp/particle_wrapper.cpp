@@ -48,7 +48,8 @@ PYBIND11_MODULE(particle_wrapper, m)
                & dolfin::particles::increment)
       .def("positions", &dolfin::particles::positions)
       .def("get_property", &dolfin::particles::get_property)
-      .def("relocate", &dolfin::particles::relocate);
+      .def("relocate",
+           (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,

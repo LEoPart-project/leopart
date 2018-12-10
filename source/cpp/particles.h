@@ -118,8 +118,12 @@ namespace dolfin
     // Particle pusher, required in parallel
     void particle_communicator_push();
 
-    // Relocate particles, required on moving meshes
+    // Relocate all particles, required on moving meshes
     void relocate();
+
+    // Relocate particles, with known relocation data. Each entry is {cidx, pidx, cidx_recv}
+    // using numeric_limits::max for cidx_recv to send to another process
+    void relocate(std::vector<std::array<std::size_t, 3>>& reloc);
 
   private:
 
