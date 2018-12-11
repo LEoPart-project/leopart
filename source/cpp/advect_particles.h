@@ -129,11 +129,11 @@ protected:
   // Method for substepping in multistep schemes
 
   void do_substep(double dt, Point& up, const std::size_t cidx,
-                  std::size_t* pidx, const std::size_t step,
+                  std::size_t pidx, const std::size_t step,
                   const std::size_t num_steps, const std::size_t xp0_idx,
                   const std::size_t up0_idx,
-                  std::vector<std::size_t>& reloc_local_c,
-                  std::vector<particle>& reloc_local_p);
+                  std::vector<std::array<std::size_t, 3>>& reloc);
+
 };
 
 class advect_rk2 : public advect_particles
