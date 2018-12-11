@@ -68,11 +68,18 @@ particles::particles(
       // carries the old values
 
       // Push back to particle structure
-      add_particle(cell_id, pnew);
+      _cell2part[cell_id].push_back(pnew);
     }
   }
 }
-
+//-----------------------------------------------------------------------------
+int particles::add_particle(int c)
+{
+  particle p(_ptemplate.size());
+  _cell2part[c].push_back(p);
+  return _cell2part[c].size() - 1;
+}
+//-----------------------------------------------------------------------------
 void particles::interpolate(const Function& phih,
                             const std::size_t property_idx)
 {
@@ -388,7 +395,7 @@ void particles::particle_communicator_push()
       dolfin_assert(pos_iter % _plen == 0);
 
       // Push back new particle to hosting cell
-      add_particle(cell_id, pnew);
+      _cell2part[cell_id].push_back(pnew);
     }
     else
     {
@@ -403,12 +410,10 @@ void particles::relocate()
   // Method to relocate particles on moving mesh
 
   // Update bounding boxes
-  const std::size_t num_processes = MPI::size(_mpi_comm);
   update_bounding_boxes();
 
   // Init relocate local
-  std::vector<std::size_t> reloc_local_c;
-  std::vector<particle> reloc_local_p;
+  std::vector<std::array<std::size_t, 3>> reloc;
 
   // Loop over particles
   for (CellIterator ci(*(_mesh)); !ci.end(); ++ci)
@@ -425,43 +430,12 @@ void particles::relocate()
         std::size_t cell_id
             = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
 
-        if (cell_id != std::numeric_limits<unsigned int>::max())
-        {
-          // Then stay local
-          reloc_local_c.push_back(cell_id);
-          reloc_local_p.push_back(get_particle(ci->index(), i));
-          delete_particle(ci->index(), i);
-        }
-        else if (num_processes > 1)
-        {
-          // Then push to parallel
-          particle_communicator_collect(ci->index(), i);
-        }
-        else
-        {
-          // Particle can escape through moving boundary
-          // if so, delete particle here when run in serial
-          delete_particle(ci->index(), i);
-        }
+        reloc.push_back({ci->index(), i, cell_id});
       }
     }
   }
 
-  // Do the local relocation
-  for (std::size_t i = 0; i < reloc_local_c.size(); ++i)
-  {
-    if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-      add_particle(reloc_local_c[i], reloc_local_p[i]);
-    else
-    {
-      dolfin_error("particles.cpp::relocate_particles",
-                   "find a hosting cell on local process", "Unknown");
-    }
-  }
-
-  // Do the global push
-  if (num_processes > 1)
-    particle_communicator_push();
+  relocate(reloc);
 }
 
 bool particles::in_bounding_box(const std::vector<double>& point,
@@ -579,12 +553,15 @@ void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
     const std::size_t& pidx = r[1];
     const std::size_t& cidx_recv = r[2];
 
-    if (cidx_recv == std::numeric_limits<unsigned int>::max() and mpi_size > 1)
-      particle_communicator_collect(cidx, pidx);
+    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+    {
+      if (mpi_size > 1)
+        particle_communicator_collect(cidx, pidx);
+    }
     else
     {
-      particle p = get_particle(cidx, pidx);
-      add_particle(cidx_recv, p);
+      particle p = _cell2part[cidx][pidx];
+      _cell2part[cidx_recv].push_back(p);
     }
   }
 

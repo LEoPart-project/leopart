@@ -11,7 +11,6 @@
 #include <dolfin/mesh/Vertex.h>
 
 #include "advect_particles.h"
-#include "particle.h"
 #include "utils.h"
 
 using namespace dolfin;

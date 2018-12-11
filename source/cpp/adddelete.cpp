@@ -137,7 +137,9 @@ void AddDelete::insert_particles(const std::size_t Np_def,
   Utils::cell_bounding_box(x_min_max, vertex_coordinates, gdim);
 
   // Needed for point generation and placement
-  seed(Np_def * dolfin_cell.index());
+  const std::size_t cidx = dolfin_cell.index();
+
+  seed(Np_def * cidx);
   ufc::cell ufc_cell;
   dolfin_cell.get_cell_data(ufc_cell);
 
@@ -148,9 +150,10 @@ void AddDelete::insert_particles(const std::size_t Np_def,
     initialize_random_position(xp_new, x_min_max, dolfin_cell);
     Eigen::Map<Eigen::VectorXd> xp_array(xp_new.coordinates(), gdim);
 
-    particle pnew = {xp_new};
+    const int pidx = _P->add_particle(cidx);
+    _P->set_property(cidx, pidx, 0, xp_new);
 
-    // Eval other properties and push
+    // Eval other properties and set
     for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
     {
       // +1 to skip position slot
@@ -164,16 +167,13 @@ void AddDelete::insert_particles(const std::size_t Np_def,
       // Check if bounded update
       check_bounded_update(pproperty, idx_func);
 
-      pnew.push_back(pproperty);
+      _P->set_property(cidx, pidx, idx_func + 1, pproperty);
     }
 
-    // If necessary, push back remaining slots (initialized with positions,
+    // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    while (pnew.size() < _P->num_properties())
-      pnew.push_back(xp_new);
-
-    // Push back to particles
-    _P->add_particle(dolfin_cell.index(), pnew);
+    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+      _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //
@@ -202,8 +202,8 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
     Point xp_new;
     initialize_random_position(xp_new, x_min_max, dolfin_cell);
 
-    particle pnew;
-    pnew.push_back(xp_new);
+    int pidx = _P->add_particle(cidx);
+    _P->set_property(cidx, pidx, 0, xp_new);
 
     // Loop over other particles to compute weights
     std::vector<double> distance;
@@ -234,7 +234,7 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
         // Check if bounded update
         check_bounded_update(point_value, idx_func);
 
-        pnew.push_back(point_value);
+        _P->set_property(cidx, pidx, idx_func + 1, point_value);
       }
     }
     else
@@ -258,16 +258,14 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
         // Check if bounded update
         check_bounded_update(pproperty, idx_func);
 
-        pnew.push_back(pproperty);
+        _P->set_property(cidx, pidx, idx_func + 1, pproperty);
       }
     }
 
-    // If necessary, push back remaining slots (initialized with positions,
+    // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    while (pnew.size() < _P->num_properties())
-      pnew.push_back(xp_new);
-
-    _P->add_particle(dolfin_cell.index(), pnew);
+    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+      _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //
