@@ -1051,8 +1051,9 @@ void advect_rk3::do_step(double dt)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
 
-  const std::size_t gdim = _P->mesh()->geometry().dim();
-  std::vector<std::vector<double>> coeffs_storage(_P->mesh()->num_cells());
+  const Mesh* mesh = _P->mesh();
+  const std::size_t gdim = mesh->geometry().dim();
+  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
   std::size_t num_substeps = 3;
 
   for (std::size_t step = 0; step < num_substeps; step++)
@@ -1060,7 +1061,7 @@ void advect_rk3::do_step(double dt)
     // Needed for local reloc
     std::vector<std::array<std::size_t, 3>> reloc;
 
-    for (CellIterator ci(*(_P->mesh())); !ci.end(); ++ci)
+    for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
       if (step == 0)
       { // Restrict once per cell, once per timestep
