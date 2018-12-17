@@ -98,6 +98,7 @@ class CosineHill(UserExpression):
     def value_shape(self):
         return ()
 
+
 class Sinusoidal(UserExpression):
     """
     Overloaded expression for initializing standing wave profile based on
@@ -113,12 +114,12 @@ class Sinusoidal(UserExpression):
     def eval(self, value, x):
         A = self.geometry['amplitude']
         d = self.geometry['depth']
-        l = self.geometry['length']
+        length = self.geometry['length']
         m = self.geometry['mode']
         theta = self.geometry['phase']
-        km = m * np.pi / l
+        km = m * np.pi / length
 
-        if (x[1] <  A * np.sin(km * x[0] - theta) + d):
+        if (x[1] < A * np.sin(km * x[0] - theta) + d):
             value[0] = self.value_inside
         else:
             value[0] = self.value_outside
