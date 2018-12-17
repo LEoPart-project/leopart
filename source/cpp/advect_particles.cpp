@@ -348,7 +348,7 @@ void advect_particles::do_step(double dt)
         const std::size_t target_facet = std::get<0>(intersect_info);
         const double dt_int = std::get<1>(intersect_info);
 
-        if (target_facet == std::numeric_limits<std::size_t>::max())
+        if (target_facet == std::numeric_limits<unsigned int>::max())
         {
           // Then remain within cell, finish time step
           _P->push_particle(dt_rem, up, ci->index(), i);
@@ -404,7 +404,7 @@ void advect_particles::do_step(double dt)
 
               // Go to the particle communicator
               reloc.push_back(
-                  {ci->index(), i, std::numeric_limits<std::size_t>::max()});
+                  {ci->index(), i, std::numeric_limits<unsigned int>::max()});
             }
             else if (ftype == facet_t::open)
             {
@@ -413,7 +413,7 @@ void advect_particles::do_step(double dt)
               // (u\cdotn > 0)
               // Send to "off process" (should just disappear)
               reloc.push_back(
-                  {ci->index(), i, std::numeric_limits<std::size_t>::max()});
+                  {ci->index(), i, std::numeric_limits<unsigned int>::max()});
               dt_rem = 0.0;
             }
             else if (ftype == facet_t::closed)
@@ -428,7 +428,7 @@ void advect_particles::do_step(double dt)
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
               if (num_processes > 1) // Behavior in parallel
                 reloc.push_back(
-                    {ci->index(), i, std::numeric_limits<std::size_t>::max()});
+                    {ci->index(), i, std::numeric_limits<unsigned int>::max()});
               else
               {
                 // Behavior in serial
@@ -470,7 +470,7 @@ advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
   const Mesh* mesh = _P->mesh();
   const std::size_t tdim = mesh->topology().dim();
   double dt_int = std::numeric_limits<double>::max();
-  std::size_t target_facet = std::numeric_limits<std::size_t>::max();
+  std::size_t target_facet = std::numeric_limits<unsigned int>::max();
 
   Cell c(*mesh, cidx);
   for (unsigned int i = 0; i < c.num_entities(tdim - 1); ++i)
@@ -533,7 +533,7 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
 {
   const std::size_t gdim = _P->mesh()->geometry().dim();
   Point midpoint = facets_info[fidx].midpoint;
-  std::size_t row_match = std::numeric_limits<std::size_t>::max();
+  std::size_t row_match = std::numeric_limits<unsigned int>::max();
   std::size_t row_friend;
   std::size_t component;
   bool hit = false;
@@ -568,7 +568,7 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
 
 break_me:
   // Throw an error if rowmatch not set at this point
-  if (row_match == std::numeric_limits<std::size_t>::max())
+  if (row_match == std::numeric_limits<unsigned int>::max())
     dolfin_error("advect_particles.cpp::apply_periodic_bc",
                  "find matching periodic boundary info", "Unknown");
   // Column and matchin column come in pairs
@@ -690,7 +690,7 @@ void advect_particles::do_substep(
   const std::size_t gdim = mesh->geometry().dim();
   const std::size_t tdim = mesh->topology().dim();
 
-  std::size_t cidx_recv = std::numeric_limits<std::size_t>::max();
+  std::size_t cidx_recv = std::numeric_limits<unsigned int>::max();
 
   if (step == 0)
     cidx_recv = cidx;
@@ -725,7 +725,7 @@ void advect_particles::do_substep(
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
       }
       // Apparently, this always lead to a communicate, but why?
-      reloc.push_back({cidx, pidx, std::numeric_limits<std::size_t>::max()});
+      reloc.push_back({cidx, pidx, std::numeric_limits<unsigned int>::max()});
       return; // Stop right here
     }
   }
@@ -739,7 +739,7 @@ void advect_particles::do_substep(
     const std::size_t target_facet = std::get<0>(intersect_info);
     const double dt_int = std::get<1>(intersect_info);
 
-    if (target_facet == std::numeric_limits<std::size_t>::max())
+    if (target_facet == std::numeric_limits<unsigned int>::max())
     {
       // Then remain within cell, finish time step
       _P->push_particle(dt_rem, up, cidx, pidx);
@@ -801,7 +801,7 @@ void advect_particles::do_substep(
             _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
           reloc.push_back(
-              {cidx, pidx, std::numeric_limits<std::size_t>::max()});
+              {cidx, pidx, std::numeric_limits<unsigned int>::max()});
 
           return; // Stop right here
         }
@@ -810,7 +810,7 @@ void advect_particles::do_substep(
           // Particle leaves the domain. Relocate to another process (particle
           // will be discarded)
           reloc.push_back(
-              {cidx, pidx, std::numeric_limits<std::size_t>::max()});
+              {cidx, pidx, std::numeric_limits<unsigned int>::max()});
           dt_rem = 0.0;
         }
         else if (ftype == facet_t::closed)
@@ -844,7 +844,7 @@ void advect_particles::do_substep(
           if (mpi_size > 1)
           {
             reloc.push_back(
-                {cidx, pidx, std::numeric_limits<std::size_t>::max()});
+                {cidx, pidx, std::numeric_limits<unsigned int>::max()});
           }
           else
           {
