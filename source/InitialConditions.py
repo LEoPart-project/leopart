@@ -7,7 +7,7 @@
 from dolfin import UserExpression, pi
 import numpy as np
 
-__all__ = ['BinaryBlock', 'GaussianPulse', 'SineHump', 'CosineHill']
+__all__ = ['BinaryBlock', 'GaussianPulse', 'SineHump', 'CosineHill', 'Sinusoidal']
 
 
 class BinaryBlock(UserExpression):
@@ -97,3 +97,31 @@ class CosineHill(UserExpression):
 
     def value_shape(self):
         return ()
+
+class Sinusoidal(UserExpression):
+    """
+    Overloaded expression for initializing standing wave profile based on
+    a user specified geometry dictionary
+    """
+
+    def __init__(self, geometry, value_inside, value_outside, **kwargs):
+        self.geometry = geometry
+        self.value_inside = value_inside
+        self.value_outside = value_outside
+        super().__init__(self, **kwargs)
+
+    def eval(self, value, x):
+        A = self.geometry['amplitude']
+        d = self.geometry['depth']
+        l = self.geometry['length']
+        m = self.geometry['mode']
+        theta = self.geometry['phase']
+        km = m * np.pi / l
+
+        if (x[1] <  A * np.sin(km * x[0] - theta) + d):
+            value[0] = self.value_inside
+        else:
+            value[0] = self.value_outside
+
+    def value_shape(self):
+        return()

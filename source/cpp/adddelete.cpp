@@ -15,19 +15,6 @@
 
 using namespace dolfin;
 
-AddDelete::AddDelete(std::vector<std::shared_ptr<const Function>> flist)
-{
-  std::cout << "Received" << std::endl;
-  // Test if you can do anything useful
-
-  for (std::size_t i = 0; i < flist.size(); ++i)
-  {
-    std::cout << "Space dim "
-              << flist[i]->function_space()->element()->space_dimension()
-              << std::endl;
-  }
-}
-//
 AddDelete::AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
                      std::vector<std::shared_ptr<const Function>> FList)
     : _P(&P), _np_min(np_min), _np_max(np_max), _FList(FList)
@@ -73,11 +60,37 @@ void AddDelete::do_sweep()
   }
 }
 //
+void AddDelete::do_sweep(const std::vector<unsigned int>& cell_idcs)
+{
+  // Specialized sweep function over provided cells
+  for(unsigned int cidx : cell_idcs){
+    // Make cell
+    const Cell cell(*(_P->mesh()), cidx);
+
+    // Proceed as in do_sweep:
+    // Get number of particles
+    std::size_t Npc = _P->num_cell_particles(cell.index());
+
+    if (Npc >= _np_min && Npc <= _np_max)
+      continue;
+    if (Npc < _np_min)
+    {
+      std::size_t np_def = _np_min - Npc;
+      insert_particles(np_def, cell);
+    }
+    else if (Npc > _np_max)
+    {
+      std::size_t np_surp = Npc - _np_max;
+      delete_particles(np_surp, Npc, cell.index());
+    }
+  }
+}
+//
 // TODO: to be deprecated?
 void AddDelete::do_sweep_weighted()
 {
-  // This rather crude approach allows to do the sweep after the advection
-  // particle properties for the freshly constructed particle are derived
+  // This rather crude approach allows to do the sweep after the advection.
+  // Particle properties for the freshly constructed particle are derived
   // from the neighboring particles
 
   // Iterate over cells

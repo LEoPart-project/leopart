@@ -21,7 +21,6 @@ class particles;
 class AddDelete
 {
 public:
-  AddDelete(std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
             std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
@@ -31,6 +30,10 @@ public:
 
   // Sweep to be done before advection
   void do_sweep();
+  void do_sweep(const std::vector<unsigned int>& cell_idcs);
+
+  // Sweep over mesh cells
+
   // Failsafe sweep (after advection) to make sure that cell
   // contains minimum number
   void do_sweep_failsafe(const std::size_t np_min);

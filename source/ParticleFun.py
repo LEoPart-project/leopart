@@ -100,7 +100,9 @@ class particles(compiled_module.particles):
             property_root = comm.gather(self.return_property(mesh, property_idx).T, root=0)
             if comm.Get_rank() == 0:
                 with open(fname, mode) as f:
-                    property_root = np.float16(np.hstack(property_root).T)
+                    # FIXED: float16 is not accurate enough
+                    # property_root = np.float16(np.hstack(property_root).T)
+                    property_root = np.hstack(property_root).T
                     pickle.dump(property_root, f)
         return
 

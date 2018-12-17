@@ -190,13 +190,14 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("apply_boundary", &dolfin::PDEStaticCondensation::apply_boundary);
 
   py::class_<dolfin::AddDelete>(m, "AddDelete")
-      .def(py::init<std::vector<std::shared_ptr<const dolfin::Function>>>())
       .def(py::init<dolfin::particles&, std::size_t, std::size_t,
                     std::vector<std::shared_ptr<const dolfin::Function>>>())
       .def(py::init<dolfin::particles&, std::size_t, std::size_t,
                     std::vector<std::shared_ptr<const dolfin::Function>>,
                     std::vector<std::size_t>, std::vector<double>>())
-      .def("do_sweep", &dolfin::AddDelete::do_sweep)
+      // .def("do_sweep", &dolfin::AddDelete::do_sweep)
+      .def("do_sweep", (void (dolfin::AddDelete::*)()) &dolfin::AddDelete::do_sweep)
+      .def("do_sweep", (void (dolfin::AddDelete::*)(const std::vector<unsigned int>&)) &dolfin::AddDelete::do_sweep)
       .def("do_sweep_weighted", &dolfin::AddDelete::do_sweep_weighted)
       .def("do_sweep_failsafe", &dolfin::AddDelete::do_sweep_failsafe);
 }
