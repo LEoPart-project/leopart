@@ -130,17 +130,6 @@ public:
 private:
   std::vector<std::vector<particle>> _comm_snd;
 
-  // Initialize bounding boxes
-  void make_bounding_boxes();
-
-  // Update bounding boxes (on moving mesh)
-  void update_bounding_boxes();
-
-  // Check if point in bounding box
-  static bool in_bounding_box(const std::vector<double>& point,
-                              const std::vector<double>& bounding_box,
-                              const double tol);
-
   std::vector<double> unpack_particle(const particle part);
 
   // Attributes
@@ -154,7 +143,6 @@ private:
 
   // Needed for parallel
   const MPI_Comm _mpi_comm;
-  std::vector<std::vector<double>> _bounding_boxes;
 };
 } // namespace dolfin
 

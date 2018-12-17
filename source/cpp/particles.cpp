@@ -36,9 +36,6 @@ particles::particles(
 
   _cell2part.resize(mesh.num_cells());
 
-  // Initialize bounding boxes
-  make_bounding_boxes();
-
   // Calculate the offset for each particle property and overall size
   std::vector<unsigned int> offset = {0};
   for (const auto& p : p_template)
@@ -297,54 +294,21 @@ void particles::push_particle(const double dt, const Point& up,
   _cell2part[cidx][pidx][0] += up * dt;
 }
 
-void particles::make_bounding_boxes()
-{
-  std::size_t gdim = _mesh->geometry().dim();
-
-  // Create bounding boxes of mesh
-  std::vector<double> x_min_max(2 * gdim);
-  std::vector<double> coordinates = _mesh->coordinates();
-  for (std::size_t i = 0; i < gdim; ++i)
-  {
-    for (auto it = coordinates.begin() + i; it < coordinates.end(); it += gdim)
-    {
-      if (it == coordinates.begin() + i)
-      {
-        x_min_max[i] = *it;
-        x_min_max[gdim + i] = *it;
-      }
-      else
-      {
-        x_min_max[i] = std::min(x_min_max[i], *it);
-        x_min_max[gdim + i] = std::max(x_min_max[gdim + i], *it);
-      }
-    }
-  }
-
-  // Communicate bounding boxes
-  MPI::all_gather(_mpi_comm, x_min_max, _bounding_boxes);
-}
-
 void particles::particle_communicator_collect(const std::size_t cidx,
                                               const std::size_t pidx)
 {
   // Assertion to check if comm_snd has size of num_procs
-
-  const std::size_t num_processes = MPI::size(_mpi_comm);
-  dolfin_assert(_comm_snd.size() == num_processes);
+  dolfin_assert(_comm_snd.size() == MPI::size(_mpi_comm));
 
   // Get position
   particle ptemp = _cell2part[cidx][pidx];
-  std::vector<double> xp_temp(ptemp[0].coordinates(),
-                              ptemp[0].coordinates() + _Ndim);
+
+  const std::vector<unsigned int> procs
+      = _mesh->bounding_box_tree()->compute_process_collisions(x(cidx, pidx));
 
   // Loop over processes
-  for (std::size_t p = 0; p < num_processes; p++)
-  {
-    // Check if in bounding box
-    if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
-      _comm_snd[p].push_back(ptemp);
-  }
+  for (const auto& p : procs)
+    _comm_snd[p].push_back(ptemp);
 }
 
 void particles::particle_communicator_push()
@@ -410,7 +374,7 @@ void particles::relocate()
   // Method to relocate particles on moving mesh
 
   // Update bounding boxes
-  update_bounding_boxes();
+  _mesh->bounding_box_tree()->build(*(_mesh));
 
   // Init relocate local
   std::vector<std::array<std::size_t, 3>> reloc;
@@ -436,35 +400,6 @@ void particles::relocate()
   }
 
   relocate(reloc);
-}
-
-bool particles::in_bounding_box(const std::vector<double>& point,
-                                const std::vector<double>& bounding_box,
-                                const double tol)
-{
-  // Return false if bounding box is empty
-  if (bounding_box.empty())
-    return false;
-
-  const std::size_t gdim = point.size();
-  dolfin_assert(bounding_box.size() == 2 * gdim);
-  for (std::size_t i = 0; i < gdim; ++i)
-  {
-    if (!(point[i] >= (bounding_box[i] - tol)
-          && point[i] <= (bounding_box[gdim + i] + tol)))
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-void particles::update_bounding_boxes()
-{
-  // Private method for rebuilding bounding boxes (on moving meshes)
-  _mesh->bounding_box_tree()->build(*(_mesh));
-  // FIXME: more efficient than full rebuild of bounding boxes possible?
-  make_bounding_boxes();
 }
 
 std::vector<double> particles::unpack_particle(const particle part)
