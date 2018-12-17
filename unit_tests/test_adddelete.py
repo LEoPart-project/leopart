@@ -38,7 +38,6 @@ def test_add_particles():
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([1, 1])
     s = assign_particle_values(x, interpolate_expression)
 
-
     property_idx = 1
     p = particles(x, [s], mesh)
     AD = AddDelete(p, np_min, np_max, [v])
