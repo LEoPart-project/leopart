@@ -30,12 +30,13 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [i for i in range(5)]
+# i_list = [i for i in range(5)]
+i_list = [4]
 nx_list = [pow(2, i) for i in i_list]
 pres_list = [60 * pow(2, i) for i in i_list]
 
 # Polynomial order
-k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
+k_list = [1]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
@@ -48,7 +49,7 @@ dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_Rotation_AddDelete/'
+outdir_base = './../../results/GaussianPulse_Rotation_SuperLU_AddDelete/'
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
@@ -168,7 +169,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
             t1 = Timer("[P] Solve PDE constrained projection")
             pde_projection.solve_problem(psibar_h.cpp_object(),  psi_h.cpp_object(),
-                                         'mumps', 'default')
+                                         'superlu_dist', 'default')
             del(t1)
 
             t1 = Timer("[P] Update and store")
