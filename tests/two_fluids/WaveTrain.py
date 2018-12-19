@@ -90,15 +90,15 @@ def strip_meshfunc(mesh_function, marker):
     return sub2bound
 
 
-xmin, xmax = 0., 35.
+xmin, xmax = 0., 40.
 ymin, ymax = 0., 4.
 
 # Medium
-nx, ny = 350, 80
+nx, ny = 400, 80
 pres = 2500
 res = 'medium'
 dt = Constant(0.025)
-store_field_step = 1
+store_field_step = 4
 store_particle_step = 40
 store_probe_step = 4
 
@@ -397,12 +397,12 @@ while step < num_steps:
     # Project density and specific momentum
     t1 = Timer("[P] density projection")
     pde_rho.assemble(True, False)
-    pde_rho.solve_problem(rhobar, rho, "mumps", "default")
+    pde_rho.solve_problem(rhobar, rho, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, False)
-    pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+    pde_u.solve_problem(ustar_bar, ustar, "superlu_dist", "default")
     del(t1)
 
     # Compute mass and boundary flux
@@ -422,7 +422,7 @@ while step < num_steps:
     del(t1)
 
     t1 = Timer("[P] Stokes solve ")
-    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    ssc.solve_problem(Uhbar, Uh, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] Update mesh fields")
