@@ -7,3 +7,4 @@ from .FormsStokes import FormsStokes
 from .InitialConditions import (BinaryBlock, GaussianPulse, SineHump, CosineHill, Sinusoidal)
 from .ParticleGenerator import (RandomRectangle, RandomCircle, RegularRectangle,
                                 RandomBox, RegularBox)
+from .MeshVelocity import (SolitonPiston, PeriodicPiston)

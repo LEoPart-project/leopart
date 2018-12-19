@@ -72,11 +72,11 @@ class particles(compiled_module.particles):
         return pproperty
 
     def number_of_particles(self, mesh):
-        xp_root = comm.gather(self.positions(), root=0)
-        if comm.Get_rank() == 0:
-            xp_root = np.float16(np.vstack(xp_root))
+        xp_root = comm.gather(self.positions().T, root=0)
+        if comm.rank == 0:
+            xp_root = np.hstack(xp_root).T
             print("Number of particles is "+str(len(xp_root)))
-        return
+            return len(xp_root)
 
     def dump2file(self, mesh, fname_list, property_list, mode, clean_old=False):
         if isinstance(fname_list, str) and isinstance(property_list, int):
@@ -103,6 +103,36 @@ class particles(compiled_module.particles):
                     # FIXED: float16 is not accurate enough
                     # property_root = np.float16(np.hstack(property_root).T)
                     property_root = np.hstack(property_root).T
+                    pickle.dump(property_root, f)
+        return
+
+    # Use with care!
+    def particle_probe(self, mesh, xmin, xmax, fname_list, property_list, mode):
+        if isinstance(fname_list, str) and isinstance(property_list, int):
+            fname_list = [fname_list]
+            property_list = [property_list]
+
+        assert xmin < xmax
+        assert property_list[0] == 0, ("Postion should be on 0th entry")
+        assert isinstance(fname_list, list) and isinstance(property_list, list), ("Wrong dump2file"
+                                                                                  " request")
+        assert len(fname_list) == len(property_list), ('Property list and index list must '
+                                                       'have same length')
+
+        # Compute indices
+        xp_root = comm.gather(self.return_property(mesh, 0).T, root=0)
+        if comm.rank == 0:
+            xp_root = np.hstack(xp_root).T
+            pidcs = np.where((xp_root[:, 0] >= xmin) & (xp_root[:, 0] <= xmax))
+            if len(pidcs) == 0:
+                print("Nothing to store")
+                return
+
+        for (property_idx, fname) in zip(property_list, fname_list):
+            property_root = comm.gather(self.return_property(mesh, property_idx).T, root=0)
+            if comm.Get_rank() == 0:
+                with open(fname, mode) as f:
+                    property_root = (np.hstack(property_root).T)[pidcs]
                     pickle.dump(property_root, f)
         return
 
