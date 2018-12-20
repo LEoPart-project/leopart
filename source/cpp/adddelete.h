@@ -21,7 +21,6 @@ class particles;
 class AddDelete
 {
 public:
-  AddDelete(std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
             std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
