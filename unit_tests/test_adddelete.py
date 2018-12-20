@@ -21,10 +21,6 @@ def assign_particle_values(x, u_exact):
 
 
 def test_add_particles():
-    if comm.Get_size() > 1:
-        print("Not working in parallel")
-        return
-
     interpolate_expression = Expression('x[0]', degree=1)
     mesh = UnitSquareMesh(5, 5)
     V = FunctionSpace(mesh, "DG", 1)
@@ -37,6 +33,9 @@ def test_add_particles():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([1, 1])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)
@@ -55,10 +54,6 @@ def test_add_particles():
 
 
 def test_remove_particles():
-    if comm.Get_size() > 1:
-        print("Not working in parallel")
-        return
-
     interpolate_expression = Expression('x[0]', degree=1)
     mesh = UnitSquareMesh(5, 5)
     V = FunctionSpace(mesh, "DG", 1)
@@ -71,6 +66,9 @@ def test_remove_particles():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([100, 100])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)
@@ -89,10 +87,6 @@ def test_remove_particles():
 
 
 def test_failsafe_sweep():
-    if comm.Get_size() > 1:
-        print("Not working in parallel")
-        return
-
     interpolate_expression = Expression('x[0]', degree=1)
     mesh = UnitSquareMesh(5, 5)
     V = FunctionSpace(mesh, "DG", 1)
@@ -106,6 +100,9 @@ def test_failsafe_sweep():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([100, 100])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)
