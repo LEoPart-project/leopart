@@ -101,7 +101,7 @@ res = 'high'
 dt = Constant(5.e-4)
 store_step = 200
 
-mu = 1e-2
+mu = 5e-2
 theta_p = .5
 theta_L = Constant(1.0)
 
@@ -268,7 +268,7 @@ pde_u = PDEStaticCondensation(mesh, p,
                               forms_u['Q_a'], forms_u['R_a'], forms_u['S_a'], 2)
 
 # Set-up Stokes Solve
-forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha, ds=ds).forms_multiphase(rho0, ustar,
+forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha, ds=ds).forms_multiphase(rho, ustar,
                                                                                 dt, mu, f)
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
@@ -319,14 +319,14 @@ while step < num_steps:
     # Project density and specific momentum
     t1 = Timer("[P] density projection")
     pde_rho.assemble(True, True)
-    pde_rho.solve_problem(rhobar, rho, "mumps", "default")
+    pde_rho.solve_problem(rhobar, rho, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, True)
 
     try:
-        pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+        pde_u.solve_problem(ustar_bar, ustar, "superlu_dist", "default")
     except Exception:
         # FIXME: work-around
         lstsq_u.project(ustar)
@@ -340,7 +340,7 @@ while step < num_steps:
     del(t1)
 
     t1 = Timer("[P] Stokes solve ")
-    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    ssc.solve_problem(Uhbar, Uh, "superlu_dist", "default")
     del(t1)
 
     t1 = Timer("[P] Update mesh fields")
