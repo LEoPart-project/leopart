@@ -15,19 +15,6 @@
 
 using namespace dolfin;
 
-AddDelete::AddDelete(std::vector<std::shared_ptr<const Function>> flist)
-{
-  std::cout << "Received" << std::endl;
-  // Test if you can do anything useful
-
-  for (std::size_t i = 0; i < flist.size(); ++i)
-  {
-    std::cout << "Space dim "
-              << flist[i]->function_space()->element()->space_dimension()
-              << std::endl;
-  }
-}
-//
 AddDelete::AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
                      std::vector<std::shared_ptr<const Function>> FList)
     : _P(&P), _np_min(np_min), _np_max(np_max), _FList(FList)
