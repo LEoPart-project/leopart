@@ -340,6 +340,9 @@ void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
         facets_info[fi->index()].type = facet_t::open;
       else if (mesh_func[fi->index()] == 3)
         facets_info[fi->index()].type = facet_t::periodic;
+      else
+        dolfin_error("advect_particles.cpp", "set external facet type",
+                     "Invalid value, must be 1, 2, or 3");
     }
     else
     {
