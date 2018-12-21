@@ -17,6 +17,7 @@ namespace py = pybind11;
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/mesh/BoundaryMesh.h>
+#include <dolfin/mesh/MeshFunction.h>
 
 #include "adddelete.h"
 #include "advect_particles.h"
@@ -54,10 +55,17 @@ PYBIND11_MODULE(particle_wrapper, m)
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
                     dolfin::Function&, const std::string>())
-      .def(
-          py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                   dolfin::Function&, const std::string,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const std::string,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&, dolfin::Function&,
            const dolfin::BoundaryMesh&, std::string,
@@ -77,10 +85,17 @@ PYBIND11_MODULE(particle_wrapper, m)
   py::class_<dolfin::advect_rk2>(m, "advect_rk2")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
                     dolfin::Function&, const std::string>())
-      .def(
-          py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                   dolfin::Function&, const std::string,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const std::string,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&, dolfin::Function&,
            const dolfin::BoundaryMesh&, std::string,
@@ -100,10 +115,17 @@ PYBIND11_MODULE(particle_wrapper, m)
   py::class_<dolfin::advect_rk3>(m, "advect_rk3")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
                     dolfin::Function&, const std::string>())
-      .def(
-          py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                   dolfin::Function&, const std::string,
-                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const std::string,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&, dolfin::Function&,
            const dolfin::BoundaryMesh&, std::string,
