@@ -161,6 +161,11 @@ def test_advect_periodic(advection_scheme):
     if comm.Get_rank() == 0:
         xp0_root = np.float32(np.vstack(xp0_root))
         xpE_root = np.float32(np.vstack(xpE_root))
+
+        # Sort on x positions
+        xp0_root = xp0_root[xp0_root[:, 0].argsort(), :]
+        xpE_root = xpE_root[xpE_root[:, 0].argsort(), :]
+
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
         assert num_particles - pres**2 == 0
@@ -287,7 +292,7 @@ def test_closed_boundary(advection_scheme):
 def test_open_boundary(advection_scheme):
     xmin, xmax = 0., 1.
     ymin, ymax = 0., 1.
-    pres = 1
+    pres = 3
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
@@ -320,9 +325,9 @@ def test_open_boundary(advection_scheme):
     bound_right.mark(facet_marker, 2)
 
     # Mark other boundaries as closed
-    bound_left.mark(facet_marker, 2)
-    bound_top.mark(facet_marker, 2)
-    bound_bottom.mark(facet_marker, 2)
+    bound_left.mark(facet_marker, 1)
+    bound_top.mark(facet_marker, 1)
+    bound_bottom.mark(facet_marker, 1)
 
     if advection_scheme is 'euler':
         ap = advect_particles(p, V, v, facet_marker)
@@ -332,20 +337,11 @@ def test_open_boundary(advection_scheme):
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False
-    xp0 = p.positions()
+
     # Do one timestep, particle must bounce from wall of
     ap.do_step(dt)
     num_particles = p.number_of_particles()
 
-    xpE = p.positions()
-
-    xp0_root = comm.gather(xp0, root=0)
-    xpE_root = comm.gather(xpE, root=0)
-
     # Check if all particles left domain
     if comm.rank == 0:
-        xp0_root = np.float32(np.vstack(xp0_root))
-        xpE_root = np.float32(np.vstack(xpE_root))
-        print(xp0_root)
-        print(xpE_root)
         assert(num_particles == 0)
