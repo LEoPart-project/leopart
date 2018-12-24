@@ -77,18 +77,6 @@ protected:
   void set_bfacets(const std::string btype);
   void set_bfacets(const MeshFunction<std::size_t>& mesh_func);
 
-  // TO BE DEPRECATED
-//  void set_bfacets(
-//      const BoundaryMesh& bmesh, const std::string btype,
-//      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-//
-//  std::vector<std::size_t> boundary_facets();
-//  std::vector<std::size_t> boundary_facets(
-//      const BoundaryMesh& bmesh,
-//      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-  //
-  // END TO BE DEPRECATED
-
   // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
   bool pbc_active = false;
