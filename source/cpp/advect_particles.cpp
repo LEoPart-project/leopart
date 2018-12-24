@@ -512,6 +512,12 @@ void advect_particles::do_step(double dt)
               // FIXME: additional check that particle indeed leaves domain
               // (u\cdotn > 0)
               // Send to "off process" (should just disappear)
+              //
+              // Issue 12 Work around: do a full push to make sure that
+              // particle is pushed outside domain
+              _P->push_particle(dt_rem, up, ci->index(), i);
+
+              // Then push back to relocate
               reloc.push_back(
                   {ci->index(), i, std::numeric_limits<unsigned int>::max()});
               dt_rem = 0.0;
@@ -909,6 +915,12 @@ void advect_particles::do_substep(
         {
           // Particle leaves the domain. Relocate to another process (particle
           // will be discarded)
+
+          // Issue 12 work around: do full push to push particle outside
+          // domain
+          _P->push_particle(dt_rem, up, cidx, pidx);
+
+          // Then push back to relocate
           reloc.push_back(
               {cidx, pidx, std::numeric_limits<unsigned int>::max()});
           dt_rem = 0.0;

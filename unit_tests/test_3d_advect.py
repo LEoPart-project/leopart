@@ -14,6 +14,7 @@ comm = pyMPI.COMM_WORLD
 def test_advect_periodic(advection_scheme):
     xmin, ymin, zmin = 0., 0., 0.
     xmax, ymax, zmax = 1., 1., 1.
+    pres = 10
 
     mesh = UnitCubeMesh(10, 10, 10)
 
@@ -26,7 +27,7 @@ def test_advect_periodic(advection_scheme):
     v = Function(V)
     v.assign(vexpr)
 
-    x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([10, 10, 10])
+    x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([pres, pres, pres])
     x = comm.bcast(x, root=0)
     dt = 0.05
 
@@ -50,6 +51,7 @@ def test_advect_periodic(advection_scheme):
     xpE_root = comm.gather(xpE, root=0)
 
     assert len(xp0) == len(xpE)
+    num_particles = p.number_of_particles()
 
     if comm.Get_rank() == 0:
         xp0_root = np.float32(np.vstack(xp0_root))
@@ -61,3 +63,4 @@ def test_advect_periodic(advection_scheme):
 
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
+        assert num_particles - pres**3 == 0

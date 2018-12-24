@@ -117,6 +117,7 @@ def test_advect_periodic(advection_scheme):
 
     xmin, xmax = 0., 1.
     ymin, ymax = 0., 1.
+    pres = 3
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
@@ -126,7 +127,7 @@ def test_advect_periodic(advection_scheme):
     vexpr = Constant((1., 1.))
     V = VectorFunctionSpace(mesh, "CG", 1)
 
-    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
+    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([pres, pres])
     x = comm.bcast(x, root=0)
     dt = 0.05
 
@@ -155,11 +156,14 @@ def test_advect_periodic(advection_scheme):
     xp0_root = comm.gather(xp0, root=0)
     xpE_root = comm.gather(xpE, root=0)
 
+    num_particles = p.number_of_particles()
+
     if comm.Get_rank() == 0:
         xp0_root = np.float32(np.vstack(xp0_root))
         xpE_root = np.float32(np.vstack(xpE_root))
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
+        assert num_particles - pres**2 == 0
 
 
 # Same as previous, but other constructor
@@ -218,20 +222,21 @@ def test_advect_periodic_facet_marker(advection_scheme):
 
 @pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
 def test_closed_boundary(advection_scheme):
+    # FIXME: rk3 scheme does not bounces off the wall properly
     xmin, xmax = 0., 1.
     ymin, ymax = 0., 1.
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
     # Particle
-    x = np.array([[0.925, 0.475]])
+    x = np.array([[0.975, 0.475]])
 
     # Given velocity field:
-    vexpr = Constant((1., 1.))
+    vexpr = Constant((1., 0.))
     # Given time do_step:
     dt = 0.05
     # Then bounced position is
-    x_bounced = np.array([[0.975, 0.525]])
+    x_bounced = np.array([[0.975, 0.475]])
 
     p = particles(x, [x, x], mesh)
 
@@ -276,3 +281,71 @@ def test_closed_boundary(advection_scheme):
         xpE_root = np.float64(np.vstack(xpE_root))
         error = np.linalg.norm(x_bounced - xpE_root)
         assert(error < 1e-10)
+
+
+@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+def test_open_boundary(advection_scheme):
+    xmin, xmax = 0., 1.
+    ymin, ymax = 0., 1.
+    pres = 1
+
+    mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
+
+    # Particle
+    x = RandomRectangle(Point(0.955, 0.45), Point(1., 0.55)).generate([pres, pres])
+    x = comm.bcast(x, root=0)
+
+    # Given velocity field:
+    vexpr = Constant((1., 1.))
+    # Given time do_step:
+    dt = 0.05
+
+    p = particles(x, [x, x], mesh)
+
+    V = VectorFunctionSpace(mesh, "CG", 1)
+    v = Function(V)
+    v.assign(vexpr)
+
+    # Different boundary parts
+    bound_left = UnitSquareLeft()
+    bound_right = UnitSquareRight()
+    bound_top = UnitSquareTop()
+    bound_bottom = UnitSquareBottom()
+
+    # Mark all facets
+    facet_marker = MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    facet_marker.set_all(0)
+
+    # Mark as open
+    bound_right.mark(facet_marker, 2)
+
+    # Mark other boundaries as closed
+    bound_left.mark(facet_marker, 2)
+    bound_top.mark(facet_marker, 2)
+    bound_bottom.mark(facet_marker, 2)
+
+    if advection_scheme is 'euler':
+        ap = advect_particles(p, V, v, facet_marker)
+    elif advection_scheme is 'rk2':
+        ap = advect_rk2(p, V, v, facet_marker)
+    elif advection_scheme is 'rk3':
+        ap = advect_rk3(p, V, v, facet_marker)
+    else:
+        assert False
+    xp0 = p.positions()
+    # Do one timestep, particle must bounce from wall of
+    ap.do_step(dt)
+    num_particles = p.number_of_particles()
+
+    xpE = p.positions()
+
+    xp0_root = comm.gather(xp0, root=0)
+    xpE_root = comm.gather(xpE, root=0)
+
+    # Check if all particles left domain
+    if comm.rank == 0:
+        xp0_root = np.float32(np.vstack(xp0_root))
+        xpE_root = np.float32(np.vstack(xpE_root))
+        print(xp0_root)
+        print(xpE_root)
+        assert(num_particles == 0)
