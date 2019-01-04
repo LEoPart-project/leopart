@@ -17,6 +17,7 @@ __all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2proje
            'StokesStaticCondensation', 'PDEStaticCondensation', 'AddDelete']
 
 from .cpp import particle_wrapper as compiled_module
+from .cpp.particle_wrapper import FacetType
 
 comm = pyMPI.COMM_WORLD
 

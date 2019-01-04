@@ -51,6 +51,12 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("relocate",
            (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
+  py::enum_<dolfin::facet_t>(m, "FacetType")
+      .value("internal", dolfin::facet_t::internal)
+      .value("closed", dolfin::facet_t::closed)
+      .value("open", dolfin::facet_t::open)
+      .value("periodic", dolfin::facet_t::periodic);
+
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
                     dolfin::Function&, const std::string>())
