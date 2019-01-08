@@ -71,12 +71,15 @@ class particles(compiled_module.particles):
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
-    def number_of_particles(self, mesh):
+    def number_of_particles(self):
         xp_root = comm.gather(self.positions(), root=0)
-        if comm.Get_rank() == 0:
+        if comm.rank == 0:
             xp_root = np.float16(np.vstack(xp_root))
-            print("Number of particles is "+str(len(xp_root)))
-        return
+            num_particles = len(xp_root)
+        else:
+            num_particles = None
+        num_particles = comm.bcast(num_particles, root=0)
+        return num_particles
 
     def dump2file(self, mesh, fname_list, property_list, mode, clean_old=False):
         if isinstance(fname_list, str) and isinstance(property_list, int):

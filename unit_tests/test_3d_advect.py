@@ -1,6 +1,7 @@
 # Author/license stamp goes here
 
-from dolfin import (UnitCubeMesh, VectorFunctionSpace, Function, Constant, Point)
+from dolfin import (UnitCubeMesh, SubDomain, VectorFunctionSpace, Function, Constant, Point,
+                    MeshFunction, near)
 from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles,
                              RandomBox)
 from mpi4py import MPI as pyMPI
@@ -10,10 +11,21 @@ import pytest
 comm = pyMPI.COMM_WORLD
 
 
+class Boundaries(SubDomain):
+    def inside(self, x, on_boundary):
+        return on_boundary
+
+
+class UnitCubeRight(SubDomain):
+    def inside(self, x, on_boundary):
+        return on_boundary and near(x[0], 1)
+
+
 @pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
 def test_advect_periodic(advection_scheme):
     xmin, ymin, zmin = 0., 0., 0.
     xmax, ymax, zmax = 1., 1., 1.
+    pres = 10
 
     mesh = UnitCubeMesh(10, 10, 10)
 
@@ -26,7 +38,7 @@ def test_advect_periodic(advection_scheme):
     v = Function(V)
     v.assign(vexpr)
 
-    x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([10, 10, 10])
+    x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([pres, pres, pres])
     x = comm.bcast(x, root=0)
     dt = 0.05
 
@@ -38,6 +50,8 @@ def test_advect_periodic(advection_scheme):
         ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
     elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, 'periodic', lims.flatten())
+    else:
+        assert False
 
     xp0 = p.positions()
     t = 0.
@@ -50,6 +64,7 @@ def test_advect_periodic(advection_scheme):
     xpE_root = comm.gather(xpE, root=0)
 
     assert len(xp0) == len(xpE)
+    num_particles = p.number_of_particles()
 
     if comm.Get_rank() == 0:
         xp0_root = np.float32(np.vstack(xp0_root))
@@ -61,3 +76,56 @@ def test_advect_periodic(advection_scheme):
 
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
+        assert num_particles - pres**3 == 0
+
+
+@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+def test_advect_open(advection_scheme):
+    pres = 3
+
+    mesh = UnitCubeMesh(10, 10, 10)
+
+    # Particle
+    x = RandomBox(Point(0.955, 0.45, 0.5), Point(0.99, 0.55, 0.6)).generate([pres, pres, pres])
+    x = comm.bcast(x, root=0)
+
+    # Given velocity field:
+    vexpr = Constant((1., 1., 1.))
+    # Given time do_step:
+    dt = 0.05
+
+    p = particles(x, [x, x], mesh)
+
+    V = VectorFunctionSpace(mesh, "CG", 1)
+    v = Function(V)
+    v.assign(vexpr)
+
+    # Different boundary parts
+    bounds = Boundaries()
+    bound_right = UnitCubeRight()
+
+    # Mark all facets
+    facet_marker = MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    facet_marker.set_all(0)
+    bounds.mark(facet_marker, 1)
+    bound_right.mark(facet_marker, 2)
+
+    # Mark as open
+    bound_right.mark(facet_marker, 2)
+
+    if advection_scheme is 'euler':
+        ap = advect_particles(p, V, v, facet_marker)
+    elif advection_scheme is 'rk2':
+        ap = advect_rk2(p, V, v, facet_marker)
+    elif advection_scheme is 'rk3':
+        ap = advect_rk3(p, V, v, facet_marker)
+    else:
+        assert False
+
+    # Do one timestep, particle must bounce from wall of
+    ap.do_step(dt)
+    num_particles = p.number_of_particles()
+
+    # Check if all particles left domain
+    if comm.rank == 0:
+        assert(num_particles == 0)
