@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 from dolfin import (UnitSquareMesh, FunctionSpace, Function, Expression,
                     Point, sqrt, assemble, dx)
 from DolfinParticles import (particles, AddDelete, RandomRectangle,

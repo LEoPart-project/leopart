@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 from dolfin import (FunctionSpace, VectorFunctionSpace, Function,
                     FiniteElement, RectangleMesh, Measure, SubDomain, MeshFunction, Point,
                     FacetNormal, Constant, ALE, Expression, assign,

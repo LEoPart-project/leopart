@@ -1,4 +1,8 @@
-# TODO: author/license stamp goes here
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
                     VectorFunctionSpace, assemble, dx, dot)
