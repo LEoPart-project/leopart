@@ -1,3 +1,7 @@
+# Copyright (C) 2011-2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.5.0)
 project(particle_wrappers)
@@ -19,7 +23,8 @@ pybind11_add_module(particle_wrapper SHARED
   particles.cpp
   stokesstaticcondensation.cpp
   pdestaticcondensation.cpp
-  adddelete.cpp)
+  adddelete.cpp
+  QuadProg++.cc)
 
 
 # Add DOLFIN libraries and other config

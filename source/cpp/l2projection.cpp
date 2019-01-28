@@ -21,7 +21,7 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
-#include "eigquadprog.h"
+#include "QuadProg++.hh"
 #include "particles.h"
 
 #include "l2projection.h"
@@ -112,7 +112,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
   Eigen::MatrixXd CE, CI;
   Eigen::VectorXd ce0, ci0;
 
-  CE.resize(0, _space_dimension);
+  CE.resize(_space_dimension, 0);
   ce0.resize(0);
 
   CI.resize(_space_dimension, _space_dimension * _value_size_loc * 2);
@@ -146,7 +146,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
     Eigen::MatrixXd AtA = q * (q.transpose());
     Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
-    solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
+    quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
 }
