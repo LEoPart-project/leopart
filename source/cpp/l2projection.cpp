@@ -113,7 +113,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
   Eigen::MatrixXd CE, CI;
   Eigen::VectorXd ce0, ci0;
 
-  CE.resize(0, _space_dimension);
+  CE.resize(_space_dimension, 0);
   ce0.resize(0);
 
   CI.resize(_space_dimension, _space_dimension * _value_size_loc * 2);
