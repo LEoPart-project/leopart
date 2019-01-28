@@ -118,8 +118,8 @@ def test_l2projection_bounded(polynomial_order, lb, ub):
     lstsq_rho.project(vh, lb, ub)
 
     # Assert if it stays within bounds
-    assert np.any(vh.vector().get_local() < ub + 1e-12)
-    assert np.any(vh.vector().get_local() > lb - 1e-12)
+    assert np.all(vh.vector().get_local() < ub + 1e-12)
+    assert np.all(vh.vector().get_local() > lb - 1e-12)
 
 
 @pytest.mark.parametrize('polynomial_order, in_expression', [(2, "pow(x[0], 2)"),

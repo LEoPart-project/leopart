@@ -228,7 +228,7 @@ l1:
   {
     iaexcl[i] = true;
     sum = CI.col(i).dot(x) + ci0(i);
-    sum += ci0[i];
+    // sum += ci0[i]; JM
     s[i] = sum;
     psi += std::min(0.0, sum);
   }
