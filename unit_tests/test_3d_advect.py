@@ -6,7 +6,7 @@
 
 from dolfin import (UnitCubeMesh, SubDomain, VectorFunctionSpace, Function, Constant, Point,
                     MeshFunction, near)
-from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles,
+from leopart import (particles, advect_rk3, advect_rk2, advect_particles,
                              RandomBox)
 from mpi4py import MPI as pyMPI
 import numpy as np

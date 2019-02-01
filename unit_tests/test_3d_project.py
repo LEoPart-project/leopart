@@ -6,7 +6,7 @@
 
 from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
                     VectorFunctionSpace, assemble, dx, dot)
-from DolfinParticles import (particles, l2projection,
+from leopart import (particles, l2projection,
                              RandomBox, RegularBox, AddDelete)
 from mpi4py import MPI as pyMPI
 import numpy as np

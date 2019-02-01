@@ -18,7 +18,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
-from DolfinParticles import (particles, advect_rk3, l2projection, RandomCircle)
+from leopart import (particles, advect_rk3, l2projection, RandomCircle)
 
 comm = pyMPI.COMM_WORLD
 

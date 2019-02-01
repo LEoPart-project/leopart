@@ -17,7 +17,7 @@ from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
                     Point, FiniteElement, CellType,
                     near, assemble, dx, dot, sqrt, assign, File,
                     Timer, list_timings, TimingClear, TimingType)
-from DolfinParticles import (particles, advect_particles, PDEStaticCondensation,
+from leopart import (particles, advect_particles, PDEStaticCondensation,
                              RegularRectangle, FormsPDEMap, SineHump)
 from mpi4py import MPI as pyMPI
 import numpy as np

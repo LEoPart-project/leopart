@@ -8,7 +8,7 @@ from dolfin import (UserExpression, FunctionSpace, VectorFunctionSpace, Function
                     FiniteElement, RectangleMesh, Measure, SubDomain, MeshFunction, Point,
                     FacetNormal, Constant, ALE, assign, conditional, ge, project,
                     dot, assemble, near, dx, dS, ds)
-from DolfinParticles import (particles, PDEStaticCondensation, FormsPDEMap,
+from leopart import (particles, PDEStaticCondensation, FormsPDEMap,
                              RandomRectangle, l2projection, GaussianPulse)
 from mpi4py import MPI as pyMPI
 import numpy as np

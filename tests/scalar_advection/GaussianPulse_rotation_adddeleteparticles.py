@@ -18,7 +18,7 @@ import numpy as np
 import os
 
 # Load from package
-from DolfinParticles import (particles, advect_rk3, PDEStaticCondensation, RandomCircle,
+from leopart import (particles, advect_rk3, PDEStaticCondensation, RandomCircle,
                              FormsPDEMap, GaussianPulse, AddDelete)
 
 comm = pyMPI.COMM_WORLD

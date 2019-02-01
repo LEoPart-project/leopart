@@ -8,7 +8,7 @@ from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, F
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal,
                     MPI, Timer, TimingClear, TimingType, timings)
-from DolfinParticles import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
+from leopart import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
                              StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
                              FormsStokes)
 from mpi4py import MPI as pyMPI

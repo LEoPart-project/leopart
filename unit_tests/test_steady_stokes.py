@@ -10,7 +10,7 @@ from dolfin import (VectorElement, FiniteElement, Expression,
                     Identity, sym, grad, div, assemble, dx, dot)
 import numpy as np
 from mpi4py import MPI as pyMPI
-from DolfinParticles import StokesStaticCondensation, FormsStokes
+from leopart import StokesStaticCondensation, FormsStokes
 import pytest
 
 comm = pyMPI.COMM_WORLD

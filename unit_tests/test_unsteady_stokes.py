@@ -8,7 +8,7 @@ from dolfin import (Expression, Constant, UnitSquareMesh, VectorFunctionSpace, F
                     FunctionSpace, VectorElement, FiniteElement, MixedElement, Identity,
                     DirichletBC, split, dx, dot, div, sym, grad, assemble, sqrt,
                     assign, interpolate, near)
-from DolfinParticles import (FormsStokes, StokesStaticCondensation)
+from leopart import (FormsStokes, StokesStaticCondensation)
 import numpy as np
 from mpi4py import MPI as pyMPI
 
