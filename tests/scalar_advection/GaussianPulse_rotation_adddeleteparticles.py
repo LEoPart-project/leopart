@@ -176,7 +176,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             assign(psi0_h, psi_h)
 
             # Store field
-            if step % store_step is 0 or step is 1:
+            if step % store_step == 0 or step == 1:
                 output_field.write(psi_h, t)
 
             # Avoid getting accused of cheating, compute

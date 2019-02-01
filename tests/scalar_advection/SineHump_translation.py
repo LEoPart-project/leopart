@@ -187,7 +187,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             assign(psi0_h, psi_h)
 
             # Store
-            if step % store_step is 0 or step is 1:
+            if step % store_step == 0 or step == 1:
                 output_field << psi_h
             del(t2)
 
