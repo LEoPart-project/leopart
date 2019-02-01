@@ -12,7 +12,7 @@ from dolfin import (UserExpression, Expression, FiniteElement,
                     FunctionSpace, VectorFunctionSpace, Function, Point, Constant,
                     RectangleMesh, assemble, dx, dot)
 from leopart import (particles, l2projection, PDEStaticCondensation,
-                             FormsPDEMap, RandomRectangle)
+                     FormsPDEMap, RandomRectangle)
 import numpy as np
 from mpi4py import MPI as pyMPI
 import pytest

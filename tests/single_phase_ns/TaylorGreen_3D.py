@@ -11,9 +11,9 @@ from dolfin import (SubDomain, Constant, Expression, FunctionSpace, VectorElemen
 import numpy as np
 from mpi4py import MPI as pyMPI
 from leopart import (particles, advect_rk3, RandomBox,
-                             AddDelete, PDEStaticCondensation,
-                             StokesStaticCondensation,
-                             FormsPDEMap, FormsStokes)
+                     AddDelete, PDEStaticCondensation,
+                     StokesStaticCondensation,
+                     FormsPDEMap, FormsStokes)
 
 comm = pyMPI.COMM_WORLD
 

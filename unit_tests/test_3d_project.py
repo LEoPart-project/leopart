@@ -7,7 +7,7 @@
 from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
                     VectorFunctionSpace, assemble, dx, dot)
 from leopart import (particles, l2projection,
-                             RandomBox, RegularBox, AddDelete)
+                     RandomBox, RegularBox, AddDelete)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest

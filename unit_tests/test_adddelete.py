@@ -7,7 +7,7 @@
 from dolfin import (UnitSquareMesh, FunctionSpace, Function, Expression,
                     Point, sqrt, assemble, dx)
 from leopart import (particles, AddDelete, RandomRectangle,
-                             l2projection)
+                     l2projection)
 from mpi4py import MPI as pyMPI
 import numpy as np
 

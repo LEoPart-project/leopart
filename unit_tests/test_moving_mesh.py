@@ -9,7 +9,7 @@ from dolfin import (UserExpression, FunctionSpace, VectorFunctionSpace, Function
                     FacetNormal, Constant, ALE, assign, conditional, ge, project,
                     dot, assemble, near, dx, dS, ds)
 from leopart import (particles, PDEStaticCondensation, FormsPDEMap,
-                             RandomRectangle, l2projection, GaussianPulse)
+                     RandomRectangle, l2projection, GaussianPulse)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
