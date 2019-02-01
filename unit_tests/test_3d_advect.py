@@ -117,11 +117,11 @@ def test_advect_open(advection_scheme):
     # Mark as open
     bound_right.mark(facet_marker, 2)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False

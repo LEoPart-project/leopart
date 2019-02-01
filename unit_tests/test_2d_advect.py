@@ -78,11 +78,11 @@ def test_advect_particle(advection_scheme):
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        if advection_scheme is 'euler':
+        if advection_scheme == 'euler':
             ap = advect_particles(p, V, v, 'closed')
-        elif advection_scheme is 'rk2':
+        elif advection_scheme == 'rk2':
             ap = advect_rk2(p, V, v, 'closed')
-        elif advection_scheme is 'rk3':
+        elif advection_scheme == 'rk3':
             ap = advect_rk3(p, V, v, 'closed')
         else:
             assert False
@@ -98,13 +98,13 @@ def test_advect_particle(advection_scheme):
 
     if not all(eps == 0 for eps in error_list):
         rate = compute_convergence(dt_list, error_list)
-        if advection_scheme is 'euler':
+        if advection_scheme == 'euler':
             # First order for euler
             assert any(i > 0.9 for i in rate)
-        elif advection_scheme is 'rk2':
+        elif advection_scheme == 'rk2':
             # Second order for rk2
             assert any(i > 1.95 for i in rate)
-        elif advection_scheme is 'rk3':
+        elif advection_scheme == 'rk3':
             # Third order for rk3
             assert any(i > 2.9 for i in rate)
 
@@ -137,11 +137,11 @@ def test_advect_periodic(advection_scheme):
 
     p = particles(x, [x*0, x**2], mesh)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, 'periodic', lims.flatten())
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, 'periodic', lims.flatten())
     else:
         assert False
@@ -199,11 +199,11 @@ def test_advect_periodic_facet_marker(advection_scheme):
 
     p = particles(x, [x*0, x**2], mesh)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, facet_marker, lims.flatten())
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, facet_marker, lims.flatten())
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, facet_marker, lims.flatten())
     else:
         assert False
@@ -268,11 +268,11 @@ def test_closed_boundary(advection_scheme):
     bound_top.mark(facet_marker, 2)
     bound_bottom.mark(facet_marker, 2)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False
@@ -330,11 +330,11 @@ def test_open_boundary(advection_scheme):
     bound_top.mark(facet_marker, 1)
     bound_bottom.mark(facet_marker, 1)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False

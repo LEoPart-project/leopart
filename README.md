@@ -1,18 +1,19 @@
-## DolfinParticles -- FEniCS functionality for scattered particle advection and projection
-
-DolfinParticles integrates particle functionality into the open-source finite element library
-FEniCS (www.fenicsproject.org).
+## LEoPart -- FEniCS functionality for scattered particle advection and projection
+LEoPart integrates particle functionality into the open-source finite element library
+[FEniCS](www.fenicsproject.org). LEoPart is so much as to say **L**agrangian-**E**ulerian **o**n **Part**icles,
+and might remind you of the animal with particles imprinted on its skin.
 
 Main purpose of this library is to advect and project scattered particle data onto a mesh in
-a (locally) conservative manner. By making use of a combination of a finite element mesh and
+an accurate and -optionally- (locally) conservative manner. By blending a finite element mesh and
 Lagrangian particles, the library enables to solve hyperbolic conservation laws in an accurate
-and conservative manner, yet free of numerical diffusion.
+and conservative manner, yet free of numerical diffusion. Alternatively, LEoPart might come in handy
+if you just need to trace large numbers of particles on a fixed or moving mesh polygonal or polyhedral mesh.
 
-Further documentation can be found in a series of papers, we would be grateful if you
-cite one of these references when using this library:
+For a detailed mathematical background of LEoPart reference is made to a series of papers. We would be grateful if you
+cite one of these references when using LEoPart:
 
 [2] Maljaars et al., Conservative, high-order particle-mesh scheme with applications to
-advection-dominated flows, (2018), preprint available at arXiv
+advection-dominated flows, [CMAME (2019)](https://doi.org/10.1016/j.cma.2019.01.028), preprint available at [arXiv](https://arxiv.org/abs/1806.09916)
 
 [1] Maljaars et al., A hybridized discontinuous Galerkin framework for high-order particle–mesh
 operator splitting of the incompressible Navier–Stokes equations, [Journal of Computational Physics 358 (2018) 150-172](https://doi.org/10.1016/j.jcp.2017.12.036)
@@ -21,7 +22,7 @@ operator splitting of the incompressible Navier–Stokes equations, [Journal of 
 
 ## Dependencies
 Requires FEniCS 2018.1.0
-<www.fenicsproject.org)>
+<www.fenicsproject.org>
 
 Python 3
 
@@ -39,6 +40,11 @@ equations are included in the ./tests directory.
 Coming soon.
 
 ---
+
+## Old version
+This repo serves as a better, cleaner and faster replacement of the purely Python based library,
+which is now hosted at
+<https://bitbucket.org/jakob_maljaars/leopart_python>
 
 ## Automated testing
 Circle CI is used to perform automated
