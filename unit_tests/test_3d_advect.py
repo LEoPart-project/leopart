@@ -1,9 +1,13 @@
-# Author/license stamp goes here
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (UnitCubeMesh, SubDomain, VectorFunctionSpace, Function, Constant, Point,
                     MeshFunction, near)
-from DolfinParticles import (particles, advect_rk3, advect_rk2, advect_particles,
-                             RandomBox)
+from leopart import (particles, advect_rk3, advect_rk2, advect_particles,
+                     RandomBox)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest
@@ -113,11 +117,11 @@ def test_advect_open(advection_scheme):
     # Mark as open
     bound_right.mark(facet_marker, 2)
 
-    if advection_scheme is 'euler':
+    if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme is 'rk2':
+    elif advection_scheme == 'rk2':
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme is 'rk3':
+    elif advection_scheme == 'rk3':
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False

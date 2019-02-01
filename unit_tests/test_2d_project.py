@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08-02'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 """
     Unit tests for the least squares and PDE-constrained projection.
@@ -10,8 +11,8 @@
 from dolfin import (UserExpression, Expression, FiniteElement,
                     FunctionSpace, VectorFunctionSpace, Function, Point, Constant,
                     RectangleMesh, assemble, dx, dot)
-from DolfinParticles import (particles, l2projection, PDEStaticCondensation,
-                             FormsPDEMap, RandomRectangle)
+from leopart import (particles, l2projection, PDEStaticCondensation,
+                     FormsPDEMap, RandomRectangle)
 import numpy as np
 from mpi4py import MPI as pyMPI
 import pytest

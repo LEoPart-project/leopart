@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 """
     Tests the advection of a sinusoidal pulse
@@ -18,8 +19,8 @@ from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
                     Point, FiniteElement, CellType,
                     near, assemble, dx, dot, sqrt, assign, File,
                     Timer)
-from DolfinParticles import (particles, advect_particles, PDEStaticCondensation,
-                             RegularRectangle, FormsPDEMap, SineHump, AddDelete)
+from leopart import (particles, advect_particles, PDEStaticCondensation,
+                     RegularRectangle, FormsPDEMap, SineHump, AddDelete)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os

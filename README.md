@@ -1,27 +1,28 @@
-## DolfinParticles -- FEniCS functionality for scattered particle advection and projection
-
-This library integrates particle functionality into the open-source finite element library
-FEniCS (www.fenicsproject.org).
+## LEoPart -- FEniCS functionality for scattered particle advection and projection
+LEoPart integrates particle functionality into the open-source finite element library
+[FEniCS](www.fenicsproject.org). LEoPart is so much as to say **L**agrangian-**E**ulerian **o**n **Part**icles,
+and might remind you of the animal with particles imprinted on its skin.
 
 Main purpose of this library is to advect and project scattered particle data onto a mesh in
-a (locally) conservative manner. By making use of a combination of a finite element mesh and
+an accurate and -optionally- (locally) conservative manner. By blending a finite element mesh and
 Lagrangian particles, the library enables to solve hyperbolic conservation laws in an accurate
-and conservative manner, yet free of numerical diffusion.
+and conservative manner, yet free of numerical diffusion. Alternatively, LEoPart might come in handy
+if you just need to trace large numbers of particles on a fixed or moving mesh polygonal or polyhedral mesh.
 
-Further documentation can be found in a series of papers, we would be grateful if you
-cite one of these references when using this library:
+For a detailed mathematical background of LEoPart reference is made to a series of papers. We would be grateful if you
+cite one of these references when using LEoPart:
 
-[2] Maljaars et al., Constrained particle-mesh projections in a hybridized discontinuous Galerkin
-framework with applications to advection-dominated flows, Submitted (2018), prerprint available at arXiv
+[2] Maljaars et al., Conservative, high-order particle-mesh scheme with applications to
+advection-dominated flows, [CMAME (2019)](https://doi.org/10.1016/j.cma.2019.01.028), preprint available at [arXiv](https://arxiv.org/abs/1806.09916)
 
 [1] Maljaars et al., A hybridized discontinuous Galerkin framework for high-order particle–mesh
-operator splitting of the incompressible Navier–Stokes equations, JCP (2018)
+operator splitting of the incompressible Navier–Stokes equations, [Journal of Computational Physics 358 (2018) 150-172](https://doi.org/10.1016/j.jcp.2017.12.036)
 
 ---
 
 ## Dependencies
 Requires FEniCS 2018.1.0
-(www.fenicsproject.org)
+<www.fenicsproject.org>
 
 Python 3
 
@@ -40,6 +41,11 @@ Coming soon.
 
 ---
 
+## Old version
+**This repo serves as a better, cleaner and faster replacement of the purely Python based library,
+which is now hosted at**
+<https://bitbucket.org/jakob_maljaars/leopart_python>
+
 ## Automated testing
 Circle CI is used to perform automated
 testing. Test status is:
@@ -53,7 +59,7 @@ testing. Test status is:
     ```
     git clone git clone https://jakob_maljaars@bitbucket.org/jakob_maljaars/dolfinparticles.git
     ```
-
+    Using Docker? See Step 2, otherwise go to Step 3
 2. If you want to use FEniCS in Docker, run
 
     ```
@@ -85,16 +91,16 @@ mpirun -np [N] python3 [YOUR_TEST].py
 
 ---
 
-## Applications
-The code can among others be used for passive and active particle tracer modeling (on moving meshes)
+## Application examples
+Passive and active particle tracer modeling on fixed and moving meshes
 
 ![Alt text](https://bitbucket.org/jakob_maljaars/dolfinparticles/raw/09207324fcc39dbad388cb3c1893b2dbe95c43e5/figs/moving_mesh.png)
 
-Other applications include mass and momentum conservative density trackin in multi-fluid flows:
+Mass and momentum conservative density tracking in multi-fluid flows:
 
 ![Alt text](https://bitbucket.org/jakob_maljaars/dolfinparticles/raw/09207324fcc39dbad388cb3c1893b2dbe95c43e5/figs/lock_exchange.png)
 
-We encourage users to come up with other applications.
+Users are encouraged to apply the code to suit their particular problem.
 
 ---
 
