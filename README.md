@@ -42,8 +42,8 @@ Coming soon.
 ---
 
 ## Old version
-This repo serves as a better, cleaner and faster replacement of the purely Python based library,
-which is now hosted at
+**This repo serves as a better, cleaner and faster replacement of the purely Python based library,
+which is now hosted at**
 <https://bitbucket.org/jakob_maljaars/leopart_python>
 
 ## Automated testing
