@@ -21,5 +21,5 @@ setup(name = "leopart",
           ],
       packages=['leopart'],
       package_dir={'leopart': './source'},
-      package_data={'leopart': ["cpp/*.h", "cpp/*.cpp", "cpp/*.so"]},
+      package_data={'leopart': ["cpp/*.so"]},
 )
