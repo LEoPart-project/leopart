@@ -1,9 +1,15 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 from dolfin import (FunctionSpace, VectorFunctionSpace, Function,
                     FiniteElement, RectangleMesh, Measure, SubDomain, MeshFunction, Point,
                     FacetNormal, Constant, ALE, Expression, assign,
                     project, assemble, near, dx, File)
-from DolfinParticles import (particles, PDEStaticCondensation, FormsPDEMap,
-                             RandomRectangle, l2projection, CosineHill, advect_rk3)
+from leopart import (particles, PDEStaticCondensation, FormsPDEMap,
+                     RandomRectangle, l2projection, CosineHill, advect_rk3)
 from mpi4py import MPI as pyMPI
 import numpy as np
 

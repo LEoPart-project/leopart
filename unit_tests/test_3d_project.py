@@ -1,9 +1,13 @@
-# TODO: author/license stamp goes here
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
                     VectorFunctionSpace, assemble, dx, dot)
-from DolfinParticles import (particles, l2projection,
-                             RandomBox, RegularBox, AddDelete)
+from leopart import (particles, l2projection,
+                     RandomBox, RegularBox, AddDelete)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest

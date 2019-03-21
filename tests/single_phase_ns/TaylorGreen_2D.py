@@ -10,10 +10,10 @@ from dolfin import (SubDomain, Constant, Expression, FunctionSpace, VectorElemen
                     Timer, list_timings, TimingClear, TimingType, MPI)
 import numpy as np
 from mpi4py import MPI as pyMPI
-from DolfinParticles import (particles, advect_rk3, RandomRectangle,
-                             AddDelete, PDEStaticCondensation,
-                             StokesStaticCondensation,
-                             FormsPDEMap, FormsStokes)
+from leopart import (particles, advect_rk3, RandomRectangle,
+                     AddDelete, PDEStaticCondensation,
+                     StokesStaticCondensation,
+                     FormsPDEMap, FormsStokes)
 
 comm = pyMPI.COMM_WORLD
 

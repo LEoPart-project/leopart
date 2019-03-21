@@ -18,7 +18,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
-from DolfinParticles import (particles, advect_rk3, l2projection, RandomCircle)
+from leopart import (particles, advect_rk3, l2projection, RandomCircle)
 
 comm = pyMPI.COMM_WORLD
 
@@ -142,7 +142,7 @@ while step < num_steps:
     ap.do_step(float(dt))
     lstsq_psi.project(psi_h.cpp_object(), lb, ub)
 
-    if step % store_step is 0:
+    if step % store_step == 0:
         outfile.write(psi_h, t)
 
 timer.stop()

@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2018' + __author__
-# __license__  = 'PLEASE DO NOT SHARE WITHOUT AUTHOR CONSENT'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (VectorElement, FiniteElement, Expression,
                     FunctionSpace, UnitSquareMesh, Function,
@@ -9,7 +10,7 @@ from dolfin import (VectorElement, FiniteElement, Expression,
                     Identity, sym, grad, div, assemble, dx, dot)
 import numpy as np
 from mpi4py import MPI as pyMPI
-from DolfinParticles import StokesStaticCondensation, FormsStokes
+from leopart import StokesStaticCondensation, FormsStokes
 import pytest
 
 comm = pyMPI.COMM_WORLD

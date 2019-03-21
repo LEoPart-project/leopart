@@ -2,6 +2,7 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
 
 #include <Eigen/Dense>
 #include <memory>

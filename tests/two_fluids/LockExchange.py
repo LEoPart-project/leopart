@@ -1,15 +1,16 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal,
                     MPI, Timer, TimingClear, TimingType, timings)
-from DolfinParticles import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
-                             StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
-                             FormsStokes)
+from leopart import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
+                     StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
+                     FormsStokes)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
@@ -289,7 +290,7 @@ while step < num_steps:
     if step == 2:
         theta_L.assign(1.0)
 
-    if step % store_step is 0:
+    if step % store_step == 0:
         # Set output, also throw out particle output
         xdmf_rho.write(rho, t)
         xdmf_u.write(Uh.sub(0), t)

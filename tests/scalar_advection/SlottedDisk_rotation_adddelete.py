@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 """
     Testing the advection of a slotted disk (with sharp discontinuities)
@@ -17,7 +18,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
-from DolfinParticles import (particles, advect_rk3, l2projection, RandomCircle, AddDelete)
+from leopart import (particles, advect_rk3, l2projection, RandomCircle, AddDelete)
 
 comm = pyMPI.COMM_WORLD
 
@@ -145,7 +146,7 @@ while step < num_steps:
 
     lstsq_psi.project(psi_h.cpp_object(), lb, ub)
 
-    if step % store_step is 0:
+    if step % store_step == 0:
         outfile.write(psi_h, t)
 
 timer.stop()
