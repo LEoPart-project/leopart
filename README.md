@@ -44,7 +44,7 @@ Coming soon.
 Circle CI is used to perform automated
 testing. Test status is:
 
-[![CircleCI](https://circleci.com/bb/jakob_maljaars/dolfinparticles/tree/master.svg?style=svg)](https://circleci.com/bb/jakob_maljaars/dolfinparticles/tree/master)
+[![CircleCI](https://circleci.com/bb/jakob_maljaars/leopart/tree/master.svg?style=svg)](https://circleci.com/bb/jakob_maljaars/leopart/tree/master)
 
 
 ## Installation and executing the code
