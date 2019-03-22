@@ -13,3 +13,4 @@ from .FormsStokes import FormsStokes
 from .InitialConditions import (BinaryBlock, GaussianPulse, SineHump, CosineHill)
 from .ParticleGenerator import (RandomRectangle, RandomCircle, RegularRectangle,
                                 RandomBox, RegularBox)
+from .utils import assign_particle_values
