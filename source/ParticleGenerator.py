@@ -68,7 +68,11 @@ class RandomGenerator(object):
         else:
             points_inside = None
 
+        # Broadcast to other processes
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside
+
+    # TODO generate in parallel
 
 
 class RandomRectangle(RandomGenerator):
@@ -153,7 +157,7 @@ class RegularRectangle(RandomGenerator):
             points_inside = np.array(list(filter(self.rule, points)))
         else:
             points_inside = None
-
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside
 
 
@@ -199,5 +203,5 @@ class RegularBox(RandomGenerator):
             points_inside = np.array(list(filter(self.rule, points)))
         else:
             points_inside = None
-
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside

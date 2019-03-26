@@ -18,7 +18,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
-from leopart import (particles, advect_rk3, l2projection, RandomCircle)
+from leopart import (particles, advect_rk3, l2projection, RandomCircle, assign_particle_values)
 
 comm = pyMPI.COMM_WORLD
 
@@ -48,23 +48,11 @@ class SlottedDisk(UserExpression):
         return ()
 
 
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))],
-                       dtype=np.float_).reshape(len(x), 1)
-    else:
-        s = None
-    return s
-
-
 # Domain properties
-x0, y0 = 0., 0.
-xc, yc = -0.15, 0.
-r = .5
-rdisk = 0.2
-rwidth = 0.05
-lb = -1.
-ub = 3.
+(x0, y0) = (0., 0.)
+(xc, yc) = (-0.15, 0.)
+(r, rdisk, rwidth) = (.5, 0.2, 0.05)
+(lb, ub) = (-1., 3)
 
 # Mesh/particle resolution
 nx = 64
@@ -106,15 +94,8 @@ uh = Function(V)
 uh.assign(Expression(('-Uh*x[1]', 'Uh*x[0]'), Uh=Uh, degree=3))
 
 # Generate particles
-if comm.Get_rank() == 0:
-    x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
-    s = assign_particle_values(x, psi0_expr)
-else:
-    x = None
-    s = None
-
-x = comm.bcast(x, root=0)
-s = comm.bcast(s, root=0)
+x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
+s = assign_particle_values(x, psi0_expr)
 
 p = particles(x, [s], mesh)
 # Initialize advection class, use RK3 scheme

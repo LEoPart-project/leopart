@@ -10,7 +10,7 @@ from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, F
                     MPI, Timer, TimingClear, TimingType, timings)
 from leopart import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
                      StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
-                     FormsStokes)
+                     FormsStokes, assign_particle_values)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
@@ -26,14 +26,6 @@ comm = pyMPI.COMM_WORLD
 class Boundaries(SubDomain):
     def inside(self, x, on_boundary):
         return on_boundary
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 # User input
@@ -151,19 +143,11 @@ initial_density = BinaryBlock(geometry, float(rho1), float(rho2), degree=1)
 zero_expression = Expression(("0.", "0."), degree=1)
 
 # Initialize particles
-if comm.Get_rank() == 0:
-    x = RandomRectangle(Point(xmin, ymin),
-                        Point(xmax, ymax)).generate([pres, int(pres * (ymax-ymin) / (xmax-xmin))])
-    up = assign_particle_values(x, zero_expression)
-    rhop = assign_particle_values(x, initial_density)
-else:
-    x = None
-    up = None
-    rhop = None
+x = RandomRectangle(Point(xmin, ymin),
+                    Point(xmax, ymax)).generate([pres, int(pres * (ymax-ymin) / (xmax-xmin))])
+up = assign_particle_values(x, zero_expression)
+rhop = assign_particle_values(x, initial_density)
 
-x = comm.bcast(x, root=0)
-up = comm.bcast(up, root=0)
-rhop = comm.bcast(rhop, root=0)
 # Increment requires dup to be stored, init zero
 dup = up
 

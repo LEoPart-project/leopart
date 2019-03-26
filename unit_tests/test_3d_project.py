@@ -7,20 +7,12 @@
 from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
                     VectorFunctionSpace, assemble, dx, dot)
 from leopart import (particles, l2projection,
-                     RandomBox, RegularBox, AddDelete)
+                     RandomBox, RegularBox, AddDelete, assign_particle_values)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest
 
 comm = pyMPI.COMM_WORLD
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 class Ball(UserExpression):
@@ -66,9 +58,6 @@ def test_l2_projection_3D(polynomial_order, in_expression):
     x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([4, 4, 4])
     s = assign_particle_values(x, interpolate_expression)
 
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
-
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [s], mesh)
 
@@ -100,9 +89,6 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
 
     x = RegularBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([100, 100, 100])
     s = assign_particle_values(x, interpolate_expression)
-
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [s], mesh)

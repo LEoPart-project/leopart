@@ -90,15 +90,8 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                         U=[Uh, Uh], time=0., height=1., degree=3)
 
         # Generate particles
-        if comm.Get_rank() == 0:
-            x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
-            s = np.zeros((len(x), 1), dtype=np.float_)
-        else:
-            x = None
-            s = None
-
-        x = comm.bcast(x, root=0)
-        s = comm.bcast(s, root=0)
+        x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
+        s = np.zeros((len(x), 1), dtype=np.float_)
 
         # Initialize particles with position x and scalar property s at the mesh
         p = particles(x, [s], mesh)
