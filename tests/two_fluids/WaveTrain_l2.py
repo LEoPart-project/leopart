@@ -133,6 +133,7 @@ geometry = {'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': d}
 # Specify body force
 f = Constant((0, -g))
 
+method = 'l2'
 rho1 = Constant(1000.)
 rho2 = Constant(1.)
 
@@ -147,7 +148,7 @@ num_steps = int(T_end // float(dt) + 1)
 
 # Directory for output
 outdir_base = "./../../results/WaveTrain_"\
-              "theta"+str(float(theta_p))+"_res_"+res+"_mu"+str(float(mu))+"/"
+              "theta"+str(float(theta_p))+"_res_"+res+"_mu"+str(float(mu))+"_l2/"
 
 meta_data = outdir_base+"meta_data.txt"
 conservation_data = outdir_base+"conservation_data.txt"
@@ -498,4 +499,4 @@ with open(outdir_base+"timings"+str(nx)+".log", "w") as out:
     out.write(time_table.str(True))
 
 if comm.rank == 0:
-    sht.copy2('./WaveTrain.py', outdir_base)
+    sht.copy2('./WaveTrain_l2.py', outdir_base)

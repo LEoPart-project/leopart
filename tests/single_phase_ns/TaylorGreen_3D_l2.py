@@ -11,7 +11,7 @@ from dolfin import (SubDomain, Constant, Expression, FunctionSpace, VectorElemen
 import numpy as np
 from mpi4py import MPI as pyMPI
 from DolfinParticles import (particles, advect_rk3, RandomBox,
-                             AddDelete, PDEStaticCondensation,
+                             AddDelete, l2projection,
                              StokesStaticCondensation,
                              FormsPDEMap, FormsStokes)
 import os
@@ -126,7 +126,7 @@ theta_p = 0.5
 mode = 1./np.pi
 
 # Directory for output
-outdir_base = './../../results/TaylorGreen_3D_picube_nx16_20181231_nproc'+str(comm.Get_size())+'/'
+outdir_base = './../../results/TaylorGreen_3D_picube_nx16_20181231_nproc'+str(comm.Get_size())+'_l2/'
 output_table = outdir_base+'output_table.txt'
 store_step = 5
 
@@ -235,18 +235,8 @@ if comm.rank == 0:
     with open(output_table, "a") as write_file:
         write_file.write("%-12.5g %-20.6g %-20.6g %-20.6e \n" % (float(0.), float(e_kin), float(enstrophy), float(momentum)))
 
-# Forms PDE map
-funcspace_dict = {'FuncSpace_local': W_2, 'FuncSpace_lambda': T_2, 'FuncSpace_bar': Wbar_2}
-forms_adv = FormsPDEMap(mesh, funcspace_dict).forms_theta_nlinear(u0_a, ubar0_a, dt,
-                                                                  theta_map=Constant(1.0),
-                                                                  theta_L=theta_L,
-                                                                  duh0=duh0, duh00=duh00)
-pde_projection = PDEStaticCondensation(mesh, p,
-                                       forms_adv['N_a'], forms_adv['G_a'], forms_adv['L_a'],
-                                       forms_adv['H_a'],
-                                       forms_adv['B_a'],
-                                       forms_adv['Q_a'], forms_adv['R_a'], forms_adv['S_a'],
-                                       property_idx)
+# l2 projection
+lstsq_u = l2projection(p, W_2, 1)
 
 # Forms Stokes
 # Set pressure in corner to zero
@@ -287,11 +277,9 @@ while step < num_steps:
     
     # Do constrained projection
     t1 = Timer("[P] assemble projection")
-    pde_projection.assemble(True, True)
     del(t1)
     t1 = Timer("[P] solve projection")
-    pde_projection.solve_problem(ubar_a.cpp_object(), ustar.cpp_object(), lamb.cpp_object(),
-                                 'superlu_dist', 'default')
+    lstsq_u.project(ustar)
     del(t1)
 
     # Solve Stokes

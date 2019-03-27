@@ -93,11 +93,11 @@ class FormsPDEMap:
         B_a = facet_integral(beta_map * dot(vbar, wbar))
 
         # RHS contributions
-        Q_a = dot(Constant(zero_vec), w) * dx
+        Q_a = dot(zero_vec, w) * dx
         R_a = dot(v_star, tau)/dt * dx \
             + (1-theta_map)*inner(outer_v_a_o, grad(tau))*dx \
             - gamma * dot(h, tau) * self.ds(neumann_idx)
-        S_a = facet_integral(dot(Constant(zero_vec), wbar))
+        S_a = facet_integral(dot(zero_vec, wbar))
 
         return self.__fem_forms(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
 
@@ -147,7 +147,7 @@ class FormsPDEMap:
         R_a = dot(v_star, tau)/dt * dx \
             + (1-theta_map)*inner(outer_v_a_o, grad(tau))*dx \
             - gamma * dot(h, tau) * self.ds(neumann_idx)
-        S_a = facet_integral(dot(Constant(zero_vec), wbar))
+        S_a = facet_integral(dot(zero_vec, wbar))
 
         return self.__fem_forms(N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a)
 
@@ -228,12 +228,15 @@ class FormsPDEMap:
         # Get size of constants ligned up in 3D
         zero_vec = Constant(np.zeros(self.gdim))
         if self.gdim > 2:
-            if h.value_size() <= 2:
-                h = zero_vec
-            if duh0.value_size() <= 2:
-                duh0 = zero_vec
-            if duh00.value_size() <= 2:
-                duh00 = zero_vec
+            if type(h) is Constant:
+                if h.value_size() <= 2:
+                    h = zero_vec
+            if type(duh0) is Constant:
+                if duh0.value_size() <= 2:
+                    duh0 = zero_vec
+            if type(duh00) is Constant:
+                if duh00.value_size() <= 2:
+                    duh00 = zero_vec
         return (zero_vec, h, duh0, duh00)
 
     # FIXME: to be implemented and tested

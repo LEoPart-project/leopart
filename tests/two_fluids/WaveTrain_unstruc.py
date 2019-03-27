@@ -1,4 +1,4 @@
-from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
+from dolfin import (Mesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, DirichletBC, assign, project, near,
                     MPI, Timer, TimingClear, TimingType, timings, VectorFunctionSpace, ALE,
@@ -95,12 +95,12 @@ ymin, ymax = 0., 4.
 
 # Medium
 nx, ny = 400, 80
-pres = 3000
-res = 'medium'
-dt = Constant(0.025)
-store_field_step = 4
-store_particle_step = 40
-store_probe_step = 2
+pres = 10000
+res = 'unstruc'
+dt = Constant(0.01)
+store_field_step = 10
+store_particle_step = 100
+store_probe_step = 5
 
 # Hires
 # nx, ny = 800, 160
@@ -111,6 +111,7 @@ store_probe_step = 2
 # store_particle_step = 80
 # store_probe_step = 4
 
+mu_0 = Constant(5)
 mu = Constant(1e-1)
 theta_p = 0.5
 theta_L = Constant(1.0)
@@ -147,7 +148,7 @@ num_steps = int(T_end // float(dt) + 1)
 
 # Directory for output
 outdir_base = "./../../results/WaveTrain_"\
-              "theta"+str(float(theta_p))+"_res_"+res+"_mu"+str(float(mu))+"/"
+              "theta"+str(float(theta_p))+"_res_"+res+"_mu"+str(float(mu))+"_smalldt_muchange/"
 
 meta_data = outdir_base+"meta_data.txt"
 conservation_data = outdir_base+"conservation_data.txt"
@@ -174,8 +175,10 @@ fname_probe3 = [outdir_base+'xp_probe10.pickle',
                 outdir_base+'up_probe10.pickle',
                 outdir_base+'rhop_probe10.pickle']
 
-mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, ny)
+# mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, ny)
 # bmesh = BoundaryMesh(mesh, 'exterior')
+
+mesh = Mesh(MPI.comm_world, './../../meshes/wave_train_flume.xml')
 
 # Helper vectors
 ex = as_vector([1.0, 0.0])
@@ -317,7 +320,7 @@ pde_u = PDEStaticCondensation(mesh, p,
 
 # Set-up Stokes Solve
 forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha, ds=ds).forms_multiphase(rho, ustar,
-                                                                                dt, mu, f)
+                                                                                dt, mu_0, f)
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
                                forms_stokes['G_ST'], forms_stokes['B_S'],
@@ -371,6 +374,10 @@ while step < num_steps:
     if comm.Get_rank() == 0:
         print("Step "+str(step)+', time = '+str(t))
 
+    if t >= 5.:
+        print("Change mu")
+        mu_0.assign(float(mu))
+        
     # Advect
     t1 = Timer("[P] advect particles")
     if step > 1:
@@ -402,11 +409,12 @@ while step < num_steps:
     t1 = Timer("[P] density projection")
     pde_rho.assemble(True, False)
     pde_rho.solve_problem(rhobar, rho, "superlu_dist", "default")
+    # lstsq_rho.project(rho, float(rho2), float(rho1))
     del(t1)
 
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, False)
-    try: 
+    try:
         pde_u.solve_problem(ustar_bar, ustar, "superlu_dist", "default")
     except Exception:
         # FIXME: work-around
@@ -498,4 +506,4 @@ with open(outdir_base+"timings"+str(nx)+".log", "w") as out:
     out.write(time_table.str(True))
 
 if comm.rank == 0:
-    sht.copy2('./WaveTrain.py', outdir_base)
+    sht.copy2('./WaveTrain_unstruc.py', outdir_base)

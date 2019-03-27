@@ -1,7 +1,7 @@
 from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, DirichletBC, assign, project, near, assemble, between,
-                    MPI, Timer, TimingClear, TimingType, timings)
+                    MPI, Timer, TimingClear, TimingType, timings, dx)
 from DolfinParticles import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
                              StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
                              FormsStokes)
@@ -76,30 +76,30 @@ def assign_particle_values(x, u_exact):
 # store_step = 40
 
 # Medium
-# xmin, xmax = 0., 1.61
-# ymin, ymax = 0., 1.
-# nx, ny = 161, 100
-# xmin_rho1 = 0.
-# xmax_rho1 = 0.6
-# ymin_rho1 = 0.
-# ymax_rho1 = 0.3
-# pres = 1200
-# res = 'medium'
-# dt = Constant(1.e-3)
-# store_step = 100
-
-# Hires
 xmin, xmax = 0., 1.61
 ymin, ymax = 0., 1.
-nx, ny = 322, 200
+nx, ny = 161, 100
 xmin_rho1 = 0.
 xmax_rho1 = 0.6
 ymin_rho1 = 0.
 ymax_rho1 = 0.3
-pres = 2200
-res = 'high'
-dt = Constant(5.e-4)
-store_step = 200
+pres = 1200
+res = 'medium'
+dt = Constant(1.e-3)
+store_step = 100
+
+# Hires
+# xmin, xmax = 0., 1.61
+# ymin, ymax = 0., 1.
+# nx, ny = 322, 200
+# xmin_rho1 = 0.
+# xmax_rho1 = 0.6
+# ymin_rho1 = 0.
+# ymax_rho1 = 0.3
+# pres = 2200
+# res = 'high'
+# dt = Constant(5.e-4)
+# store_step = 200
 
 mu = 5e-2
 theta_p = .5
@@ -136,7 +136,7 @@ print(num_steps)
 
 # Directory for output
 outdir_base = "./../../results/Dambreak_mu" + str(float(mu)) + \
-              "_theta"+str(float(theta_p))+"_res_"+res+"/"
+              "_theta"+str(float(theta_p))+"_res_"+res+"_201903/"
 
 # Particle output
 fname_list = [outdir_base+'xp.pickle',
@@ -144,6 +144,7 @@ fname_list = [outdir_base+'xp.pickle',
               outdir_base+'rhop.pickle']
 property_list = [0, 2, 1]
 pressure_table = outdir_base+'wall_pressure.pickle'
+mass_table = outdir_base+'mass_conservation.txt'
 
 mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, ny, "left")
 bbt = mesh.bounding_box_tree()
@@ -300,6 +301,10 @@ dump_list = [0.,
 with open(pressure_table, "wb") as PT:
     pickle.dump(dump_list, PT)
 
+mass0 = assemble(rho0*dx)
+with open(mass_table, "w") as MT:
+    MT.write("%-20.3g \n" % (mass0))
+
 
 timer = Timer("[P] Total time consumed")
 timer.start()
@@ -322,6 +327,7 @@ while step < num_steps:
     pde_rho.solve_problem(rhobar, rho, "superlu_dist", "default")
     del(t1)
 
+    mass_change = abs(assemble((rho - rho0)*dx))
     t1 = Timer("[P] momentum projection")
     pde_u.assemble(True, True)
 
@@ -402,7 +408,7 @@ while step < num_steps:
     P2_point = comm.gather(P2_point, root=0)
     P3_point = comm.gather(P3_point, root=0)
     P4_point = comm.gather(P4_point, root=0)
-
+    
     if comm.rank == 0:
         P1_val = next(pval for pval in P1_point if pval is not None)
         P2_val = next(pval for pval in P2_point if pval is not None)
@@ -414,6 +420,12 @@ while step < num_steps:
                      P1_val, P2_val, P3_val, P4_val]
         with open(pressure_table, "ab") as PT:
             pickle.dump(dump_list, PT)
+
+        with open(mass_table, "a") as MT:
+            MT.write("%-20.3g \n" % (mass_change))
+        print("Mass error "+str(mass_change))
+        
+timer.stop()
 
 xdmf_u.close()
 xdmf_rho.close()
