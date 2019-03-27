@@ -268,7 +268,8 @@ while step < num_steps:
     t1 = Timer("[P] density projection")
     if projection_type == 'PDE':
         pde_rho.assemble(True, True)
-        pde_rho.solve_problem(rhobar, rho, solver, "default")
+        #pde_rho.solve_problem(rhobar, rho, solver, "default")
+        pde_rho.solve_problem(rhobar, rho, "gmres", "hypre_amg")
     else:
         lstsq_rho.project(rho, float(rho2), float(rho1))
     del(t1)
@@ -276,7 +277,7 @@ while step < num_steps:
     t1 = Timer("[P] momentum projection")
     if projection_type == 'PDE':
         pde_u.assemble(True, True)
-        pde_u.solve_problem(ustar_bar, ustar, solver, "default")
+        pde_u.solve_problem(ustar_bar, ustar, "gmres", "hypre_amg")
     else:
         lstsq_u.project(ustar)
     del(t1)
