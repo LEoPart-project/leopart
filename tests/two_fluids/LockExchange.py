@@ -63,7 +63,7 @@ ub = np.sqrt(g_prime * (ymax - ymin))
 nu = Constant((ub * (ymax - ymin)) / Re)
 
 # Time stepping
-T_star_end = 16.
+T_star_end = 10.
 tscale = np.sqrt(g_prime / (ymax - ymin))
 T_end = T_star_end / tscale
 dt = Constant(1.25e-2/tscale)
@@ -268,7 +268,6 @@ while step < num_steps:
     t1 = Timer("[P] density projection")
     if projection_type == 'PDE':
         pde_rho.assemble(True, True)
-        #pde_rho.solve_problem(rhobar, rho, solver, "default")
         pde_rho.solve_problem(rhobar, rho, "gmres", "hypre_amg")
     else:
         lstsq_rho.project(rho, float(rho2), float(rho1))
