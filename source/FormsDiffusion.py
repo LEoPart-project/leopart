@@ -5,7 +5,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 from dolfin import (Form, FacetNormal, CellDiameter, ds, dx, dS,
-                    dot, grad, TestFunction, TrialFunction, Constant)
+                    dot, grad, TestFunction, TrialFunction, Constant,
+                    Expression)
 
 
 class FormsDiffusion:
@@ -20,12 +21,15 @@ class FormsDiffusion:
         self.n = FacetNormal(mesh)
         self.alpha = alpha
         self.he = CellDiameter(mesh)
-        self.ds = ds
         self.gdim = mesh.geometry().dim()
+        self.mesh = mesh
+        self.ds = ds
         # Note ds(98) is marked as inhomogeneous Neumann
 
     def forms_steady(self, kappa, f=Constant(0), h=Constant(0)):
-        ufl_forms = self.__ufl_forms(kappa, f, h)
+        phi0 = Expression('0', domain=self.mesh, degree=1)
+        phibar0 = Expression('0', domain=self.mesh, degree=1)
+        ufl_forms = self.__ufl_forms(phi0, phibar0, kappa, f, h)
         return self.__fem_forms(ufl_forms['A'], ufl_forms['G'],
                                 ufl_forms['G_T'], ufl_forms['B'],
                                 ufl_forms['Q'], ufl_forms['S'])
@@ -34,8 +38,7 @@ class FormsDiffusion:
                        f=Constant(0), h=Constant(0)):
         pass
 
-    def __ufl_forms(self, kappa, f, h, theta=Constant(1.0),
-                    phi0=Constant(0), phibar0=Constant(0)):
+    def __ufl_forms(self, phi0, phibar0, kappa, f, h, theta=Constant(1.0)):
         (q, qbar) = self.__test_functions()
         (phi, phibar) = self.__trial_functions()
 
@@ -83,11 +86,11 @@ class FormsDiffusion:
         return integrand('-')*dS + integrand('+')*dS + integrand*ds
 
     def __test_functions(self):
-        q = TestFunction(self.mixedL)
-        qbar = TestFunction(self.mixedG)
+        q = TestFunction(self.FSpace_L)
+        qbar = TestFunction(self.FSpace_G)
         return (q, qbar)
 
     def __trial_functions(self):
-        phi = TrialFunction(self.mixedL)
-        phibar = TrialFunction(self.mixedG)
+        phi = TrialFunction(self.FSpace_L)
+        phibar = TrialFunction(self.FSpace_G)
         return (phi, phibar)
