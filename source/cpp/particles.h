@@ -17,10 +17,26 @@
 namespace dolfin
 {
 // Forward declarations
+
+namespace function
+{
 class Function;
+}
+
+namespace fem
+{
 class FiniteElement;
+}
+
+namespace geometry
+{
 class Point;
+}
+
+namespace mesh
+{
 class Mesh;
+}
 
 class particles
 {
@@ -29,19 +45,21 @@ public:
   particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic,
                                           Eigen::Dynamic, Eigen::RowMajor>>
                 p_array,
-            const std::vector<unsigned int>& p_template, const Mesh& mesh);
+            const std::vector<unsigned int>& p_template,
+            const mesh::Mesh& mesh);
 
   ~particles();
 
   // Get the position of a particle in a cell
   // Just a shorthand for "property(cidx, pidx, 0)"
-  const Point& x(int cell_index, int particle_index) const
+  const geometry::Point& x(int cell_index, int particle_index) const
   {
     return _cell2part[cell_index][particle_index][0];
   }
 
   // Return property i of particle in cell
-  const Point& property(int cell_index, int particle_index, int i) const
+  const geometry::Point& property(int cell_index, int particle_index,
+                                  int i) const
   {
     return _cell2part[cell_index][particle_index][i];
   }
@@ -52,20 +70,22 @@ public:
     // empty slot
     _ptemplate.push_back(dim);
     _plen += dim;
-    Point p(0.0, 0.0, 0.0);
-    for (unsigned int cidx = 0; cidx < _mesh->num_cells(); ++cidx)
+    geometry::Point p(0.0, 0.0, 0.0);
+    int num_cells = _mesh->num_entities(_mesh->topology().dim());
+    for (int cidx = 0; cidx < num_cells; ++cidx)
       for (unsigned int pidx = 0; pidx < num_cell_particles(cidx); ++pidx)
         _cell2part[cidx][pidx].push_back(p);
     return _ptemplate.size() - 1;
   }
 
-  void set_property(int cell_index, int particle_index, int i, Point v)
+  void set_property(int cell_index, int particle_index, int i,
+                    geometry::Point v)
   {
     _cell2part[cell_index][particle_index][i] = v;
   }
 
   // Pointer to the mesh
-  const Mesh* mesh() const { return _mesh; }
+  const mesh::Mesh* mesh() const { return _mesh; }
 
   // Get size of property i
   unsigned int ptemplate(int i) const { return _ptemplate[i]; }
@@ -86,14 +106,17 @@ public:
   }
 
   // Interpolate function to particles
-  void interpolate(const Function& phih, const std::size_t property_idx);
+  void interpolate(const function::Function& phih,
+                   const std::size_t property_idx);
 
   // Increment
-  void increment(const Function& phih_new, const Function& phih_old,
+  void increment(const function::Function& phih_new,
+                 const function::Function& phih_old,
                  const std::size_t property_idx);
 
   // Increment using theta --> Consider replacing property_idcs
-  void increment(const Function& phih_new, const Function& phih_old,
+  void increment(const function::Function& phih_new,
+                 const function::Function& phih_old,
                  Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>
                      property_idcs,
                  const double theta, const std::size_t step);
@@ -104,14 +127,15 @@ public:
 
   void get_particle_contributions(
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
-      Eigen::Matrix<double, Eigen::Dynamic, 1>& f, const Cell& dolfin_cell,
-      std::shared_ptr<const FiniteElement> element,
+      Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
+      const mesh::Cell& dolfin_cell,
+      std::shared_ptr<const fem::FiniteElement> element,
       const std::size_t space_dimension, const std::size_t value_size_loc,
       const std::size_t property_idx);
 
   // Push particle to new position
-  void push_particle(const double dt, const Point& up, const std::size_t cidx,
-                     const std::size_t pidx);
+  void push_particle(const double dt, const geometry::Point& up,
+                     const std::size_t cidx, const std::size_t pidx);
 
   // Particle collector, required in parallel
   void particle_communicator_collect(const std::size_t cidx,
@@ -134,7 +158,7 @@ private:
   std::vector<double> unpack_particle(const particle part);
 
   // Attributes
-  const Mesh* _mesh;
+  const mesh::Mesh* _mesh;
   std::size_t _Ndim;
   std::vector<std::vector<particle>> _cell2part;
 

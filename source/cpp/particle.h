@@ -15,5 +15,5 @@
 // Define the particle atom as a vector of dolfin points
 namespace dolfin
 {
-typedef std::vector<Point> particle;
+  typedef std::vector<geometry::Point> particle;
 }

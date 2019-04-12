@@ -13,9 +13,18 @@
 namespace dolfin
 {
 // Forward declarations
+namespace function
+{
 class Function;
+}
+namespace geometry
+{
 class Point;
+}
+namespace mesh
+{
 class Cell;
+}
 
 class particles;
 
@@ -23,9 +32,9 @@ class AddDelete
 {
 public:
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
-            std::vector<std::shared_ptr<const Function>> FList);
+            std::vector<std::shared_ptr<const function::Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
-            std::vector<std::shared_ptr<const Function>> FList,
+            std::vector<std::shared_ptr<const function::Function>> FList,
             std::vector<std::size_t> pbound, std::vector<double> bounds);
   ~AddDelete();
 
@@ -40,17 +49,19 @@ public:
 
 private:
   // Private methods
-  void insert_particles(const std::size_t Np_def, const Cell& dolfin_cell);
+  void insert_particles(const std::size_t Np_def,
+                        const mesh::Cell& dolfin_cell);
   void insert_particles_weighted(const std::size_t Np_def,
-                                 const Cell& dolfin_cell);
+                                 const mesh::Cell& dolfin_cell);
   void delete_particles(const std::size_t Np_surp, const std::size_t Npc,
                         const std::size_t cidx);
-  void initialize_random_position(Point& xp_new,
+  void initialize_random_position(geometry::Point& xp_new,
                                   const std::vector<double>& x_min_max,
-                                  const Cell& dolfin_cell);
+                                  const mesh::Cell& dolfin_cell);
 
   // TODO: Method needs careful checking
-  void check_bounded_update(Point& pfeval, const std::size_t idx_func);
+  void check_bounded_update(geometry::Point& pfeval,
+                            const std::size_t idx_func);
 
   // Access to particles
   particles* _P;
@@ -59,7 +70,7 @@ private:
   std::size_t _np_min, _np_max;
 
   // List of functions
-  std::vector<std::shared_ptr<const Function>> _FList;
+  std::vector<std::shared_ptr<const function::Function>> _FList;
 
   //
   std::vector<std::size_t> _pbound;

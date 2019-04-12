@@ -12,17 +12,30 @@
 #include <vector>
 
 #include <dolfin/common/MPI.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
+#include <dolfin/la/PETScMatrix.h>
+#include <dolfin/la/PETScVector.h>
 
 namespace dolfin
 {
 // Forward declarations
+
+namespace fem
+{
 class Form;
-class Mesh;
-class particles;
-class Function;
 class DirichletBC;
+} // namespace fem
+
+namespace mesh
+{
+class Mesh;
+}
+
+class particles;
+
+namespace function
+{
+class Function;
+}
 
 class PDEStaticCondensation
 {
@@ -35,18 +48,21 @@ class PDEStaticCondensation
   //
 public:
   // Constructor
-  PDEStaticCondensation(const Mesh& mesh, particles& P, const Form& N,
-                        const Form& G, const Form& L, const Form& H,
-                        const Form& B, const Form& Q, const Form& R,
-                        const Form& S, const std::size_t idx_pproperty);
+  PDEStaticCondensation(const mesh::Mesh& mesh, particles& P,
+                        const fem::Form& N, const fem::Form& G,
+                        const fem::Form& L, const fem::Form& H,
+                        const fem::Form& B, const fem::Form& Q,
+                        const fem::Form& R, const fem::Form& S,
+                        const std::size_t idx_pproperty);
 
   // Constructor including Dirichlet BC's
-  PDEStaticCondensation(const Mesh& mesh, particles& P, const Form& N,
-                        const Form& G, const Form& L, const Form& H,
-                        const Form& B, const Form& Q, const Form& R,
-                        const Form& S,
-                        std::vector<std::shared_ptr<const DirichletBC>> bcs,
-                        const std::size_t idx_pproperty);
+  PDEStaticCondensation(
+      const mesh::Mesh& mesh, particles& P, const fem::Form& N,
+      const fem::Form& G, const fem::Form& L, const fem::Form& H,
+      const fem::Form& B, const fem::Form& Q, const fem::Form& R,
+      const fem::Form& S,
+      std::vector<std::shared_ptr<const fem::DirichletBC>> bcs,
+      const std::size_t idx_pproperty);
 
   ~PDEStaticCondensation();
 
@@ -55,19 +71,21 @@ public:
                 const bool assemble_on_config = true);
   void assemble_state_rhs();
 
-  void solve_problem(Function& Uglobal, Function& Ulocal,
+  void solve_problem(function::Function& Uglobal, function::Function& Ulocal,
                      const std::string solver = "none",
                      const std::string preconditioner = "default");
-  void solve_problem(Function& Uglobal, Function& Ulocal, Function& Lambda,
+  void solve_problem(function::Function& Uglobal, function::Function& Ulocal,
+                     function::Function& Lambda,
                      const std::string solver = "none",
                      const std::string preconditioner = "default");
-  void apply_boundary(DirichletBC& DBC);
+  void apply_boundary(fem::DirichletBC& DBC);
 
 private:
   // Private Methods
-  void backsubtitute(const Function& Uglobal, Function& Ulocal);
-  void backsubtitute(const Function& Uglobal, Function& Ulocal,
-                     Function& Lambda);
+  void backsubtitute(const function::Function& Uglobal,
+                     function::Function& Ulocal);
+  void backsubtitute(const function::Function& Uglobal,
+                     function::Function& Ulocal, function::Function& Lambda);
 
   /* Comes from particles
   void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,
@@ -76,15 +94,15 @@ private:
   */
 
   // Private Attributes
-  const Mesh* mesh;
+  const mesh::Mesh* mesh;
   particles* _P;
-  const Form *N, *G, *L, *H, *B, *Q, *R, *S;
+  const fem::Form *N, *G, *L, *H, *B, *Q, *R, *S;
 
   const MPI_Comm mpi_comm;
-  Matrix A_g;
-  Vector f_g;
+  la::PETScMatrix A_g;
+  la::PETScVector f_g;
 
-  std::shared_ptr<const FiniteElement> _element;
+  std::shared_ptr<const fem::FiniteElement> _element;
   std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
 
   std::vector<
@@ -104,10 +122,10 @@ private:
   // TODO: set _idx_pproperty
   const std::size_t _idx_pproperty;
 
-  std::vector<std::shared_ptr<const DirichletBC>> bcs;
+  std::vector<std::shared_ptr<const fem::DirichletBC>> bcs;
 
   // FIXME needed for momentum based l2 map
-  Function* rhoh;
+  function::Function* rhoh;
 };
 } // namespace dolfin
 #endif // PDESTATICCONDENSATION_H

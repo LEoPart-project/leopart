@@ -7,37 +7,41 @@
 #ifndef L2PROJECTION_H
 #define L2PROJECTION_H
 
-#include <vector>
 #include <memory>
-
+#include <vector>
 
 namespace dolfin
 {
-  class Function;
-  class FunctionSpace;
-  class particles;
 
+namespace function
+{
+class Function;
+class FunctionSpace;
+} // namespace function
 
-  class l2projection
+class particles;
+
+class l2projection
 {
 public:
-  l2projection(particles& P, FunctionSpace& V, const std::size_t idx);
+  l2projection(particles& P, function::FunctionSpace& V, const std::size_t idx);
   ~l2projection();
 
   // l^2 map
-  void project(Function& u);
+  void project(function::Function& u);
 
   // l^2 map with bound constraint
-  void project(Function& u, const double lb, const double ub);
+  void project(function::Function& u, const double lb, const double ub);
 
   // l^2 map onto cg space (global problem)
-  void project_cg(const Form& A, const Form& f, Function& u);
+  void project_cg(const fem::Form& A, const fem::Form& f,
+                  function::Function& u);
 
 protected:
   particles* _P; // Pointer object to particles
 
-  std::shared_ptr<const FiniteElement> _element;
-  std::shared_ptr<const GenericDofMap> _dofmap;
+  std::shared_ptr<const fem::FiniteElement> _element;
+  std::shared_ptr<const fem::GenericDofMap> _dofmap;
   std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
 
   // Workaround to access tuple elements

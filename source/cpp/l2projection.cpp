@@ -7,14 +7,12 @@
 #include <iostream>
 #include <memory>
 
-#include <dolfin/fem/Assembler.h>
+#include <dolfin/fem/Form.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
-#include <dolfin/la/GenericVector.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
-#include <dolfin/la/solve.h>
+#include <dolfin/la/PETScMatrix.h>
+#include <dolfin/la/PETScVector.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/mesh/Mesh.h>
 
@@ -29,7 +27,7 @@
 
 using namespace dolfin;
 
-l2projection::l2projection(particles& P, FunctionSpace& V,
+l2projection::l2projection(particles& P, function::FunctionSpace& V,
                            const std::size_t idx)
     : _P(&P), _element(V.element()), _dofmap(V.dofmap()), _idx_pproperty(idx)
 {
@@ -48,15 +46,19 @@ l2projection::l2projection(particles& P, FunctionSpace& V,
 
   // Check if matches with stored particle template
   if (_value_size_loc != _P->ptemplate(_idx_pproperty))
-    dolfin_error("l2projection", "set _value_size_loc",
-                 "Local value size (%d) mismatches particle template property "
-                 "with size (%d)",
-                 _value_size_loc, _P->ptemplate(_idx_pproperty));
+    throw std::runtime_error("l2projection.cpp"
+                             "Cannot set _value_size_loc. "
+                             "Local value size ("
+                             + std::to_string(_value_size_loc)
+                             + ") mismatches particle template property "
+                               "with size ("
+                             + std::to_string(_P->ptemplate(_idx_pproperty))
+                             + ")");
 }
 //-----------------------------------------------------------------------------
 l2projection::~l2projection() {}
 //-----------------------------------------------------------------------------
-void l2projection::project(Function& u)
+void l2projection::project(function::Function& u)
 {
   // TODO: Check if u is indeed in V!
   // Initialize basis matrix as CONTIGUOUS array, Maybe consider using
@@ -64,11 +66,15 @@ void l2projection::project(Function& u)
   // basis_matrix[_space_dimension][_value_size_loc];
 
   // TODO: new and compact formulation. WORK IN PROGRESS!
-  for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
+  std::int32_t num_cells
+      = _P->mesh()->num_entities(_P->mesh()->topology().dim());
+
+  for (std::int32_t i = 0; i < num_cells; ++i)
   {
-    std::size_t i = cell->index();
+    mesh::Cell cell(*_P->mesh(), i);
+
     // Get dofs local to cell
-    Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
+    Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);
 
     // Initialize the cell matrix and cell vector
@@ -76,7 +82,7 @@ void l2projection::project(Function& u)
     Eigen::Matrix<double, Eigen::Dynamic, 1> f;
 
     // Get particle contributions
-    _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
+    _P->get_particle_contributions(q, f, cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
     // Initialize and solve for u_i
@@ -97,16 +103,19 @@ void l2projection::project(Function& u)
     }
 
     // Insert in vector
-    u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
+    // FIXME    u.vector().set_local(u_i.data(), u_i.size(), celldofs.data());
   }
 }
 //-----------------------------------------------------------------------------
-void l2projection::project(Function& u, const double lb, const double ub)
+void l2projection::project(function::Function& u, const double lb,
+                           const double ub)
 {
   // Check if u is indeed in V!!!!
   if (_value_size_loc > 1)
-    dolfin_error("l2projection.cpp::project", "handle value size >1",
-                 "Bounded projection is implemented for scalar functions only");
+    throw std::runtime_error(
+        "l2projection.cpp::project. "
+        "Cannot handle value size >1. "
+        "Bounded projection is implemented for scalar functions only");
 
   // Initialize the matrices/vectors for the bound constraints (constant
   // throughout projection)
@@ -128,11 +137,14 @@ void l2projection::project(Function& u, const double lb, const double ub)
     ci0(i + _space_dimension) = ub;
   }
 
-  for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
+  std::int32_t num_cells
+      = _P->mesh()->num_entities(_P->mesh()->topology().dim());
+  for (std::int32_t i = 0; i < num_cells; ++i)
   {
-    std::size_t i = cell->index();
+    mesh::Cell cell(*_P->mesh(), i);
+
     // Get dofs local to cell
-    Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
+    Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);
 
     // Initialize the cell matrix and cell vector
@@ -140,7 +152,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
     Eigen::Matrix<double, Eigen::Dynamic, 1> f;
 
     // Get particle contributions
-    _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
+    _P->get_particle_contributions(q, f, cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
     // Then solve bounded lstsq projection
@@ -148,30 +160,35 @@ void l2projection::project(Function& u, const double lb, const double ub)
     Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
     quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
-    u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
+    // FIXME    u.vector().set_local(u_i.data(), u_i.size(), celldofs.data());
   }
 }
 //-----------------------------------------------------------------------------
-void l2projection::project_cg(const Form& A, const Form& f, Function& u)
+void l2projection::project_cg(const fem::Form& A, const fem::Form& f,
+                              function::Function& u)
 {
   // Initialize global problems
   // FIXME: need some checks!
-  Matrix A_g;
-  Vector f_g;
 
-  AssemblerBase assembler_base;
-  assembler_base.init_global_tensor(A_g, A);
-  assembler_base.init_global_tensor(f_g, f);
+  la::PETScMatrix A_g = fem::create_matrix(A);
+  la::PETScVector f_g(*(f.function_space(0)->dofmap()->index_map()));
+
+  //  AssemblerBase assembler_base;
+  //  assembler_base.init_global_tensor(A_g, A);
+  //  assembler_base.init_global_tensor(f_g, f);
 
   // Set to zero
-  A_g.zero();
-  f_g.zero();
+  // FIXME  A_g.zero();
+  //  f_g.zero();
 
-  for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
+  const std::int32_t num_cells
+      = _P->mesh()->num_entities(_P->mesh()->topology().dim());
+  for (std::int32_t i = 0; i < num_cells; ++i)
   {
-    std::size_t i = cell->index();
+    mesh::Cell cell(*_P->mesh(), i);
+
     // Get dofs local to cell
-    Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
+    Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);
 
     // Initialize the cell matrix and cell vector
@@ -179,7 +196,7 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
     Eigen::Matrix<double, Eigen::Dynamic, 1> f;
 
     // Get particle contributions
-    _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
+    _P->get_particle_contributions(q, f, cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
     // Compute lstsq contributions
@@ -194,9 +211,9 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
     f_g.add_local(qTf.data(), celldofs.size(), celldofs.data());
   }
 
-  A_g.apply("add");
-  f_g.apply("add");
+  //  A_g.apply("add");
+  //  f_g.apply("add");
 
-  solve(A_g, *(u.vector()), f_g);
+  // solve(A_g, *(u.vector()), f_g);
 }
 //-----------------------------------------------------------------------------

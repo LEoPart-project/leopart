@@ -22,12 +22,12 @@ class Utils
   // Some utility functions for, header only
 public:
   static void return_expansion_coeffs(std::vector<double>& coeffs,
-                                      const Cell& dolfin_cell,
-                                      const Function* phih)
+                                      const mesh::Cell& dolfin_cell,
+                                      const function::Function* phih)
   {
     // Get expansion coefficients phi_i in N_i . phi_i
     std::vector<double> vertex_coordinates;
-    dolfin_cell.get_vertex_coordinates(vertex_coordinates);
+    dolfin_cell.get_coordinate_dofs(vertex_coordinates);
     ufc::cell ufc_cell;
     dolfin_cell.get_cell_data(ufc_cell);
 
@@ -41,8 +41,8 @@ public:
 
   // Compute basis matrix directly to pointer address
   static void return_basis_matrix(double* basis_matrix,
-                                  const Point xp, const Cell& dolfin_cell,
-                                  std::shared_ptr<const FiniteElement> element)
+                                  const geometry::Point xp, const mesh::Cell& dolfin_cell,
+                                  std::shared_ptr<const fem::FiniteElement> element)
   {
     std::vector<double> vertex_coordinates;
     dolfin_cell.get_vertex_coordinates(vertex_coordinates);

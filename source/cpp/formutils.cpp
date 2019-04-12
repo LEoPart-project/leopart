@@ -19,8 +19,9 @@ using namespace dolfin;
 void FormUtils::test_rank(const Form& a, const std::size_t rank)
 {
   if (a.rank() != rank)
-    dolfin_error("PDEStaticCondensation::test_rank", "get correct rank",
-                 "Proper forms specified?");
+    throw std::runtime_error("PDEStaticCondensation::test_rank"
+                             " Cannot get correct rank."
+                             "Proper forms specified?");
 }
 //-----------------------------------------------------------------------------
 std::pair<std::size_t, std::size_t>
@@ -66,10 +67,8 @@ void FormUtils::apply_boundary_symmetric(
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
         LHS_e,
     Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
-    Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>>
-        cdof_rows,
-    Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>>
-        cdof_cols,
+    Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_rows,
+    Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_cols,
     const std::vector<DirichletBC::Map>& boundary_values, const bool active_bcs)
 {
   if (active_bcs)

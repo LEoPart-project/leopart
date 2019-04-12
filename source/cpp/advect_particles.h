@@ -8,8 +8,8 @@
 #define ADVECT_PARTICLES_H
 
 #include <Eigen/Dense>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <dolfin/geometry/Point.h>
 
@@ -17,11 +17,24 @@
 
 namespace dolfin
 {
-  // Forward declarations
-  class FunctionSpace;
-  class Function;
-  class FiniteElement;
-  template<typename T> class MeshFunction;
+// Forward declarations
+
+namespace function
+{
+class FunctionSpace;
+class Function;
+} // namespace function
+
+namespace fem
+{
+class FiniteElement;
+}
+
+namespace mesh
+{
+template <typename T>
+class MeshFunction;
+}
 
 // enum for external facet types
 enum class facet_t : std::uint8_t
@@ -35,8 +48,8 @@ enum class facet_t : std::uint8_t
 // Facet info on each facet of mesh
 typedef struct facet_info_t
 {
-  Point midpoint;
-  Point normal;
+  geometry::Point midpoint;
+  geometry::Point normal;
   facet_t type;
 } facet_info;
 
@@ -45,22 +58,24 @@ class advect_particles
 
 public:
   // Constructors
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                   const std::string type1);
+  advect_particles(particles& P, function::FunctionSpace& U,
+                   function::Function& uhi, const std::string type1);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
+  advect_particles(particles& P, function::FunctionSpace& U,
+                   function::Function& uhi,
+                   const mesh::MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi,
-      const MeshFunction<std::size_t>& mesh_func,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const mesh::MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt
@@ -76,7 +91,7 @@ protected:
   particles* _P;
 
   void set_bfacets(const std::string btype);
-  void set_bfacets(const MeshFunction<std::size_t>& mesh_func);
+  void set_bfacets(const mesh::MeshFunction<std::size_t>& mesh_func);
 
   // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
@@ -92,22 +107,23 @@ protected:
   // (normal, midpoint, type(internal, open, closed, periodic))
   std::vector<facet_info> facets_info;
 
-  Function* uh;
-  std::shared_ptr<const FiniteElement> _element;
+  function::Function* uh;
+  std::shared_ptr<const fem::FiniteElement> _element;
 
   // Must receive a point xp
-  std::tuple<std::size_t, double>
-  time2intersect(std::size_t cidx, double dt, const Point xp, const Point up);
+  std::tuple<std::size_t, double> time2intersect(std::size_t cidx, double dt,
+                                                 const geometry::Point xp,
+                                                 const geometry::Point up);
 
   // Consider placing in particle class
-  // void push_particle(const double dt, const Point& up, const std::size_t
-  // cidx, const std::size_t pidx);
+  // void push_particle(const double dt, const geometry::Point& up, const
+  // std::size_t cidx, const std::size_t pidx);
 
   // Methods for applying bc's
   void apply_open_bc(std::size_t cidx, std::size_t pidx);
-  void apply_closed_bc(double dt, Point& up, std::size_t cidx, std::size_t pidx,
-                       std::size_t fidx);
-  void apply_periodic_bc(double dt, Point& up, std::size_t cidx,
+  void apply_closed_bc(double dt, geometry::Point& up, std::size_t cidx,
+                       std::size_t pidx, std::size_t fidx);
+  void apply_periodic_bc(double dt, geometry::Point& up, std::size_t cidx,
                          std::size_t pidx, std::size_t fidx);
 
   void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
@@ -115,34 +131,34 @@ protected:
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes
 
-  void do_substep(double dt, Point& up, const std::size_t cidx,
+  void do_substep(double dt, geometry::Point& up, const std::size_t cidx,
                   std::size_t pidx, const std::size_t step,
                   const std::size_t num_steps, const std::size_t xp0_idx,
                   const std::size_t up0_idx,
                   std::vector<std::array<std::size_t, 3>>& reloc);
-
 };
 
 class advect_rk2 : public advect_particles
 {
 public:
   // Constructors
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk2(particles& P, function::FunctionSpace& U, function::Function& uhi,
              const std::string type1);
 
   // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
+  advect_rk2(particles& P, function::FunctionSpace& U, function::Function& uhi,
+             const mesh::MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi,
-      const MeshFunction<std::size_t>& mesh_func,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const mesh::MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt
@@ -161,7 +177,8 @@ private:
     up0_idx = _P->expand_template(gdim);
 
     // Copy position to xp0 property
-    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
+    int num_cells = _P->mesh()->num_entities(_P->mesh()->topology().dim());
+    for (int cidx = 0; cidx < num_cells; ++cidx)
     {
       for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
@@ -179,22 +196,23 @@ class advect_rk3 : public advect_particles
 {
 public:
   // Constructors
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk3(particles& P, function::FunctionSpace& U, function::Function& uhi,
              const std::string type1);
 
   // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
+  advect_rk3(particles& P, function::FunctionSpace& U, function::Function& uhi,
+             const mesh::MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi,
-      const MeshFunction<std::size_t>& mesh_func,
+      particles& P, function::FunctionSpace& U, function::Function& uhi,
+      const mesh::MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt
@@ -213,7 +231,8 @@ private:
     up0_idx = _P->expand_template(gdim);
 
     // Copy position to xp0 property
-    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
+    int num_cells = _P->mesh()->num_entities(_P->mesh()->topology().dim());
+    for (int cidx = 0; cidx < num_cells; ++cidx)
     {
       for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
