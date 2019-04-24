@@ -9,7 +9,8 @@ from dolfin import (FunctionSpace, VectorFunctionSpace, Function,
                     FacetNormal, Constant, ALE, Expression, assign,
                     project, assemble, near, dx, File)
 from leopart import (particles, PDEStaticCondensation, FormsPDEMap,
-                     RandomRectangle, l2projection, CosineHill, advect_rk3)
+                     RandomRectangle, l2projection, CosineHill, advect_rk3,
+                     assign_particle_values)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
@@ -27,14 +28,6 @@ class Left(SubDomain):
 
     def inside(self, x, on_boundary):
         return near(x[0], self.bvalue)
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 t = 0.
@@ -98,8 +91,6 @@ uadvect = uh - umesh
 x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
 s = assign_particle_values(x, CosineHill(radius=0.25, center=[0.25, 0.5],
                                          amplitude=1.0, degree=1))
-x = comm.bcast(x, root=0)
-s = comm.bcast(s, root=0)
 p = particles(x, [s], mesh)
 
 # Define projections problem

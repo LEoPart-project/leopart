@@ -12,20 +12,12 @@ from dolfin import (UserExpression, Expression, FiniteElement,
                     FunctionSpace, VectorFunctionSpace, Function, Point, Constant,
                     RectangleMesh, assemble, dx, dot)
 from leopart import (particles, l2projection, PDEStaticCondensation,
-                     FormsPDEMap, RandomRectangle)
+                     FormsPDEMap, RandomRectangle, assign_particle_values)
 import numpy as np
 from mpi4py import MPI as pyMPI
 import pytest
 
 comm = pyMPI.COMM_WORLD
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 class SlottedDisk(UserExpression):
@@ -76,8 +68,6 @@ def test_l2projection(polynomial_order, in_expression):
 
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [x, s, x, x, s], mesh)
@@ -108,8 +98,6 @@ def test_l2projection_bounded(polynomial_order, lb, ub):
 
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [x, s, x, x, s], mesh)
@@ -155,8 +143,6 @@ def test_pde_constrained(polynomial_order, in_expression):
     # Define particles
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
     psi0_h.assign(interpolate_expression)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed

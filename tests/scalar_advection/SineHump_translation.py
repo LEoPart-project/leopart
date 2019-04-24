@@ -119,15 +119,8 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                                    time=0., degree=6)
 
         # Generate particles
-        if comm.Get_rank() == 0:
-            x = RegularRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
-            s = np.zeros((len(x), 1), dtype=np.float_)
-        else:
-            x = None
-            s = None
-
-        x = comm.bcast(x, root=0)
-        s = comm.bcast(s, root=0)
+        x = RegularRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
+        s = np.zeros((len(x), 1), dtype=np.float_)
 
         # Initialize particles with position x and scalar property s at the mesh
         p = particles(x, [s], mesh)
@@ -162,7 +155,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
-        p.interpolate(psi0_h.cpp_object(), property_idx)
+        p.interpolate(psi0_h, property_idx)
 
         step = 0
         area_0 = assemble(psi0_h*dx)

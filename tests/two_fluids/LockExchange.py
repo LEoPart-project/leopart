@@ -7,12 +7,14 @@
 from dolfin import (RectangleMesh, FiniteElement, VectorElement, MixedElement, FunctionSpace,
                     Function, SubDomain, Constant, Point, XDMFFile, Expression, MeshFunction,
                     Measure, assign, project, as_vector, assemble, dot, outer, dx, FacetNormal,
-                    MPI, Timer, TimingClear, TimingType, timings)
+                    MPI, Timer, TimingClear, TimingType, timings, linear_solver_methods)
 from leopart import (particles, PDEStaticCondensation, RandomRectangle, advect_rk3,
                      StokesStaticCondensation, BinaryBlock, l2projection, FormsPDEMap,
-                     FormsStokes)
+                     FormsStokes, assign_particle_values)
 from mpi4py import MPI as pyMPI
 import numpy as np
+import csv
+import shutil as sht
 
 comm = pyMPI.COMM_WORLD
 
@@ -28,15 +30,12 @@ class Boundaries(SubDomain):
         return on_boundary
 
 
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
-
-
 # User input
+
+# Whcih projection: choose 'l2' or 'PDE'
+projection_type = 'PDE'
+
+# Domain, timestepping etc.
 xmin, xmax = 0., 30.
 ymin, ymax = -0.5, 0.5
 xmin_rho1 = xmin
@@ -63,17 +62,23 @@ g_prime = abs(g) * (1. - gamma)
 ub = np.sqrt(g_prime * (ymax - ymin))
 nu = Constant((ub * (ymax - ymin)) / Re)
 
-# Polynomial order
-k = 1
-kbar = k
-alpha = Constant(6.*k*k)
-
 # Time stepping
 T_star_end = 16.
 tscale = np.sqrt(g_prime / (ymax - ymin))
 T_end = T_star_end / tscale
 dt = Constant(1.25e-2/tscale)
 num_steps = int(T_end // float(dt) + 1)
+
+# Polynomial order
+k = 1
+kbar = k
+alpha = Constant(6.*k*k)
+
+# Set solver
+if 'superlu_dist' in linear_solver_methods():
+    solver = 'superlu_dist'
+else:
+    solver = 'mumps'
 
 if comm.rank == 0:
     print('{:=^72}'.format('Computation for gamma '+str(gamma)))
@@ -82,18 +87,17 @@ if comm.rank == 0:
     print('Time step set to '+str(float(dt)))
     print('Number of steps '+str(num_steps))
 
-# T_end = 16.
-# dt = Constant(2.e-2)
-# num_steps = int(T_end // float(dt) + 1)
-
 # Directory for output
-outdir_base = './../../results/LockExchange_hires/'
+outdir_base = './../../results/LockExchange_nproc'+str(comm.size)+'_'+projection_type+'map/'
 # Particle output
 fname_list = [outdir_base+'xp.pickle',
               outdir_base+'up.pickle',
               outdir_base+'rhop.pickle']
 property_list = [0, 2, 1]
 store_step = 20
+
+meta_data = outdir_base+"meta_data.txt"
+conservation_data = outdir_base+"conservation_data.csv"
 
 # Helper vectors
 ex = as_vector([1.0, 0.0])
@@ -151,19 +155,11 @@ initial_density = BinaryBlock(geometry, float(rho1), float(rho2), degree=1)
 zero_expression = Expression(("0.", "0."), degree=1)
 
 # Initialize particles
-if comm.Get_rank() == 0:
-    x = RandomRectangle(Point(xmin, ymin),
-                        Point(xmax, ymax)).generate([pres, int(pres * (ymax-ymin) / (xmax-xmin))])
-    up = assign_particle_values(x, zero_expression)
-    rhop = assign_particle_values(x, initial_density)
-else:
-    x = None
-    up = None
-    rhop = None
+x = RandomRectangle(Point(xmin, ymin),
+                    Point(xmax, ymax)).generate([pres, int(pres * (ymax-ymin) / (xmax-xmin))])
+up = assign_particle_values(x, zero_expression)
+rhop = assign_particle_values(x, initial_density)
 
-x = comm.bcast(x, root=0)
-up = comm.bcast(up, root=0)
-rhop = comm.bcast(rhop, root=0)
 # Increment requires dup to be stored, init zero
 dup = up
 
@@ -172,6 +168,9 @@ p = particles(x, [rhop, up, dup], mesh)
 # Init rho0 field
 lstsq_rho = l2projection(p, Q_Rho, 1)
 lstsq_rho.project(rho0, float(rho2), float(rho1))
+
+# Initialize l2 projection for specific momentum
+lstsq_u = l2projection(p, W_2, 2)
 
 # Initialize advection class
 ap = advect_rk3(p, W_2, Udiv, 'closed')
@@ -186,7 +185,7 @@ ds = Measure('ds', domain=mesh, subdomain_data=boundaries)
 # Set-up density projection
 funcspaces_rho = {'FuncSpace_local': Q_Rho, 'FuncSpace_lambda': T_1, 'FuncSpace_bar': Qbar}
 forms_rho = FormsPDEMap(mesh, funcspaces_rho).forms_theta_linear(rho0, ubar0_a, dt,
-                                                                 theta_map=Constant(1.0),
+                                                                 theta_map=Constant(1.),
                                                                  theta_L=Constant(0.),
                                                                  zeta=Constant(20.))
 pde_rho = PDEStaticCondensation(mesh, p,
@@ -221,11 +220,34 @@ step = 0
 t = 0.
 
 # Store tstep 0
-xdmf_rho.write(rho0, t)
+assign(rho, rho0)
+xdmf_rho.write_checkpoint(rho, "rho", t)
 xdmf_u.write(Uh.sub(0), t)
 xdmf_p.write(Uh.sub(1), t)
 p.dump2file(mesh, fname_list, property_list, 'wb')
 comm.barrier()
+
+# Save some data in txt files
+nc = mesh.num_entities_global(2)
+npt = p.number_of_particles()
+
+with open(meta_data, "w") as write_file:
+    write_file.write("%-12s %-12s %-15s %-20s %-15s %-15s \n" %
+                     ("Time step", "Number of steps",
+                      "Number of cells", "Number of particles",
+                      "Projection", "Solver"))
+    write_file.write("%-12.5g %-15d %-15d %-20d %-15s %-15s \n" % (float(dt), num_steps,
+                                                                   nc, npt,
+                                                                   projection_type, solver))
+
+with open(conservation_data, "w") as write_file:
+    writer = csv.writer(write_file)
+    writer.writerow(["Time", "Total mass",
+                     "Mass conservation (incl. bndry flux)",
+                     "Mass conservation (excl. bndry flux)",
+                     "Momentum conservation (incl. bndry flux)",
+                     "Momentum conservation (excl. bndry flux)",
+                     "Rho_min", "Rho_max"])
 
 timer = Timer("[P] Total time consumed")
 timer.start()
@@ -244,23 +266,53 @@ while step < num_steps:
 
     # Project density and specific momentum
     t1 = Timer("[P] density projection")
-    pde_rho.assemble(True, True)
-    pde_rho.solve_problem(rhobar, rho, "mumps", "default")
+    if projection_type == 'PDE':
+        pde_rho.assemble(True, True)
+        pde_rho.solve_problem(rhobar, rho, solver, "default")
+    else:
+        lstsq_rho.project(rho, float(rho2), float(rho1))
     del(t1)
 
     t1 = Timer("[P] momentum projection")
-    pde_u.assemble(True, True)
-    pde_u.solve_problem(ustar_bar, ustar, "mumps", "default")
+    if projection_type == 'PDE':
+        pde_u.assemble(True, True)
+        pde_u.solve_problem(ustar_bar, ustar, solver, "default")
+    else:
+        lstsq_u.project(ustar)
     del(t1)
 
+    t1 = Timer("[P] Computing conservation statements, just output!")
+    #
+    total_mass = assemble(rho * dx)
+    mass_change_noflux = assemble((rho - rho0) * dx)
+    mass_change_flux = assemble((rho - rho0) * dx
+                                + dt * dot(ubar0_a, n) * rhobar * ds(98))
+
+    mx_change_noflux = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex)) * dx)
+    my_change_noflux = assemble((rho * dot(ustar, ey) - dot(rho0 * Uh.sub(0), ey)) * dx)
+    mt_change_noflux = mx_change_noflux + my_change_noflux
+
     # Check (global) momentum conservation
-    mx_change = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex))/dt * dx
-                         + dot(outer(rhobar * ustar_bar, ubar0_a) * n, ex) * ds)
-    my_change = assemble((rho * dot(ustar, ey) - dot(rho0 * Uh.sub(0), ey))/dt * dx
-                         + dot(outer(rhobar * ustar_bar, ubar0_a)*n, ey) * ds)
+    mx_change = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex)) * dx
+                         + dt * dot(outer(rhobar * ustar_bar, ubar0_a) * n, ex) * ds)
+    my_change = assemble((rho * dot(ustar, ey) - dot(rho0 * Uh.sub(0), ey)) * dx
+                         + dt * dot(outer(rhobar * ustar_bar, ubar0_a)*n, ey) * ds)
     mt_change = mx_change + my_change
+
+    # Compute Rho_min and Rho_max
+    rho_proc_0 = rho.vector().gather_on_zero()
+
     if comm.rank == 0:
-        print("Momentum change over map "+str(mt_change))
+        rho_min = np.amin(rho_proc_0)
+        rho_max = np.amax(rho_proc_0)
+
+        with open(conservation_data, "a") as write_file:
+            data = [t, total_mass, mass_change_flux, mass_change_noflux,
+                    mt_change, mt_change_noflux,
+                    rho_min, rho_max]
+            writer = csv.writer(write_file)
+            writer.writerow(['{:10.7g}'.format(val) for val in data])
+    del(t1)
 
     # Solve Stokes
     t1 = Timer("[P] Stokes assemble ")
@@ -268,19 +320,20 @@ while step < num_steps:
     del(t1)
 
     t1 = Timer("[P] Stokes solve ")
-    ssc.solve_problem(Uhbar, Uh, "mumps", "default")
+    ssc.solve_problem(Uhbar, Uh, solver, "default")
     del(t1)
 
     t1 = Timer("[P] Update mesh fields")
     # Needed for particle advection
     assign(Udiv, Uh.sub(0))
+    assign(rho0, rho)
 
     # Needed for constrained map
-    assign(rho0, rho)
-    assign(ubar0_a, Uhbar.sub(0))
-    assign(u0, ustar)
-    assign(duh00, duh0)
-    assign(duh0, project(Uh.sub(0)-ustar, W_2))
+    if projection_type == 'PDE':
+        assign(ubar0_a, Uhbar.sub(0))
+        assign(u0, ustar)
+        assign(duh00, duh0)
+        assign(duh0, project(Uh.sub(0)-ustar, W_2))
     del(t1)
 
     t1 = Timer("[P] Update particle field")
@@ -291,14 +344,17 @@ while step < num_steps:
         theta_L.assign(1.0)
 
     if step % store_step == 0:
+        t1 = Timer("[P] Storing xdmf fields, just output!")
         # Set output, also throw out particle output
-        xdmf_rho.write(rho, t)
+        xdmf_rho.write_checkpoint(rho, "rho", t, append=True)
         xdmf_u.write(Uh.sub(0), t)
         xdmf_p.write(Uh.sub(1), t)
 
         # Save particle data
         p.dump2file(mesh, fname_list, property_list, 'ab', False)
         comm.barrier()
+        del(t1)
+
 timer.stop()
 
 xdmf_u.close()
@@ -308,3 +364,6 @@ xdmf_p.close()
 time_table = timings(TimingClear.keep, [TimingType.wall])
 with open(outdir_base+"timings"+str(nx)+".log", "w") as out:
     out.write(time_table.str(True))
+
+if comm.rank == 0:
+    sht.copy2('./LockExchange.py', outdir_base)
