@@ -13,6 +13,7 @@
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/la/PETScMatrix.h>
 #include <dolfin/la/PETScVector.h>
+#include <dolfin/la/utils.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/mesh/Mesh.h>
 
@@ -65,6 +66,8 @@ void l2projection::project(function::Function& u)
   // std::array to make easier conversion to Eigen::Matrix? double
   // basis_matrix[_space_dimension][_value_size_loc];
 
+  la::VecWrapper v(u.vector().vec());
+
   // TODO: new and compact formulation. WORK IN PROGRESS!
   std::int32_t num_cells
       = _P->mesh()->num_entities(_P->mesh()->topology().dim());
@@ -102,6 +105,11 @@ void l2projection::project(function::Function& u)
                 .solve(f);
     }
 
+    for (int j = 0; j < u_i.size(); ++j)
+    {
+      v.x[celldofs[j]] = u_i[j];
+    }
+
     // Insert in vector
     // FIXME    u.vector().set_local(u_i.data(), u_i.size(), celldofs.data());
   }
@@ -137,6 +145,7 @@ void l2projection::project(function::Function& u, const double lb,
     ci0(i + _space_dimension) = ub;
   }
 
+  la::VecWrapper v(u.vector().vec());
   std::int32_t num_cells
       = _P->mesh()->num_entities(_P->mesh()->topology().dim());
   for (std::int32_t i = 0; i < num_cells; ++i)
@@ -160,6 +169,10 @@ void l2projection::project(function::Function& u, const double lb,
     Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
     quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
+
+    for (int j = 0; j < u_i.size(); ++j)
+      v.x[celldofs[j]] = u_i[j];
+
     // FIXME    u.vector().set_local(u_i.data(), u_i.size(), celldofs.data());
   }
 }
@@ -181,6 +194,7 @@ void l2projection::project_cg(const fem::Form& A, const fem::Form& f,
   // FIXME  A_g.zero();
   //  f_g.zero();
 
+  la::VecWrapper fv(f_g.vec());
   const std::int32_t num_cells
       = _P->mesh()->num_entities(_P->mesh()->topology().dim());
   for (std::int32_t i = 0; i < num_cells; ++i)
@@ -208,7 +222,10 @@ void l2projection::project_cg(const fem::Form& A, const fem::Form& f,
     // Place in matrix/vector --> Check!
     A_g.add_local(qTq.data(), celldofs.size(), celldofs.data(), celldofs.size(),
                   celldofs.data());
-    f_g.add_local(qTf.data(), celldofs.size(), celldofs.data());
+    for (int j = 0; j < celldofs.size(); ++j)
+      fv.x[celldofs[j]] += qTf[j];
+
+    // f_g.add_local(qTf.data(), celldofs.size(), celldofs.data());
   }
 
   //  A_g.apply("add");
