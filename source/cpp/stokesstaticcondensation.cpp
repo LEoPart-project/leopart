@@ -30,9 +30,12 @@ StokesStaticCondensation::StokesStaticCondensation(
     const mesh::Mesh& mesh, const fem::Form& A, const fem::Form& G,
     const fem::Form& B, const fem::Form& Q, const fem::Form& S)
     : mesh(&mesh), A(&A), B(&B), G(&G), Q(&Q), S(&S),
-      invAe_list(mesh.num_cells()), Ge_list(mesh.num_cells()),
-      Be_list(mesh.num_cells()), Qe_list(mesh.num_cells()),
-      mpi_comm(mesh.mpi_comm())
+      invAe_list(mesh.num_entities(mesh.topology().dim())),
+      Ge_list(mesh.num_entities(mesh.topology().dim())),
+      Be_list(mesh.num_entities(mesh.topology().dim())),
+      Qe_list(mesh.num_entities(mesh.topology().dim())),
+      mpi_comm(mesh.mpi_comm()),
+      f_g(*(S.function_space(0)->dofmap()->index_map()))
 {
   // Check that global problem is square, otherwise, raise error
   // TODO: Perform some checks on functionspaces
@@ -43,9 +46,9 @@ StokesStaticCondensation::StokesStaticCondensation(
   test_rank(*(this->S), 1);
 
   // Initialize matrix and vector with proper sparsity structures
-  AssemblerBase assembler_base;
-  assembler_base.init_global_tensor(A_g, *(this->B));
-  assembler_base.init_global_tensor(f_g, *(this->S));
+  //  AssemblerBase assembler_base;
+  //  assembler_base.init_global_tensor(A_g, *(this->B));
+  //  assembler_base.init_global_tensor(f_g, *(this->S));
 
   assume_symmetric = true;
 }
@@ -72,7 +75,7 @@ StokesStaticCondensation::StokesStaticCondensation(
   this->GT = &GT;
   test_rank(*(this->GT), 2);
 
-  GTe_list.resize(mesh.num_cells());
+  GTe_list.resize(mesh.num_entities(mesh.topology().dim()));
   // Set assume_symmetric to false
   assume_symmetric = false;
 }
@@ -122,8 +125,8 @@ void StokesStaticCondensation::assemble_global_lhs()
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
         invA_e = A_e.inverse();
 
-    Ge_list[cell->index()] = G_e;
-    invAe_list[cell->index()] = invA_e;
+    Ge_list[cell.index()] = G_e;
+    invAe_list[cell.index()] = invA_e;
 
     if (assume_symmetric)
     {
@@ -142,13 +145,13 @@ void StokesStaticCondensation::assemble_global_lhs()
       LHS_e = GT_e * invA_e * G_e - B_e;
 
       // And store for later use
-      GTe_list[cell->index()] = GT_e;
+      GTe_list[cell.index()] = GT_e;
     }
 
     auto cdof_rowsB
-        = this->B->function_space(0)->dofmap()->cell_dofs(cell->index());
+        = this->B->function_space(0)->dofmap()->cell_dofs(cell.index());
     auto cdof_colsB
-        = this->B->function_space(1)->dofmap()->cell_dofs(cell->index());
+        = this->B->function_space(1)->dofmap()->cell_dofs(cell.index());
 
     A_g.add_local(LHS_e.data(), nrowsB, cdof_rowsB.data(), ncolsB,
                   cdof_colsB.data());
@@ -237,7 +240,7 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
   {
     // NOTE, You do not need nrowsS, ncolsS -- coincide with B,
     // check in constructor
-    std::size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
+    int nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
 
     std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), cell);
     std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), cell);
@@ -327,9 +330,7 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
     Qe_list[cell.index()] = Q_e;
   }
   A_g.apply();
-  f_g.apply();
 }
-
 //-----------------------------------------------------------------------------
 void StokesStaticCondensation::solve_problem(function::Function& Uglobal,
                                              function::Function& Ulocal,
@@ -355,13 +356,13 @@ void StokesStaticCondensation::solve_problem(function::Function& Uglobal,
   // Backsubtitution in Ulocal
   backsubtitute(Uglobal, Ulocal);
 }
-
+//-----------------------------------------------------------------------------
 void StokesStaticCondensation::apply_boundary(fem::DirichletBC& DBC)
 {
   DBC.apply(A_g, f_g);
-  if (MPI::size(mpi_comm) == 1)
-    std::cout << "Matrix symmetry after apply_boundary? "
-              << A_g.is_symmetric(1E-6) << std::endl;
+  //  if (MPI::size(mpi_comm) == 1)
+  //    std::cout << "Matrix symmetry after apply_boundary? "
+  //              << A_g.is_symmetric(1E-6) << std::endl;
 }
 //-----------------------------------------------------------------------------
 void StokesStaticCondensation::backsubtitute(const function::Function& Uglobal,
