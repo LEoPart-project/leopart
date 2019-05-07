@@ -42,7 +42,8 @@ protected:
 
   std::shared_ptr<const fem::FiniteElement> _element;
   std::shared_ptr<const fem::GenericDofMap> _dofmap;
-  std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
+  int _num_subspaces, _space_dimension;
+  int _num_dof_locs, _value_size_loc;
 
   // Workaround to access tuple elements
   // FIXME: what happens if we make this a constant?

@@ -9,6 +9,7 @@
 #include <dolfin/geometry/BoundingBoxTree.h>
 #include <dolfin/mesh/Facet.h>
 #include <dolfin/mesh/MeshFunction.h>
+#include <dolfin/mesh/MeshIterator.h>
 #include <dolfin/mesh/Vertex.h>
 
 #include "advect_particles.h"
@@ -59,9 +60,9 @@ advect_particles::advect_particles(
     // TODO: do provided values make sense?
     if ((pbc_limits.size() % (gdim * 4)) != 0)
     {
-      dolfin_error("advect_particles.cpp::advect_particles",
-                   "construct periodic boundary information",
-                   "Incorrect shape of pbc_limits provided?");
+      throw std::runtime_error("advect_particles.cpp::advect_particles"
+                               "construct periodic boundary information"
+                               "Incorrect shape of pbc_limits provided?");
     }
 
     std::size_t num_rows = pbc_limits.size() / (gdim * 2);
@@ -77,24 +78,24 @@ advect_particles::advect_particles(
   }
   else
   {
-    dolfin_error("advect_particles.cpp::advect_particles",
-                 "could not set pbc_lims",
-                 "Did you provide limits for a non-periodic BC?");
+    throw std::runtime_error("advect_particles.cpp::advect_particles"
+                             "could not set pbc_lims"
+                             "Did you provide limits for a non-periodic BC?");
   }
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(
     particles& P, function::FunctionSpace& U, function::Function& uhi,
-    const Meshfunction::Function<std::size_t>& mesh_func)
+    const mesh::MeshFunction<std::size_t>& mesh_func)
     : _P(&P), uh(&uhi), _element(U.element())
 {
   // Confirm that mesh_func contains no periodic boundary values (3)
   if (std::find(mesh_func.values(), mesh_func.values() + mesh_func.size(), 3)
       != mesh_func.values() + mesh_func.size())
-    dolfin_error(
-        "advect_particles.cpp::advect_particles",
-        "construct advect_particles class",
-        "Periodic boundary value encountered in facet Meshfunction::Function");
+    throw std::runtime_error(
+        "advect_particles.cpp::advect_particles"
+        "construct advect_particles class"
+        "Periodic boundary value encountered in facet MeshFunction");
 
   // Set facet info
   update_facets_info();
@@ -111,7 +112,7 @@ advect_particles::advect_particles(
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(
     particles& P, function::FunctionSpace& U, function::Function& uhi,
-    const Meshfunction::Function<std::size_t>& mesh_func,
+    const mesh::MeshFunction<std::size_t>& mesh_func,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : _P(&P), uh(&uhi), _element(U.element())
 {
@@ -130,9 +131,9 @@ advect_particles::advect_particles(
   // TODO: do provided values make sense?
   if ((pbc_limits.size() % (gdim * 4)) != 0)
   {
-    dolfin_error("advect_particles.cpp::advect_particles",
-                 "construct periodic boundary information",
-                 "Incorrect shape of pbc_limits provided?");
+    throw std::runtime_error("advect_particles.cpp::advect_particles"
+                             "construct periodic boundary information"
+                             "Incorrect shape of pbc_limits provided?");
   }
 
   std::size_t num_rows = pbc_limits.size() / (gdim * 2);
@@ -159,27 +160,29 @@ void advect_particles::update_facets_info()
   // Note that in DOLFIN simplicial cells, Facet f_i is opposite Vertex v_i,
   // etc.
 
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   std::size_t tdim = mesh->topology().dim();
   const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
   // Information for each facet of the mesh
   facets_info.resize(mesh->num_entities(tdim - 1));
 
-  for (int fidx = 0; fidx < facet_info.size(); ++fidx)
+  for (auto& fi : mesh::MeshRange<mesh::Facet>(*mesh))
   {
-    mesh::Facet fi(*mesh, fidx);
     // Get and store facet normal and facet midpoint
-    geometry::Point facet_n = fi->normal();
-    geometry::Point facet_mp = fi->midpoint();
+    int fidx = fi.index();
+
+    geometry::Point facet_n = fi.normal();
+    geometry::Point facet_mp = fi.midpoint();
     std::vector<bool> outward_normal;
 
     // FIXME: could just look at first cell only, simplifies code
 
-    int num_facet_cells = fi.num_entities(tdim);
-    for (int i = 0; i < num_facet_cells; ++i)
+    // int num_facet_cells = fi.num_entities(tdim);
+    int i = 0;
+    for (auto& ci : mesh::EntityRange<mesh::Cell>(fi))
     {
-      const unsigned int* cell_facets = ci->entities(tdim - 1);
+      const std::int32_t* cell_facets = ci.entities(tdim - 1);
 
       // Find which facet this is in the cell
       const std::size_t local_index
@@ -188,7 +191,7 @@ void advect_particles::update_facets_info()
       assert(local_index < num_cell_facets);
 
       // Get cell vertex opposite facet
-      Vertex v(*mesh, ci->entities(0)[local_index]);
+      mesh::Vertex v(*mesh, ci.entities(0)[local_index]);
 
       // Take vector from facet midpoint to opposite vertex
       // and compare to facet normal.
@@ -215,9 +218,9 @@ void advect_particles::update_facets_info()
     {
       if (outward_normal[0] == outward_normal[1])
       {
-        dolfin_error(
-            "advect_particles.cpp::update_facets_info",
-            "get correct facet normal direction",
+        throw std::runtime_error(
+            "advect_particles.cpp::update_facets_info"
+            "get correct facet normal direction"
             "The normal cannot be of same direction for neighboring cells");
       }
     }
@@ -241,56 +244,59 @@ void advect_particles::set_bfacets(std::string btype)
     external_facet_type = facet_t::periodic;
   else
   {
-    dolfin_error("advect_particles.cpp", "set external facet type",
-                 "Invalid value: %s", btype.c_str());
+    throw std::runtime_error("advect_particles.cpp"
+                             "set external facet type"
+                             "Invalid value: "
+                             + btype);
   }
 
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const std::size_t tdim = mesh->topology().dim();
-  for (FacetIterator fi(*mesh); !fi.end(); ++fi)
+  for (const auto& fi : mesh::MeshRange<mesh::Facet>(*mesh))
   {
-    if (fi->num_global_entities(tdim) == 1)
-      facets_info[fi->index()].type = external_facet_type;
+    if (fi.num_global_entities(tdim) == 1)
+      facets_info[fi.index()].type = external_facet_type;
     else
-      facets_info[fi->index()].type = facet_t::internal;
+      facets_info[fi.index()].type = facet_t::internal;
   }
 }
 //-----------------------------------------------------------------------------
 void advect_particles::set_bfacets(
-    const Meshfunction::Function<std::size_t>& mesh_func)
+    const mesh::MeshFunction<std::size_t>& mesh_func)
 {
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const std::size_t tdim = mesh->topology().dim();
 
   // Check if size matches number of facets in mesh
-  assert(mesh_func.size() == mesh->num_facets());
+  assert((std::int32_t)mesh_func.size() == mesh->num_entities(tdim - 1));
 
   // Loop over facets to determine type
-  for (FacetIterator fi(*mesh); !fi.end(); ++fi)
+  for (const auto& fi : mesh::MeshRange<mesh::Facet>(*mesh))
   {
-    if (fi->num_global_entities(tdim) == 1)
+    if (fi.num_global_entities(tdim) == 1)
     {
-      if (mesh_func[fi->index()] == 1)
-        facets_info[fi->index()].type = facet_t::closed;
-      else if (mesh_func[fi->index()] == 2)
-        facets_info[fi->index()].type = facet_t::open;
-      else if (mesh_func[fi->index()] == 3)
-        facets_info[fi->index()].type = facet_t::periodic;
+      if (mesh_func[fi.index()] == 1)
+        facets_info[fi.index()].type = facet_t::closed;
+      else if (mesh_func[fi.index()] == 2)
+        facets_info[fi.index()].type = facet_t::open;
+      else if (mesh_func[fi.index()] == 3)
+        facets_info[fi.index()].type = facet_t::periodic;
       else
-        dolfin_error("advect_particles.cpp", "set external facet type",
-                     "Invalid value, must be 1, 2, or 3");
+        throw std::runtime_error("advect_particles.cpp"
+                                 "set external facet type"
+                                 "Invalid value, must be 1, 2, or 3");
     }
     else
     {
-      assert(mesh_func[fi->index()] == 0);
-      facets_info[fi->index()].type = facet_t::internal;
+      assert(mesh_func[fi.index()] == 0);
+      facets_info[fi.index()].type = facet_t::internal;
     }
   }
 }
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
 {
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const MPI_Comm mpi_comm = mesh->mpi_comm();
   const std::size_t gdim = mesh->geometry().dim();
   const std::size_t tdim = mesh->topology().dim();
@@ -298,22 +304,22 @@ void advect_particles::do_step(double dt)
   std::size_t num_processes = MPI::size(mpi_comm);
 
   // Needed for local reloc
-  std::vector<std::array<std::size_t, 3>> reloc;
+  std::vector<std::array<std::int32_t, 3>> reloc;
 
-  for (CellIterator ci(*mesh); !ci.end(); ++ci)
+  for (auto& ci : mesh::MeshRange<mesh::Cell>(*mesh))
   {
     std::vector<double> coeffs;
     // Restrict once per cell, once per timestep
-    Utils::return_expansion_coeffs(coeffs, *ci, uh);
+    Utils::return_expansion_coeffs(coeffs, ci, uh);
 
     // Loop over particles in cell
-    for (unsigned int i = 0; i < _P->num_cell_particles(ci->index()); i++)
+    for (int i = 0; i < _P->num_cell_particles(ci.index()); i++)
     {
       // FIXME: It might be better to use 'pointer iterator here' as we need to
       // erase from cell2part vector now we decrement iterator int when needed
 
       Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
-      Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
+      Utils::return_basis_matrix(basis_mat.data(), _P->x(ci.index(), i), ci,
                                  _element);
 
       // Compute value at point using expansion coeffs and basis matrix, first
@@ -324,38 +330,38 @@ void advect_particles::do_step(double dt)
       // Convert velocity to point
       geometry::Point up(gdim, u_p.data());
 
-      std::size_t cidx_recv = ci->index();
+      std::int32_t cidx_recv = ci.index();
       double dt_rem = dt;
 
       while (dt_rem > 1E-15)
       {
         // Returns facet which is intersected and the time it takes to do so
         std::tuple<std::size_t, double> intersect_info
-            = time2intersect(cidx_recv, dt_rem, _P->x(ci->index(), i), up);
+            = time2intersect(cidx_recv, dt_rem, _P->x(ci.index(), i), up);
         const std::size_t target_facet = std::get<0>(intersect_info);
         const double dt_int = std::get<1>(intersect_info);
 
         if (target_facet == std::numeric_limits<unsigned int>::max())
         {
           // Then remain within cell, finish time step
-          _P->push_particle(dt_rem, up, ci->index(), i);
+          _P->push_particle(dt_rem, up, ci.index(), i);
           dt_rem = 0.0;
           // TODO: if step == last tstep: update particle position old to most
-          // recent value If cidx_recv != ci->index(), particles crossed facet
+          // recent value If cidx_recv != ci.index(), particles crossed facet
           // and hence need to be relocated
-          if (cidx_recv != ci->index())
-            reloc.push_back({ci->index(), i, cidx_recv});
+          if (cidx_recv != ci.index())
+            reloc.push_back({ci.index(), i, cidx_recv});
         }
         else
         {
-          const Facet f(*mesh, target_facet);
-          const unsigned int* facet_cells = f.entities(tdim);
+          const mesh::Facet f(*mesh, target_facet);
+          const std::int32_t* facet_cells = f.entities(tdim);
 
           // Two options: if internal (==2) else if boundary
           if (f.num_entities(tdim) == 2)
           {
             // Then we cross facet which has a neighboring cell
-            _P->push_particle(dt_int, up, ci->index(), i);
+            _P->push_particle(dt_int, up, ci.index(), i);
 
             cidx_recv = (facet_cells[0] == cidx_recv) ? facet_cells[1]
                                                       : facet_cells[0];
@@ -366,8 +372,8 @@ void advect_particles::do_step(double dt)
             {
               // Then terminate
               dt_rem = 0.0;
-              if (cidx_recv != ci->index())
-                reloc.push_back({ci->index(), i, cidx_recv});
+              if (cidx_recv != ci.index())
+                reloc.push_back({ci.index(), i, cidx_recv});
             }
           }
           else if (f.num_entities(tdim) == 1)
@@ -379,11 +385,11 @@ void advect_particles::do_step(double dt)
               assert(ftype == facet_t::internal);
               // Then it is an internal boundary
               // Do a full push
-              _P->push_particle(dt_rem, up, ci->index(), i);
+              _P->push_particle(dt_rem, up, ci.index(), i);
               dt_rem *= 0.;
 
               if (pbc_active)
-                pbc_limits_violation(ci->index(),
+                pbc_limits_violation(ci.index(),
                                      i); // Check on sequence crossing internal
                                          // bc -> crossing periodic bc
               // TODO: do same for closed bcs to handle (unlikely event):
@@ -391,7 +397,7 @@ void advect_particles::do_step(double dt)
 
               // Go to the particle communicator
               reloc.push_back(
-                  {ci->index(), i, std::numeric_limits<unsigned int>::max()});
+                  {ci.index(), i, std::numeric_limits<std::int32_t>::max()});
             }
             else if (ftype == facet_t::open)
             {
@@ -402,49 +408,50 @@ void advect_particles::do_step(double dt)
               //
               // Issue 12 Work around: do a full push to make sure that
               // particle is pushed outside domain
-              _P->push_particle(dt_rem, up, ci->index(), i);
+              _P->push_particle(dt_rem, up, ci.index(), i);
 
               // Then push back to relocate
               reloc.push_back(
-                  {ci->index(), i, std::numeric_limits<unsigned int>::max()});
+                  {ci.index(), i, std::numeric_limits<std::int32_t>::max()});
               dt_rem = 0.0;
             }
             else if (ftype == facet_t::closed)
             {
               // Closed BC
-              apply_closed_bc(dt_int, up, ci->index(), i, target_facet);
+              apply_closed_bc(dt_int, up, ci.index(), i, target_facet);
               dt_rem -= dt_int;
             }
             else if (ftype == facet_t::periodic)
             {
               // Then periodic bc
-              apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
+              apply_periodic_bc(dt_rem, up, ci.index(), i, target_facet);
               if (num_processes > 1) // Behavior in parallel
                 reloc.push_back(
-                    {ci->index(), i, std::numeric_limits<unsigned int>::max()});
+                    {ci.index(), i, std::numeric_limits<std::int32_t>::max()});
               else
               {
                 // Behavior in serial
-                std::size_t cell_id = _P->mesh()
-                                          ->bounding_box_tree()
-                                          ->compute_first_entity_collision(
-                                              _P->x(ci->index(), i));
-                reloc.push_back({ci->index(), i, cell_id});
+                std::int32_t cell_id
+                    = _P->bounding_box_tree()->compute_first_entity_collision(
+                        _P->x(ci.index(), i), *mesh);
+                reloc.push_back({ci.index(), i, cell_id});
               }
               dt_rem = 0.0;
             }
             else
             {
-              dolfin_error("advect_particles.cpp::do_step",
-                           "encountered unknown boundary",
-                           "Only internal boundaries implemented yet");
+              throw std::runtime_error(
+                  "advect_particles.cpp::do_step"
+                  "encountered unknown boundary"
+                  "Only internal boundaries implemented yet");
             }
           }
           else
           {
-            dolfin_error("advect_particles.cpp::do_step",
-                         "found incorrect number of facets (<1 or > 2)",
-                         "Unknown");
+            throw std::runtime_error(
+                "advect_particles.cpp::do_step"
+                "found incorrect number of facets (<1 or > 2)"
+                "Unknown");
           }
         } // end else
       }   // end while
@@ -456,21 +463,21 @@ void advect_particles::do_step(double dt)
 }
 //-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>
-advect_particles::time2intersect(std::size_t cidx, double dt,
+advect_particles::time2intersect(std::int32_t cidx, double dt,
                                  const geometry::Point xp,
                                  const geometry::Point up)
 {
   // Time to facet intersection
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const std::size_t tdim = mesh->topology().dim();
   double dt_int = std::numeric_limits<double>::max();
-  std::size_t target_facet = std::numeric_limits<unsigned int>::max();
+  std::size_t target_facet = std::numeric_limits<std::int32_t>::max();
 
-  Cell c(*mesh, cidx);
+  mesh::Cell c(*mesh, cidx);
   for (unsigned int i = 0; i < c.num_entities(tdim - 1); ++i)
   {
     std::size_t fidx = c.entities(tdim - 1)[i];
-    Facet f(*mesh, fidx);
+    mesh::Facet f(*mesh, fidx);
 
     geometry::Point normal = facets_info[fidx].normal;
 
@@ -481,7 +488,7 @@ advect_particles::time2intersect(std::size_t cidx, double dt,
 
     // Compute distance to point. For procedure, see Haworth (2010). Though it
     // is slightly modified
-    double h = f.distance(xp);
+    double h = 0; // f.distance(xp);
 
     // double dtintd = std::max(0., h / (up.dot(normal)) ); //See Haworth
     double denom = up.dot(normal);
@@ -507,24 +514,24 @@ advect_particles::time2intersect(std::size_t cidx, double dt,
   return intersect_info;
 }
 //-----------------------------------------------------------------------------
-void advect_particles::apply_open_bc(std::size_t cidx, std::size_t pidx)
+void advect_particles::apply_open_bc(std::int32_t cidx, std::size_t pidx)
 {
   _P->delete_particle(cidx, pidx);
 }
 //-----------------------------------------------------------------------------
 void advect_particles::apply_closed_bc(double dt, geometry::Point& up,
-                                       std::size_t cidx, std::size_t pidx,
+                                       std::int32_t cidx, std::size_t pidx,
                                        std::size_t fidx)
 {
   // First push particle
   _P->push_particle(dt, up, cidx, pidx);
   // Mirror velocity
   geometry::Point normal = facets_info[fidx].normal;
-  up -= 2 * (up.dot(normal)) * normal;
+  up -= normal * up.dot(normal) * 2.0;
 }
 //-----------------------------------------------------------------------------
 void advect_particles::apply_periodic_bc(double dt, geometry::Point& up,
-                                         std::size_t cidx, std::size_t pidx,
+                                         std::int32_t cidx, std::size_t pidx,
                                          std::size_t fidx)
 {
   const std::size_t gdim = _P->mesh()->geometry().dim();
@@ -565,8 +572,9 @@ void advect_particles::apply_periodic_bc(double dt, geometry::Point& up,
 break_me:
   // Throw an error if rowmatch not set at this point
   if (row_match == std::numeric_limits<unsigned int>::max())
-    dolfin_error("advect_particles.cpp::apply_periodic_bc",
-                 "find matching periodic boundary info", "Unknown");
+    throw std::runtime_error("advect_particles.cpp::apply_periodic_bc"
+                             "find matching periodic boundary info"
+                             "Unknown");
   // Column and matchin column come in pairs
   if (row_match % 2 == 0)
   {
@@ -606,7 +614,7 @@ break_me:
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
+void advect_particles::pbc_limits_violation(std::int32_t cidx, std::size_t pidx)
 {
   // This method guarantees that particles can cross internal bc -> periodic bc
   // in one time step without being deleted.
@@ -674,19 +682,18 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
 }
 //-----------------------------------------------------------------------------
 void advect_particles::do_substep(
-    double dt, geometry::Point& up, const std::size_t cidx, std::size_t pidx,
-    const std::size_t step, const std::size_t num_steps,
-    const std::size_t xp0_idx, const std::size_t up0_idx,
-    std::vector<std::array<std::size_t, 3>>& reloc)
+    double dt, geometry::Point& up, std::int32_t cidx, std::int32_t pidx,
+    std::size_t step, std::size_t num_steps, std::size_t xp0_idx,
+    std::size_t up0_idx, std::vector<std::array<std::int32_t, 3>>& reloc)
 {
   double dt_rem = dt;
 
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const std::size_t mpi_size = MPI::size(mesh->mpi_comm());
   const std::size_t gdim = mesh->geometry().dim();
   const std::size_t tdim = mesh->topology().dim();
 
-  std::size_t cidx_recv = std::numeric_limits<unsigned int>::max();
+  std::int32_t cidx_recv = std::numeric_limits<std::int32_t>::max();
 
   if (step == 0)
     cidx_recv = cidx;
@@ -697,8 +704,8 @@ void advect_particles::do_substep(
     // same as the cell where the particle lives newest position is always
     // carried
     // TODO: Can we think of smarter implementation?
-    cidx_recv = mesh->bounding_box_tree()->compute_first_entity_collision(
-        _P->x(cidx, pidx));
+    cidx_recv = _P->bounding_box_tree()->compute_first_entity_collision(
+        _P->x(cidx, pidx), *mesh);
 
     // One alternative might be:
     // Cell cell(*(_P->_mesh), cidx);
@@ -708,7 +715,7 @@ void advect_particles::do_substep(
 
     // FIXME: this approach is robust for the internal points multistep schemes,
     // but what about multistage schemes and near closed/periodic bc's?
-    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+    if (cidx_recv == std::numeric_limits<std::int32_t>::max())
     {
       _P->push_particle(dt_rem, up, cidx, pidx);
       if (pbc_active)
@@ -721,7 +728,7 @@ void advect_particles::do_substep(
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
       }
       // Apparently, this always lead to a communicate, but why?
-      reloc.push_back({cidx, pidx, std::numeric_limits<unsigned int>::max()});
+      reloc.push_back({cidx, pidx, std::numeric_limits<std::int32_t>::max()});
       return; // Stop right here
     }
   }
@@ -745,15 +752,15 @@ void advect_particles::do_substep(
         // Copy current position to old position
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
-      // If cidx_recv != ci->index(), particles crossed facet and hence need to
+      // If cidx_recv != ci.index(), particles crossed facet and hence need to
       // be relocated
       if (cidx_recv != cidx)
         reloc.push_back({cidx, pidx, cidx_recv});
     }
     else
     {
-      Facet f(*mesh, target_facet);
-      const unsigned int* fcells = f.entities(tdim);
+      mesh::Facet f(*mesh, target_facet);
+      const std::int32_t* fcells = f.entities(tdim);
 
       // Two options: if internal (==2) else if boundary
       if (f.num_entities(tdim) == 2)
@@ -797,7 +804,7 @@ void advect_particles::do_substep(
             _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
 
           reloc.push_back(
-              {cidx, pidx, std::numeric_limits<unsigned int>::max()});
+              {cidx, pidx, std::numeric_limits<std::int32_t>::max()});
 
           return; // Stop right here
         }
@@ -812,7 +819,7 @@ void advect_particles::do_substep(
 
           // Then push back to relocate
           reloc.push_back(
-              {cidx, pidx, std::numeric_limits<unsigned int>::max()});
+              {cidx, pidx, std::numeric_limits<std::int32_t>::max()});
           dt_rem = 0.0;
         }
         else if (ftype == facet_t::closed)
@@ -847,15 +854,15 @@ void advect_particles::do_substep(
           if (mpi_size > 1)
           {
             reloc.push_back(
-                {cidx, pidx, std::numeric_limits<unsigned int>::max()});
+                {cidx, pidx, std::numeric_limits<std::int32_t>::max()});
           }
           else
           {
             // Behavior in serial
             // TODO: call particle locate
-            std::size_t cell_id
-                = mesh->bounding_box_tree()->compute_first_entity_collision(
-                    _P->x(cidx, pidx));
+            std::int32_t cell_id
+                = _P->bounding_box_tree()->compute_first_entity_collision(
+                    _P->x(cidx, pidx), *mesh);
 
             reloc.push_back({cidx, pidx, cell_id});
           }
@@ -864,15 +871,16 @@ void advect_particles::do_substep(
         }
         else
         {
-          dolfin_error("advect_particles.cpp::do_step",
-                       "encountered unknown boundary",
-                       "Only internal boundaries implemented yet");
+          throw std::runtime_error("advect_particles.cpp::do_step"
+                                   "encountered unknown boundary"
+                                   "Only internal boundaries implemented yet");
         }
       }
       else
       {
-        dolfin_error("advect_particles.cpp::do_step",
-                     "found incorrect number of facets (<1 or > 2)", "Unknown");
+        throw std::runtime_error("advect_particles.cpp::do_step"
+                                 "found incorrect number of facets (<1 or > 2)"
+                                 "Unknown");
       }
     }
   } // end_while
@@ -906,7 +914,7 @@ advect_rk2::advect_rk2(
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(particles& P, function::FunctionSpace& U,
                        function::Function& uhi,
-                       const Meshfunction::Function<std::size_t>& mesh_func)
+                       const mesh::MeshFunction<std::size_t>& mesh_func)
     : advect_particles(P, U, uhi, mesh_func)
 
 {
@@ -916,7 +924,7 @@ advect_rk2::advect_rk2(particles& P, function::FunctionSpace& U,
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(
     particles& P, function::FunctionSpace& U, function::Function& uhi,
-    const Meshfunction::Function<std::size_t>& mesh_func,
+    const mesh::MeshFunction<std::size_t>& mesh_func,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
 
@@ -928,62 +936,64 @@ advect_rk2::advect_rk2(
 void advect_rk2::do_step(double dt)
 {
   if (dt <= 0.)
-    dolfin_error("advect_particles.cpp::step", "set timestep.",
-                 "Timestep should be > 0.");
+    throw std::runtime_error("advect_particles.cpp::step"
+                             "set timestep."
+                             "Timestep should be > 0.");
 
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   std::size_t gdim = mesh->geometry().dim();
+  std::size_t tdim = mesh->topology().dim();
 
-  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
+  std::vector<std::vector<double>> coeffs_storage(mesh->num_entities(tdim));
   std::size_t num_substeps = 2;
 
   for (std::size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::array<std::size_t, 3>> reloc;
+    std::vector<std::array<std::int32_t, 3>> reloc;
 
-    for (CellIterator ci(*mesh); !ci.end(); ++ci)
+    for (auto& ci : mesh::MeshRange<mesh::Cell>(*mesh))
     {
       if (step == 0)
       { // Restrict once per cell, once per timestep
         std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, uh);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
+        Utils::return_expansion_coeffs(coeffs, ci, uh);
+        coeffs_storage[ci.index()].insert(coeffs_storage[ci.index()].end(),
+                                          coeffs.begin(), coeffs.end());
       }
 
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      for (int i = 0; i < _P->num_cell_particles(ci.index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
-        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci.index(), i), ci,
                                    _element);
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs_storage[ci.index()].data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         geometry::Point up(gdim, u_p.data());
         if (step == 0)
-          _P->set_property(ci->index(), i, up0_idx, up);
+          _P->set_property(ci.index(), i, up0_idx, up);
         else
         {
           // Goto next particle, this particle hitted closed bound
-          if (_P->property(ci->index(), i, up0_idx)[0]
+          if (_P->property(ci.index(), i, up0_idx)[0]
               == std::numeric_limits<double>::max())
             continue;
-          up += _P->property(ci->index(), i, up0_idx);
+          up += _P->property(ci.index(), i, up0_idx);
           up *= 0.5;
         }
 
         // Reset position to old
         if (step == 1)
-          _P->set_property(ci->index(), i, 0,
-                           _P->property(ci->index(), i, xp0_idx));
+          _P->set_property(ci.index(), i, 0,
+                           _P->property(ci.index(), i, xp0_idx));
 
         // Do substep
-        do_substep(dt, up, ci->index(), i, step, num_substeps, xp0_idx, up0_idx,
+        do_substep(dt, up, ci.index(), i, step, num_substeps, xp0_idx, up0_idx,
                    reloc);
       }
     }
@@ -1043,73 +1053,75 @@ advect_rk3::advect_rk3(
 void advect_rk3::do_step(double dt)
 {
   if (dt < 0.)
-    dolfin_error("advect_particles.cpp::step", "set timestep.",
-                 "Timestep should be > 0.");
+    throw std::runtime_error("advect_particles.cpp::step"
+                             "set timestep."
+                             "Timestep should be > 0.");
 
-  const Mesh* mesh = _P->mesh();
+  const mesh::Mesh* mesh = _P->mesh();
   const std::size_t gdim = mesh->geometry().dim();
-  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
+  const std::size_t tdim = mesh->topology().dim();
+  std::vector<std::vector<double>> coeffs_storage(mesh->num_entities(tdim));
   std::size_t num_substeps = 3;
 
   for (std::size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::array<std::size_t, 3>> reloc;
+    std::vector<std::array<std::int32_t, 3>> reloc;
 
-    for (CellIterator ci(*mesh); !ci.end(); ++ci)
+    for (auto& ci : mesh::MeshRange<mesh::Cell>(*mesh))
     {
       if (step == 0)
       { // Restrict once per cell, once per timestep
         std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, uh);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
+        Utils::return_expansion_coeffs(coeffs, ci, uh);
+        coeffs_storage[ci.index()].insert(coeffs_storage[ci.index()].end(),
+                                          coeffs.begin(), coeffs.end());
       }
 
       // Loop over particles
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      for (int i = 0; i < _P->num_cell_particles(ci.index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
-        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci.index(), i), ci,
                                    _element);
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs_storage[ci.index()].data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         geometry::Point up(gdim, u_p.data());
 
         // Then reset position to the old position
-        _P->set_property(ci->index(), i, 0,
-                         _P->property(ci->index(), i, xp0_idx));
+        _P->set_property(ci.index(), i, 0,
+                         _P->property(ci.index(), i, xp0_idx));
 
         if (step == 0)
-          _P->set_property(ci->index(), i, up0_idx, up * (weights[step]));
+          _P->set_property(ci.index(), i, up0_idx, up * (weights[step]));
         else if (step == 1)
         {
-          geometry::Point p = _P->property(ci->index(), i, up0_idx);
+          geometry::Point p = _P->property(ci.index(), i, up0_idx);
           if (p[0] == std::numeric_limits<double>::max())
             continue;
-          _P->set_property(ci->index(), i, up0_idx, p + up * (weights[step]));
+          _P->set_property(ci.index(), i, up0_idx, p + up * (weights[step]));
         }
         else if (step == 2)
         {
-          geometry::Point p = _P->property(ci->index(), i, up0_idx);
+          geometry::Point p = _P->property(ci.index(), i, up0_idx);
           if (p[0] == std::numeric_limits<double>::max())
             continue;
           up *= weights[step];
-          up += _P->property(ci->index(), i, up0_idx);
+          up += _P->property(ci.index(), i, up0_idx);
         }
 
         // Reset position to old
         if (step == 1)
-          _P->set_property(ci->index(), i, 0,
-                           _P->property(ci->index(), i, xp0_idx));
+          _P->set_property(ci.index(), i, 0,
+                           _P->property(ci.index(), i, xp0_idx));
 
         // Do substep
-        do_substep(dt * dti[step], up, ci->index(), i, step, num_substeps,
+        do_substep(dt * dti[step], up, ci.index(), i, step, num_substeps,
                    xp0_idx, up0_idx, reloc);
       }
     }

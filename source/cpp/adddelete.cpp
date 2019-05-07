@@ -7,7 +7,6 @@
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/geometry/Point.h>
-#include <dolfin/math/basic.h>
 #include <dolfin/mesh/Cell.h>
 
 #include "adddelete.h"

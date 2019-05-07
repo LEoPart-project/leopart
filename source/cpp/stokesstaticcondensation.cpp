@@ -6,28 +6,29 @@
 
 #include <memory>
 
-#include <dolfin/fem/Assembler.h>
-#include <dolfin/fem/AssemblerBase.h>
+// #include <dolfin/fem/Assembler.h>
+// #include <dolfin/fem/AssemblerBase.h>
 #include <dolfin/fem/DirichletBC.h>
 #include <dolfin/fem/Form.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
-#include <dolfin/la/solve.h>
+#include <dolfin/la/PETScMatrix.h>
+#include <dolfin/la/PETScVector.h>
+#include <dolfin/la/utils.h>
+// #include <dolfin/la/solve.h>
 #include <dolfin/mesh/Cell.h>
 #include <dolfin/mesh/Mesh.h>
+#include <dolfin/mesh/MeshIterator.h>
 
 #include "formutils.h"
 #include "stokesstaticcondensation.h"
 
 using namespace dolfin;
 
-StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
-                                                   const Form& A, const Form& G,
-                                                   const Form& B, const Form& Q,
-                                                   const Form& S)
+StokesStaticCondensation::StokesStaticCondensation(
+    const mesh::Mesh& mesh, const fem::Form& A, const fem::Form& G,
+    const fem::Form& B, const fem::Form& Q, const fem::Form& S)
     : mesh(&mesh), A(&A), B(&B), G(&G), Q(&Q), S(&S),
       invAe_list(mesh.num_cells()), Ge_list(mesh.num_cells()),
       Be_list(mesh.num_cells()), Qe_list(mesh.num_cells()),
@@ -50,9 +51,9 @@ StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
 }
 //-----------------------------------------------------------------------------
 StokesStaticCondensation::StokesStaticCondensation(
-    const Mesh& mesh, const Form& A, const Form& G, const Form& B,
-    const Form& Q, const Form& S,
-    std::vector<std::shared_ptr<const DirichletBC>> bcs)
+    const mesh::Mesh& mesh, const fem::Form& A, const fem::Form& G,
+    const fem::Form& B, const fem::Form& Q, const fem::Form& S,
+    std::vector<std::shared_ptr<const fem::DirichletBC>> bcs)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, B, Q, S)
 {
   this->bcs = bcs;
@@ -62,11 +63,10 @@ StokesStaticCondensation::StokesStaticCondensation(
   // TODO: Check that B is square, rectangular not yet implemented
 }
 //-----------------------------------------------------------------------------
-StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
-                                                   const Form& A, const Form& G,
-                                                   const Form& GT,
-                                                   const Form& B, const Form& Q,
-                                                   const Form& S)
+StokesStaticCondensation::StokesStaticCondensation(
+    const mesh::Mesh& mesh, const fem::Form& A, const fem::Form& G,
+    const fem::Form& GT, const fem::Form& B, const fem::Form& Q,
+    const fem::Form& S)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, B, Q, S)
 {
   this->GT = &GT;
@@ -78,9 +78,10 @@ StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
 }
 //-----------------------------------------------------------------------------
 StokesStaticCondensation::StokesStaticCondensation(
-    const Mesh& mesh, const Form& A, const Form& G, const Form& GT,
-    const Form& B, const Form& Q, const Form& S,
-    std::vector<std::shared_ptr<const DirichletBC>> bcs)
+    const mesh::Mesh& mesh, const fem::Form& A, const fem::Form& G,
+    const fem::Form& GT, const fem::Form& B, const fem::Form& Q,
+    const fem::Form& S,
+    std::vector<std::shared_ptr<const fem::DirichletBC>> bcs)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, GT, B, Q,
                                                          S)
 {
@@ -100,21 +101,21 @@ void StokesStaticCondensation::assemble_global_lhs()
   // Reset matrix to zero, keep sparsity structure
   A_g.zero();
   // For each cell: G_e.T.dot(A_e.inv).dot(G_e) - B_e
-  for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
+  for (auto& cell : mesh::MeshRange<mesh::Cell>(*mesh))
   {
     std::size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
 
-    std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), *cell);
-    std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), *cell);
-    std::tie(nrowsG, ncolsG) = FormUtils::local_tensor_size(*(this->G), *cell);
+    std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), cell);
+    std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), cell);
+    std::tie(nrowsG, ncolsG) = FormUtils::local_tensor_size(*(this->G), cell);
 
     // Get local matrices, give size upon initialization?
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> A_e,
         B_e, G_e;
 
-    FormUtils::local_assembler(A_e, *(this->A), *cell, nrowsA, ncolsA);
-    FormUtils::local_assembler(B_e, *(this->B), *cell, nrowsB, ncolsB);
-    FormUtils::local_assembler(G_e, *(this->G), *cell, nrowsG, ncolsG);
+    FormUtils::local_assembler(A_e, *(this->A), cell, nrowsA, ncolsA);
+    FormUtils::local_assembler(B_e, *(this->B), cell, nrowsB, ncolsB);
+    FormUtils::local_assembler(G_e, *(this->G), cell, nrowsG, ncolsG);
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
         LHS_e;
@@ -133,11 +134,11 @@ void StokesStaticCondensation::assemble_global_lhs()
       // No symmetry assumption
       std::size_t nrowsGT, ncolsGT;
       std::tie(nrowsGT, ncolsGT)
-          = FormUtils::local_tensor_size(*(this->GT), *cell);
+          = FormUtils::local_tensor_size(*(this->GT), cell);
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
           GT_e;
-      FormUtils::local_assembler(GT_e, *(this->GT), *cell, nrowsGT, ncolsGT);
+      FormUtils::local_assembler(GT_e, *(this->GT), cell, nrowsGT, ncolsGT);
       LHS_e = GT_e * invA_e * G_e - B_e;
 
       // And store for later use
@@ -152,53 +153,56 @@ void StokesStaticCondensation::assemble_global_lhs()
     A_g.add_local(LHS_e.data(), nrowsB, cdof_rowsB.data(), ncolsB,
                   cdof_colsB.data());
   }
-  A_g.apply("add");
+  A_g.apply();
 }
 //-----------------------------------------------------------------------------
 void StokesStaticCondensation::assemble_global_rhs()
 {
   // If invA_list or Ge_list empty, then throw error
   if (invAe_list[0].size() == 0 || Ge_list[0].size() == 0)
-    dolfin_error(
-        "StokesStaticCondensation::assemble_global_rhs",
-        "assemble global RHS vector",
+    throw std::runtime_error(
+        "StokesStaticCondensation::assemble_global_rhs"
+        "assemble global RHS vector"
         "Global RHS vector depends on LHS matrix, so assemble LHS first");
 
   // Reset vector to zero, keep sparsity structure
-  f_g.zero();
+  la::VecWrapper fg_wrap(f_g.vec());
+  fg_wrap.x.setZero();
+
   // For each cell: G_e.T.dot(A_e.inv).dot(Q_e) - S_e
-  for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
+  for (auto& cell : mesh::MeshRange<mesh::Cell>(*mesh))
   {
     std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
-    std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), *cell);
-    std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), *cell);
+    std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), cell);
+    std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), cell);
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Q_e,
         S_e;
 
-    FormUtils::local_assembler(Q_e, *(this->Q), *cell, nrowsQ, ncolsQ);
-    FormUtils::local_assembler(S_e, *(this->S), *cell, nrowsS, ncolsS);
+    FormUtils::local_assembler(Q_e, *(this->Q), cell, nrowsQ, ncolsQ);
+    FormUtils::local_assembler(S_e, *(this->S), cell, nrowsS, ncolsS);
 
     Eigen::Matrix<double, Eigen::Dynamic, 1> RHS_e;
     if (assume_symmetric)
     {
-      RHS_e
-          = Ge_list[cell->index()].transpose() * invAe_list[cell->index()] * Q_e
-            - S_e;
+      RHS_e = Ge_list[cell.index()].transpose() * invAe_list[cell.index()] * Q_e
+              - S_e;
     }
     else
     {
-      RHS_e = GTe_list[cell->index()] * invAe_list[cell->index()] * Q_e - S_e;
+      RHS_e = GTe_list[cell.index()] * invAe_list[cell.index()] * Q_e - S_e;
     }
 
     // Alternatively, use this->B?!
     auto cdof_rowsS
-        = this->S->function_space(0)->dofmap()->cell_dofs(cell->index());
+        = this->S->function_space(0)->dofmap()->cell_dofs(cell.index());
 
-    f_g.add_local(RHS_e.data(), nrowsS, cdof_rowsS.data());
-    Qe_list[cell->index()] = Q_e;
+    for (int j = 0; j < nrowsS; ++j)
+      fg_wrap.x[cdof_rowsS[j]] += RHS_e[j];
+
+    //    f_g.add_local(RHS_e.data(), nrowsS, cdof_rowsS.data());
+    Qe_list[cell.index()] = Q_e;
   }
-  f_g.apply("add");
 }
 //-----------------------------------------------------------------------------
 void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
@@ -210,47 +214,49 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
   // You may skip repeated assemblage of A_e (when desired)
   if (assemble_lhs)
     A_g.zero();
-  f_g.zero();
+
+  la::VecWrapper fg_wrap(f_g.vec());
+  fg_wrap.x.setZero();
 
   // Collect bcs info, see dolfin::SystemAssembler
   bool active_bcs = (!bcs.empty());
 
-  std::vector<DirichletBC::Map> boundary_values(1);
-  if (active_bcs)
-  {
-    // Bin boundary conditions according to which form they apply to (if any)
-    for (std::size_t i = 0; i < bcs.size(); ++i)
-    {
-      bcs[i]->get_boundary_values(boundary_values[0]);
-      if (MPI::size(mpi_comm) > 1 && bcs[i]->method() != "pointwise")
-        bcs[i]->gather(boundary_values[0]);
-    }
-  }
+  // std::vector<DirichletBC::Map> boundary_values(1);
+  // if (active_bcs)
+  // {
+  //   // Bin boundary conditions according to which form they apply to (if any)
+  //   for (std::size_t i = 0; i < bcs.size(); ++i)
+  //   {
+  //     bcs[i]->get_boundary_values(boundary_values[0]);
+  //     if (MPI::size(mpi_comm) > 1 && bcs[i]->method() != "pointwise")
+  //       bcs[i]->gather(boundary_values[0]);
+  //   }
+  // }
 
-  for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
+  for (auto& cell : mesh::MeshRange<mesh::Cell>(*mesh))
   {
     // NOTE, You do not need nrowsS, ncolsS -- coincide with B,
     // check in constructor
     std::size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
 
-    std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), *cell);
-    std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), *cell);
-    std::tie(nrowsG, ncolsG) = FormUtils::local_tensor_size(*(this->G), *cell);
+    std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), cell);
+    std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), cell);
+    std::tie(nrowsG, ncolsG) = FormUtils::local_tensor_size(*(this->G), cell);
 
     // Assemble LHS (if needed)
     if (assemble_lhs)
     {
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
           A_e, B_e, G_e;
-      FormUtils::local_assembler(A_e, *(this->A), *cell, nrowsA, ncolsA);
-      FormUtils::local_assembler(G_e, *(this->G), *cell, nrowsG, ncolsG);
-      FormUtils::local_assembler(B_e, *(this->B), *cell, nrowsB, ncolsB);
+      FormUtils::local_assembler(A_e, *(this->A), cell, nrowsA, ncolsA);
+      FormUtils::local_assembler(G_e, *(this->G), cell, nrowsG, ncolsG);
+      FormUtils::local_assembler(B_e, *(this->B), cell, nrowsB, ncolsB);
 
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
           invA_e = A_e.inverse();
-      invAe_list[cell->index()] = invA_e;
-      Ge_list[cell->index()] = G_e;
-      Be_list[cell->index()] = B_e;
+      invAe_list[cell.index()] = invA_e;
+      Ge_list[cell.index()] = G_e;
+      Be_list[cell.index()] = B_e;
 
       if (!assume_symmetric)
       {
@@ -258,12 +264,12 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
         std::size_t nrowsGT, ncolsGT;
 
         std::tie(nrowsGT, ncolsGT)
-            = FormUtils::local_tensor_size(*(this->GT), *cell);
+            = FormUtils::local_tensor_size(*(this->GT), cell);
 
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
             GT_e;
-        FormUtils::local_assembler(GT_e, *(this->GT), *cell, nrowsGT, ncolsGT);
-        GTe_list[cell->index()] = GT_e;
+        FormUtils::local_assembler(GT_e, *(this->GT), cell, nrowsGT, ncolsGT);
+        GTe_list[cell.index()] = GT_e;
       }
     }
 
@@ -271,8 +277,8 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Q_e,
         S_e;
 
-    FormUtils::local_assembler(Q_e, *(this->Q), *cell, nrowsA, 1);
-    FormUtils::local_assembler(S_e, *(this->S), *cell, nrowsB, 1);
+    FormUtils::local_assembler(Q_e, *(this->Q), cell, nrowsA, 1);
+    FormUtils::local_assembler(S_e, *(this->S), cell, nrowsB, 1);
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
         LHS_e;
@@ -280,25 +286,24 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
 
     if (assume_symmetric)
     {
-      LHS_e = Ge_list[cell->index()].transpose() * invAe_list[cell->index()]
-                  * Ge_list[cell->index()]
-              - Be_list[cell->index()];
-      RHS_e
-          = Ge_list[cell->index()].transpose() * invAe_list[cell->index()] * Q_e
-            - S_e;
+      LHS_e = Ge_list[cell.index()].transpose() * invAe_list[cell.index()]
+                  * Ge_list[cell.index()]
+              - Be_list[cell.index()];
+      RHS_e = Ge_list[cell.index()].transpose() * invAe_list[cell.index()] * Q_e
+              - S_e;
     }
     else
     {
-      LHS_e = GTe_list[cell->index()] * invAe_list[cell->index()]
-                  * Ge_list[cell->index()]
-              - Be_list[cell->index()];
-      RHS_e = GTe_list[cell->index()] * invAe_list[cell->index()] * Q_e - S_e;
+      LHS_e = GTe_list[cell.index()] * invAe_list[cell.index()]
+                  * Ge_list[cell.index()]
+              - Be_list[cell.index()];
+      RHS_e = GTe_list[cell.index()] * invAe_list[cell.index()] * Q_e - S_e;
     }
 
     auto cdof_rowsB
-        = this->B->function_space(0)->dofmap()->cell_dofs(cell->index());
+        = this->B->function_space(0)->dofmap()->cell_dofs(cell.index());
     auto cdof_colsB
-        = this->B->function_space(1)->dofmap()->cell_dofs(cell->index());
+        = this->B->function_space(1)->dofmap()->cell_dofs(cell.index());
 
     // Apply BC's here (maintaining symmetry)
     if (active_bcs)
@@ -315,16 +320,19 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
     }
 
     // Add to vector
-    f_g.add_local(RHS_e.data(), nrowsB, cdof_rowsB.data());
-    Qe_list[cell->index()] = Q_e;
+    //    f_g.add_local(RHS_e.data(), nrowsB, cdof_rowsB.data());
+    for (int j = 0; j < nrowsB; ++j)
+      fg_wrap.x[cdof_rowsB[j]] += RHS_e[j];
+
+    Qe_list[cell.index()] = Q_e;
   }
-  A_g.apply("add");
-  f_g.apply("add");
+  A_g.apply();
+  f_g.apply();
 }
 
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::solve_problem(Function& Uglobal,
-                                             Function& Ulocal,
+void StokesStaticCondensation::solve_problem(function::Function& Uglobal,
+                                             function::Function& Ulocal,
                                              const std::string solver,
                                              const std::string preconditioner)
 {
@@ -348,7 +356,7 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal,
   backsubtitute(Uglobal, Ulocal);
 }
 
-void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
+void StokesStaticCondensation::apply_boundary(fem::DirichletBC& DBC)
 {
   DBC.apply(A_g, f_g);
   if (MPI::size(mpi_comm) == 1)
@@ -356,37 +364,43 @@ void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
               << A_g.is_symmetric(1E-6) << std::endl;
 }
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::backsubtitute(const Function& Uglobal,
-                                             Function& Ulocal)
+void StokesStaticCondensation::backsubtitute(const function::Function& Uglobal,
+                                             function::Function& Ulocal)
 {
-  for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
+  la::VecWrapper Uglobal_vec(Uglobal.vector().vec());
+  la::VecWrapper Ulocal_vec(Ulocal.vector().vec());
+
+  for (auto& cell : mesh::MeshRange<mesh::Cell>(*mesh))
   {
     std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
-    std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), *cell);
-    std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), *cell);
+    std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), cell);
+    std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), cell);
 
     // Alternatively, use B and A, rexpectively
     auto cdof_rowsS
-        = this->S->function_space(0)->dofmap()->cell_dofs(cell->index());
+        = this->S->function_space(0)->dofmap()->cell_dofs(cell.index());
     auto cdof_rowsQ
-        = this->Q->function_space(0)->dofmap()->cell_dofs(cell->index());
+        = this->Q->function_space(0)->dofmap()->cell_dofs(cell.index());
 
-    Eigen::Matrix<double, Eigen::Dynamic, 1> Uglobal_e, Ulocal_e;
-    Uglobal_e.resize(nrowsS);
+    Eigen::Matrix<double, Eigen::Dynamic, 1> Uglobal_e(nrowsS);
+    Eigen::Matrix<double, Eigen::Dynamic, 1> Ulocal_e;
+    for (std::size_t j = 0; j < nrowsS; ++j)
+      Uglobal_e[j] = Uglobal_vec.x[cdof_rowsS[j]];
 
-    Uglobal.vector()->get_local(Uglobal_e.data(), nrowsS, cdof_rowsS.data());
-    Ulocal_e = invAe_list[cell->index()]
-               * (Qe_list[cell->index()] - Ge_list[cell->index()] * Uglobal_e);
-    Ulocal.vector()->set_local(Ulocal_e.data(), Ulocal_e.size(),
-                               cdof_rowsQ.data());
+    Ulocal_e = invAe_list[cell.index()]
+               * (Qe_list[cell.index()] - Ge_list[cell.index()] * Uglobal_e);
+
+    for (Eigen::Index j = 0; j < Ulocal_e.size(); ++j)
+      Ulocal_vec.x[cdof_rowsQ[j]] = Ulocal_e[j];
   }
-  Ulocal.vector()->apply("insert");
 }
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::test_rank(const Form& a, const std::size_t rank)
+void StokesStaticCondensation::test_rank(const fem::Form& a,
+                                         const std::size_t rank)
 {
   if (a.rank() != rank)
-    dolfin_error("StokesStaticCondensation::test_rank", "get correct rank",
-                 "Proper forms specified?");
+    throw std::runtime_error("StokesStaticCondensation::test_rank"
+                             "get correct rank"
+                             "Proper forms specified?");
 }
 //-----------------------------------------------------------------------------

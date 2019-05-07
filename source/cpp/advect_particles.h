@@ -111,7 +111,7 @@ protected:
   std::shared_ptr<const fem::FiniteElement> _element;
 
   // Must receive a point xp
-  std::tuple<std::size_t, double> time2intersect(std::size_t cidx, double dt,
+  std::tuple<std::size_t, double> time2intersect(std::int32_t cidx, double dt,
                                                  const geometry::Point xp,
                                                  const geometry::Point up);
 
@@ -120,22 +120,22 @@ protected:
   // std::size_t cidx, const std::size_t pidx);
 
   // Methods for applying bc's
-  void apply_open_bc(std::size_t cidx, std::size_t pidx);
-  void apply_closed_bc(double dt, geometry::Point& up, std::size_t cidx,
+  void apply_open_bc(std::int32_t cidx, std::size_t pidx);
+  void apply_closed_bc(double dt, geometry::Point& up, std::int32_t cidx,
                        std::size_t pidx, std::size_t fidx);
-  void apply_periodic_bc(double dt, geometry::Point& up, std::size_t cidx,
+  void apply_periodic_bc(double dt, geometry::Point& up, std::int32_t cidx,
                          std::size_t pidx, std::size_t fidx);
 
-  void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
+  void pbc_limits_violation(std::int32_t cidx, std::size_t pidx);
 
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes
 
-  void do_substep(double dt, geometry::Point& up, const std::size_t cidx,
-                  std::size_t pidx, const std::size_t step,
-                  const std::size_t num_steps, const std::size_t xp0_idx,
-                  const std::size_t up0_idx,
-                  std::vector<std::array<std::size_t, 3>>& reloc);
+  void do_substep(double dt, geometry::Point& up, std::int32_t cidx,
+                  std::int32_t pidx, std::size_t step,
+                  std::size_t num_steps, std::size_t xp0_idx,
+                  std::size_t up0_idx,
+                  std::vector<std::array<std::int32_t, 3>>& reloc);
 };
 
 class advect_rk2 : public advect_particles
@@ -180,7 +180,7 @@ private:
     int num_cells = _P->mesh()->num_entities(_P->mesh()->topology().dim());
     for (int cidx = 0; cidx < num_cells; ++cidx)
     {
-      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
+      for (int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
     }
   }
@@ -234,7 +234,7 @@ private:
     int num_cells = _P->mesh()->num_entities(_P->mesh()->topology().dim());
     for (int cidx = 0; cidx < num_cells; ++cidx)
     {
-      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
+      for (int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
     }
   }

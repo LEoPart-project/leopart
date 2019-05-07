@@ -31,6 +31,7 @@ class FiniteElement;
 namespace geometry
 {
 class Point;
+ class BoundingBoxTree;
 }
 
 namespace mesh
@@ -45,7 +46,7 @@ public:
   particles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic,
                                           Eigen::Dynamic, Eigen::RowMajor>>
                 p_array,
-            const std::vector<unsigned int>& p_template,
+            const std::vector<std::int32_t>& p_template,
             const mesh::Mesh& mesh);
 
   ~particles();
@@ -73,7 +74,7 @@ public:
     geometry::Point p(0.0, 0.0, 0.0);
     int num_cells = _mesh->num_entities(_mesh->topology().dim());
     for (int cidx = 0; cidx < num_cells; ++cidx)
-      for (unsigned int pidx = 0; pidx < num_cell_particles(cidx); ++pidx)
+      for (int pidx = 0; pidx < num_cell_particles(cidx); ++pidx)
         _cell2part[cidx][pidx].push_back(p);
     return _ptemplate.size() - 1;
   }
@@ -88,13 +89,13 @@ public:
   const mesh::Mesh* mesh() const { return _mesh; }
 
   // Get size of property i
-  unsigned int ptemplate(int i) const { return _ptemplate[i]; }
+  std::int32_t ptemplate(int i) const { return _ptemplate[i]; }
 
   // Number of properties
-  unsigned int num_properties() const { return _ptemplate.size(); }
+  int num_properties() const { return _ptemplate.size(); }
 
   // Number of particles in Cell c
-  unsigned int num_cell_particles(int c) const { return _cell2part[c].size(); }
+  int num_cell_particles(int c) const { return _cell2part[c].size(); }
 
   // Add particle to cell returning particle index
   int add_particle(int c);
@@ -112,7 +113,7 @@ public:
   // Increment
   void increment(const function::Function& phih_new,
                  const function::Function& phih_old,
-                 const std::size_t property_idx);
+                 std::int32_t property_idx);
 
   // Increment using theta --> Consider replacing property_idcs
   void increment(const function::Function& phih_new,
@@ -130,8 +131,8 @@ public:
       Eigen::Matrix<double, Eigen::Dynamic, 1>& f,
       const mesh::Cell& dolfin_cell,
       std::shared_ptr<const fem::FiniteElement> element,
-      const std::size_t space_dimension, const std::size_t value_size_loc,
-      const std::size_t property_idx);
+      int space_dimension, int value_size_loc,
+      int property_idx);
 
   // Push particle to new position
   void push_particle(const double dt, const geometry::Point& up,
@@ -150,7 +151,13 @@ public:
   // Relocate particles, with known relocation data. Each entry is {cidx, pidx,
   // cidx_recv} using numeric_limits::max for cidx_recv to send to another
   // process
-  void relocate(std::vector<std::array<std::size_t, 3>>& reloc);
+  void relocate(std::vector<std::array<std::int32_t, 3>>& reloc);
+
+  const std::shared_ptr<geometry::BoundingBoxTree> bounding_box_tree()
+  {
+    return _bbtree;
+  }
+
 
 private:
   std::vector<std::vector<particle>> _comm_snd;
@@ -159,11 +166,12 @@ private:
 
   // Attributes
   const mesh::Mesh* _mesh;
+  std::shared_ptr<geometry::BoundingBoxTree> _bbtree;
   std::size_t _Ndim;
   std::vector<std::vector<particle>> _cell2part;
 
   // Particle properties
-  std::vector<unsigned int> _ptemplate;
+  std::vector<std::int32_t> _ptemplate;
   std::size_t _plen;
 
   // Needed for parallel

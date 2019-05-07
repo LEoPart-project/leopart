@@ -9,6 +9,7 @@
 
 #include <dolfin/fem/Form.h>
 #include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/fem/utils.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/la/PETScMatrix.h>
@@ -137,7 +138,7 @@ void l2projection::project(function::Function& u, const double lb,
   CI.setZero();
   ci0.resize(_space_dimension * _value_size_loc * 2);
   ci0.setZero();
-  for (std::size_t i = 0; i < _space_dimension; i++)
+  for (int i = 0; i < _space_dimension; i++)
   {
     CI(i, i) = 1.;
     CI(i, i + _space_dimension) = -1;

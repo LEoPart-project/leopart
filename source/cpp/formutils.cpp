@@ -4,10 +4,9 @@
 // License: GNU Lesser GPL version 3 or any later version
 // SPDX-License-Identifier:    LGPL-3.0-or-later
 
+#include <dolfin/fem/DirichletBC.h>
 #include <dolfin/fem/Form.h>
 #include <dolfin/fem/GenericDofMap.h>
-#include <dolfin/fem/LocalAssembler.h>
-#include <dolfin/fem/UFC.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/mesh/Cell.h>
 
@@ -16,7 +15,7 @@
 using namespace dolfin;
 
 //-----------------------------------------------------------------------------
-void FormUtils::test_rank(const Form& a, const std::size_t rank)
+void FormUtils::test_rank(const fem::Form& a, const std::size_t rank)
 {
   if (a.rank() != rank)
     throw std::runtime_error("PDEStaticCondensation::test_rank"
@@ -24,8 +23,8 @@ void FormUtils::test_rank(const Form& a, const std::size_t rank)
                              "Proper forms specified?");
 }
 //-----------------------------------------------------------------------------
-std::pair<std::size_t, std::size_t>
-FormUtils::local_tensor_size(const Form& a, const Cell& cell)
+std::pair<std::int32_t, std::int32_t>
+FormUtils::local_tensor_size(const fem::Form& a, const mesh::Cell& cell)
 {
   if (a.rank() == 0)
     return std::make_pair(1, 1);
@@ -40,27 +39,26 @@ FormUtils::local_tensor_size(const Form& a, const Cell& cell)
 //-----------------------------------------------------------------------------
 void FormUtils::local_assembler(
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& A_e,
-    const Form& a, const Cell& cell, const std::size_t nrows,
+    const fem::Form& a, const mesh::Cell& cell, const std::size_t nrows,
     const std::size_t ncols)
 {
   // Method largely based on dolfin::assemble_local method in dolfin repo
   A_e.resize(nrows, ncols);
-  UFC ufc(a);
-  ufc::cell ufc_cell;
+
   std::vector<double> coordinate_dofs;
 
   // Extract cell_domains etc from the form
-  const MeshFunction<std::size_t>* cell_domains = a.cell_domains().get();
-  const MeshFunction<std::size_t>* exterior_facet_domains
-      = a.exterior_facet_domains().get();
-  const MeshFunction<std::size_t>* interior_facet_domains
-      = a.interior_facet_domains().get();
+  // const MeshFunction<std::size_t>* cell_domains = a.cell_domains().get();
+  // const MeshFunction<std::size_t>* exterior_facet_domains
+  //     = a.exterior_facet_domains().get();
+  // const MeshFunction<std::size_t>* interior_facet_domains
+  //     = a.interior_facet_domains().get();
 
-  // Update to the local cell and assemble
-  cell.get_coordinate_dofs(coordinate_dofs);
-  LocalAssembler::assemble(A_e, ufc, coordinate_dofs, ufc_cell, cell,
-                           cell_domains, exterior_facet_domains,
-                           interior_facet_domains);
+  // // Update to the local cell and assemble
+  // cell.get_coordinate_dofs(coordinate_dofs);
+  // LocalAssembler::assemble(A_e, ufc, coordinate_dofs, ufc_cell, cell,
+  //                          cell_domains, exterior_facet_domains,
+  //                          interior_facet_domains);
 }
 //-----------------------------------------------------------------------------
 void FormUtils::apply_boundary_symmetric(
@@ -69,33 +67,33 @@ void FormUtils::apply_boundary_symmetric(
     Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
     Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_rows,
     Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_cols,
-    const std::vector<DirichletBC::Map>& boundary_values, const bool active_bcs)
+    const std::vector<fem::DirichletBC>& boundary_values, const bool active_bcs)
 {
-  if (active_bcs)
-  {
-    // Square matrix with same FunctionSpace on each axis
-    // Loop over columns/rows
-    for (int i = 0; i < cdof_cols.size(); ++i)
-    {
-      const std::size_t ii = cdof_cols[i];
-      DirichletBC::Map::const_iterator bc_value = boundary_values[0].find(ii);
-      if (bc_value != boundary_values[0].end())
-      {
-        double rowsum = LHS_e.row(i).sum();
-        // Zero row
-        LHS_e.row(i).setZero();
+  // if (active_bcs)
+  // {
+  //   // Square matrix with same FunctionSpace on each axis
+  //   // Loop over columns/rows
+  //   for (int i = 0; i < cdof_cols.size(); ++i)
+  //   {
+  //     const std::size_t ii = cdof_cols[i];
+  //     fem::DirichletBC::const_iterator bc_value =
+  //     boundary_values[0].find(ii); if (bc_value != boundary_values[0].end())
+  //     {
+  //       double rowsum = LHS_e.row(i).sum();
+  //       // Zero row
+  //       LHS_e.row(i).setZero();
 
-        // Modify RHS (subtract (bc_column(A))*bc_val from b)
-        RHS_e -= LHS_e.col(i) * bc_value->second;
+  //       // Modify RHS (subtract (bc_column(A))*bc_val from b)
+  //       RHS_e -= LHS_e.col(i) * bc_value->second;
 
-        // Zero column
-        LHS_e.col(i).setZero();
+  //       // Zero column
+  //       LHS_e.col(i).setZero();
 
-        // Place 1 on diagonal and bc on RHS (i th row ).
-        // Scale these values...
-        RHS_e(i) = rowsum * bc_value->second;
-        LHS_e(i, i) = rowsum * 1.0;
-      }
-    }
-  }
+  //       // Place 1 on diagonal and bc on RHS (i th row ).
+  //       // Scale these values...
+  //       RHS_e(i) = rowsum * bc_value->second;
+  //       LHS_e(i, i) = rowsum * 1.0;
+  //     }
+  //   }
+  // }
 }

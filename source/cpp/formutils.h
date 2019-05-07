@@ -18,7 +18,8 @@ namespace dolfin
 namespace fem
 {
 class Form;
-}
+class DirichletBC;
+} // namespace fem
 
 namespace mesh
 {
@@ -35,7 +36,7 @@ public:
   static void test_rank(const fem::Form& a, const std::size_t rank);
 
   // Get local tensor size
-  static std::pair<std::size_t, std::size_t>
+  static std::pair<std::int32_t, std::int32_t>
   local_tensor_size(const fem::Form& a, const mesh::Cell& cell);
 
   // Local assembler
@@ -46,14 +47,14 @@ public:
                   const std::size_t nrows, const std::size_t ncols);
 
   // Apply Dirichlet BC to element contributions, so as to maintain symmetry
-  //  static void apply_boundary_symmetric(
-  // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-  //     LHS_e,
-  // Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
-  // Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_rows,
-  // Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_cols,
-  // const std::vector<fem::DirichletBC::Map>& boundary_values,
-  // const bool active_bcs);
+  static void apply_boundary_symmetric(
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+          LHS_e,
+      Eigen::Matrix<double, Eigen::Dynamic, 1>& RHS_e,
+      Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_rows,
+      Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cdof_cols,
+      const std::vector<fem::DirichletBC>& boundary_values,
+      const bool active_bcs);
 };
 } // namespace dolfin
 #endif // FORMUTILS_H
