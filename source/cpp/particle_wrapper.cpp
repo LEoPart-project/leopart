@@ -48,7 +48,10 @@ PYBIND11_MODULE(particle_wrapper, m)
                const double, const std::size_t))
                & dolfin::particles::increment)
       .def("positions", &dolfin::particles::positions)
+      .def("push_particle", &dolfin::particles::push_particle)
       .def("get_property", &dolfin::particles::get_property)
+      .def("property", &dolfin::particles::property)
+      .def("num_cell_particles", &dolfin::particles::num_cell_particles)
       .def("relocate",
            (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
