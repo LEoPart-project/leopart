@@ -459,6 +459,18 @@ void particles::get_particle_contributions(
         f(m + lb) = _cell2part[cidx][pidx][property_idx][m];
     }
   }
+  else if (_empty_cell_property_values[property_idx])
+  {
+    // We have a default value assigned for empty cells
+    const double default_value =
+        (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
+
+    std::cout << "Found empty cell, filling with default value "
+              << default_value << std::endl;
+
+    q.setIdentity(q.rows(), q.cols());
+    f.fill(default_value);
+  }
   else
   {
     // TODO: make function recognize FunctionSpace.ufl_element().family()!

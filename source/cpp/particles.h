@@ -128,6 +128,18 @@ public:
   // process
   void relocate(std::vector<std::array<std::size_t, 3>>& reloc);
 
+  // If a cell has no particles, take the values from this cell function
+  // as the default value in get_particle_contributions()
+  void set_empty_cell_default_values(
+    std::shared_ptr<dolfin::MeshFunction<double>> cell_function,
+    const std::size_t property_idx)
+  {
+    if (_empty_cell_property_values.size() < num_properties())
+        _empty_cell_property_values.resize(num_properties());
+
+    _empty_cell_property_values[property_idx] = cell_function;
+  }
+
 private:
   std::vector<std::vector<particle>> _comm_snd;
 
@@ -141,6 +153,8 @@ private:
   // Particle properties
   std::vector<unsigned int> _ptemplate;
   std::size_t _plen;
+  std::vector<std::shared_ptr<dolfin::MeshFunction<double>>>
+    _empty_cell_property_values;
 
   // Needed for parallel
   const MPI_Comm _mpi_comm;
