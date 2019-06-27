@@ -58,7 +58,6 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("ptemplate", &dolfin::particles::ptemplate)
       .def("add_particle", &dolfin::particles::add_particle)
       .def("delete_particle", &dolfin::particles::delete_particle)
-      .def("set_empty_cell_default_values", &dolfin::particles::set_empty_cell_default_values)
       .def("relocate",
            (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
