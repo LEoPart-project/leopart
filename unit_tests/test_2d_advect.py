@@ -363,13 +363,12 @@ def test_bounded_domain_boundary(advection_scheme):
     V = VectorFunctionSpace(mesh, "CG", 1)
 
     x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([pres, pres])
-    s_x = np.arange(len(x), dtype=np.float_)
     dt = 0.05
 
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [s_x], mesh)
+    p = particles(x, [x], mesh)
 
     if advection_scheme == 'euler':
         ap = advect_particles(p, V, v, 'bounded', lims.flatten())
@@ -385,18 +384,15 @@ def test_bounded_domain_boundary(advection_scheme):
         ap.do_step(dt)
         t += dt
 
-        p_idxs = np.array(p.get_property(1))
-        xpn = p.positions()
+        xpn = np.array(p.get_property(0)).reshape((-1, 2))
+        x0 = np.array(p.get_property(1)).reshape((-1, 2))
 
-        xp0_args = np.argsort(p_idxs)
-        xpn_ordered = xpn[xp0_args]
-
-        analytical_position = x + t*v_arr
+        analytical_position = x0 + t*v_arr
 
         analytical_position[:,0] = np.maximum(np.minimum(xmax, analytical_position[:,0]), xmin)
         analytical_position[:,1] = np.maximum(np.minimum(ymax, analytical_position[:,1]), ymin)
 
-        error = np.abs(xpn_ordered - analytical_position)
+        error = np.abs(xpn - analytical_position)
 
         assert np.all(np.abs(error) < 1e-12)
 
