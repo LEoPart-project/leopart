@@ -90,7 +90,7 @@ void l2projection::project(Function& u)
     {
       // Underdetermined system, use Jacobi (slower, but more robust)
       std::cout << "Underdetermined system in cell " << i
-                << ". Using Jacobie solve" << std::endl;
+                << ". Using Jacobi solve" << std::endl;
       u_i = (q.transpose())
                 .jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
                 .solve(f);

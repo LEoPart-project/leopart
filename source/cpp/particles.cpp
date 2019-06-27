@@ -35,7 +35,9 @@ particles::particles(
   // Set up communication array
   _comm_snd.resize(MPI::size(_mpi_comm));
 
+  // Initialise members
   _cell2part.resize(mesh.num_cells());
+  _empty_cell_property_values.resize(num_properties());
 
   // Calculate the offset for each particle property and overall size
   std::vector<unsigned int> offset = {0};
@@ -465,11 +467,14 @@ void particles::get_particle_contributions(
     const double default_value =
         (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
 
-    std::cout << "Found empty cell, filling with default value "
-              << default_value << std::endl;
+//    std::cout << "Found empty cell, filling with default value "
+//              << default_value << std::endl;
 
-    q.setIdentity(q.rows(), q.cols());
-    f.fill(default_value);
+    // Works with DG spaces only, assuming the (0, 0) entry is the
+    // DoF associated with the constant basis function
+    q.setIdentity(space_dimension, space_dimension);
+    f.resize(space_dimension, 1);
+    f(0,0) = default_value;
   }
   else
   {
