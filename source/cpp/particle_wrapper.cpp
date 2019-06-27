@@ -51,7 +51,14 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("push_particle", &dolfin::particles::push_particle)
       .def("get_property", &dolfin::particles::get_property)
       .def("property", &dolfin::particles::property)
+      .def("set_property", &dolfin::particles::set_property)
+      .def("num_properties", &dolfin::particles::num_properties)
       .def("num_cell_particles", &dolfin::particles::num_cell_particles)
+      .def("mesh", &dolfin::particles::mesh)
+      .def("ptemplate", &dolfin::particles::ptemplate)
+      .def("add_particle", &dolfin::particles::add_particle)
+      .def("delete_particle", &dolfin::particles::delete_particle)
+      .def("set_empty_cell_default_values", &dolfin::particles::set_empty_cell_default_values)
       .def("relocate",
            (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
