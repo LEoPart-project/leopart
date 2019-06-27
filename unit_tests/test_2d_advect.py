@@ -346,3 +346,58 @@ def test_open_boundary(advection_scheme):
     # Check if all particles left domain
     if comm.rank == 0:
         assert(num_particles == 0)
+
+
+@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+def test_bounded_domain_boundary(advection_scheme):
+    xmin, xmax = 0., 1.
+    ymin, ymax = 0., 1.
+    pres = 10
+
+    mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
+
+    lims = np.array([xmin, xmax, ymin, ymax])
+
+    v_arr = np.array([1.0, 2.0])
+    vexpr = Constant(v_arr)
+    V = VectorFunctionSpace(mesh, "CG", 1)
+
+    x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([pres, pres])
+    s_x = np.arange(len(x), dtype=np.float_)
+    dt = 0.05
+
+    v = Function(V)
+    v.assign(vexpr)
+
+    p = particles(x, [s_x], mesh)
+
+    if advection_scheme == 'euler':
+        ap = advect_particles(p, V, v, 'bounded', lims.flatten())
+    elif advection_scheme == 'rk2':
+        ap = advect_rk2(p, V, v, 'bounded', lims.flatten())
+    elif advection_scheme == 'rk3':
+        ap = advect_rk3(p, V, v, 'bounded', lims.flatten())
+    else:
+        assert False
+
+    t = 0.
+    while t < 1.4-1e-12:
+        ap.do_step(dt)
+        t += dt
+
+        p_idxs = np.array(p.get_property(1))
+        xpn = p.positions()
+
+        xp0_args = np.argsort(p_idxs)
+        xpn_ordered = xpn[xp0_args]
+
+        analytical_position = x + t*v_arr
+
+        analytical_position[:,0] = np.maximum(np.minimum(xmax, analytical_position[:,0]), xmin)
+        analytical_position[:,1] = np.maximum(np.minimum(ymax, analytical_position[:,1]), ymin)
+
+        error = np.abs(xpn_ordered - analytical_position)
+
+        assert np.all(np.abs(error) < 1e-12)
+
+

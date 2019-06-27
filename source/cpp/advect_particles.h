@@ -118,6 +118,7 @@ protected:
                                std::size_t pidx, std::size_t fidx);
 
   void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
+  void bounded_domain_violation(std::size_t cidx, std::size_t pidx);
 
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes

@@ -406,6 +406,10 @@ void advect_particles::do_step(double dt)
                 pbc_limits_violation(ci->index(),
                                      i); // Check on sequence crossing internal
                                          // bc -> crossing periodic bc
+
+              if (bounded_domain_active)
+                bounded_domain_violation(ci->index(), i);
+
               // TODO: do same for closed bcs to handle (unlikely event):
               // internal bc-> closed bc
 
@@ -457,8 +461,7 @@ void advect_particles::do_step(double dt)
             {
               // Then bounded bc
               apply_bounded_domain_bc(dt_rem, up, ci->index(), i, target_facet);
-              std::cout << "applying" << std::endl;
-              std::cout << "position is " << _P->x(ci->index(), i).str(true) << std::endl;
+
               if (num_processes > 1) // Behavior in parallel
                 reloc.push_back(
                     {ci->index(), i, std::numeric_limits<unsigned int>::max()});
@@ -727,6 +730,21 @@ void advect_particles::apply_bounded_domain_bc(
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
+void advect_particles::bounded_domain_violation(
+    std::size_t cidx, std::size_t pidx)
+{
+  // This method guarantees that particles can cross internal bc -> bounded bc
+  // in one time step without being deleted.
+  Point x = _P->x(cidx, pidx);
+  for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
+  {
+    x[i] = std::max(x[i], bounded_domain_lims[i][0]);
+    x[i] = std::min(x[i], bounded_domain_lims[i][1]);
+  }
+
+  _P->set_property(cidx, pidx, 0, x);
+}
+//-----------------------------------------------------------------------------
 void advect_particles::do_substep(
     double dt, Point& up, const std::size_t cidx, std::size_t pidx,
     const std::size_t step, const std::size_t num_steps,
@@ -767,6 +785,9 @@ void advect_particles::do_substep(
       _P->push_particle(dt_rem, up, cidx, pidx);
       if (pbc_active)
         pbc_limits_violation(cidx, pidx);
+
+      if (bounded_domain_active)
+        bounded_domain_violation(cidx, pidx);
 
       if (step == (num_steps - 1))
       {
@@ -846,6 +867,9 @@ void advect_particles::do_substep(
           if (pbc_active)
             pbc_limits_violation(cidx, pidx);
 
+          if (bounded_domain_active)
+            bounded_domain_violation(cidx, pidx);
+
           // Copy current position to old position
           if (step == (num_steps - 1) || hit_cbc)
             _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
@@ -913,6 +937,29 @@ void advect_particles::do_substep(
             reloc.push_back({cidx, pidx, cell_id});
           }
 
+          dt_rem = 0.0;
+        }
+        else if (ftype == facet_t::bounded)
+        {
+          // Then bounded bc
+          apply_bounded_domain_bc(dt_rem, up, cidx, pidx, target_facet);
+
+          // Copy current position to old position
+          if (step == (num_steps - 1))
+            _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
+
+          if (mpi_size > 1) // Behavior in parallel
+            reloc.push_back(
+                {cidx, pidx, std::numeric_limits<unsigned int>::max()});
+          else
+          {
+            // Behavior in serial
+            std::size_t cell_id = _P->mesh()
+                                      ->bounding_box_tree()
+                                      ->compute_first_entity_collision(
+                                          _P->x(cidx, pidx));
+            reloc.push_back({cidx, pidx, cell_id});
+          }
           dt_rem = 0.0;
         }
         else
