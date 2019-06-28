@@ -8,6 +8,7 @@
 Unit tests for advection of single particle
 """
 
+import itertools
 from dolfin import (SubDomain, UnitSquareMesh, RectangleMesh,
                     Point, Constant, Expression, VectorFunctionSpace, Function,
                     MeshFunction, near)
@@ -348,17 +349,21 @@ def test_open_boundary(advection_scheme):
         assert(num_particles == 0)
 
 
+@pytest.mark.parametrize('xlims', itertools.product([-np.pi, 0.0],
+                                                   [1.0, np.pi]))
+@pytest.mark.parametrize('ylims', itertools.product([-np.pi, 0.0],
+                                                   [1.0, np.pi]))
 @pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
-def test_bounded_domain_boundary(advection_scheme):
-    xmin, xmax = 0., 1.
-    ymin, ymax = 0., 1.
+def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
+    xmin, xmax = xlims
+    ymin, ymax = ylims
     pres = 10
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
     lims = np.array([xmin, xmax, ymin, ymax])
 
-    v_arr = np.array([1.0, 2.0])
+    v_arr = np.array([-np.pi/10.0, np.pi/4.0])
     vexpr = Constant(v_arr)
     V = VectorFunctionSpace(mesh, "CG", 1)
 
