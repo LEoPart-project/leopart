@@ -94,7 +94,7 @@ protected:
   std::size_t _space_dimension, _value_size_loc;
 
   // Facet information
-  // (normal, midpoint, type(internal, open, closed, periodic))
+  // (normal, midpoint, type(internal, open, closed, periodic, bounded))
   std::vector<facet_info> facets_info;
 
   Function* uh;

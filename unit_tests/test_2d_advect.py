@@ -349,26 +349,29 @@ def test_open_boundary(advection_scheme):
         assert(num_particles == 0)
 
 
-@pytest.mark.parametrize('xlims', itertools.product([-np.pi, 0.0],
-                                                   [1.0, np.pi]))
-@pytest.mark.parametrize('ylims', itertools.product([-np.pi, 0.0],
-                                                   [1.0, np.pi]))
+# @pytest.mark.parametrize('xlims', itertools.product([-np.pi, 0.0],
+#                                                    [1.0, np.pi]))
+# @pytest.mark.parametrize('ylims', itertools.product([-np.pi, 0.0],
+#                                                    [1.0, np.pi]))
+@pytest.mark.parametrize('xlims', [[0.0, 1.0]])
+@pytest.mark.parametrize('ylims', [[0.0, 1.0]])
 @pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
 def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
     xmin, xmax = xlims
     ymin, ymax = ylims
-    pres = 10
+    pres = 1
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
+    ymin += 0.0025
     lims = np.array([xmin, xmax, ymin, ymax])
 
-    v_arr = np.array([-np.pi/10.0, np.pi/4.0])
+    v_arr = np.array([-1.0, -1.0])
     vexpr = Constant(v_arr)
     V = VectorFunctionSpace(mesh, "CG", 1)
 
     x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([pres, pres])
-    dt = 0.05
+    dt = 0.005
 
     v = Function(V)
     v.assign(vexpr)
@@ -384,13 +387,18 @@ def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
     else:
         assert False
 
+    original_num_particles = p.number_of_particles()
     t = 0.
-    while t < 1.4-1e-12:
+    while t < 3.0-1e-12:
         ap.do_step(dt)
         t += dt
 
+        assert p.number_of_particles() == original_num_particles
+
         xpn = np.array(p.get_property(0)).reshape((-1, 2))
         x0 = np.array(p.get_property(1)).reshape((-1, 2))
+
+        # print(xpn)
 
         analytical_position = x0 + t*v_arr
 

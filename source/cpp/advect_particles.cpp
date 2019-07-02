@@ -298,7 +298,7 @@ void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
         facets_info[fi->index()].type = facet_t::bounded;
       else
         dolfin_error("advect_particles.cpp", "set external facet type",
-                     "Invalid value, must be 1, 2, or 3");
+                     "Invalid value, must be 1, 2, 3 or 4");
     }
     else
     {
@@ -360,6 +360,10 @@ void advect_particles::do_step(double dt)
           // Then remain within cell, finish time step
           _P->push_particle(dt_rem, up, ci->index(), i);
           dt_rem = 0.0;
+
+          if (bounded_domain_active)
+            bounded_domain_violation(ci->index(), i);
+
           // TODO: if step == last tstep: update particle position old to most
           // recent value If cidx_recv != ci->index(), particles crossed facet
           // and hence need to be relocated
@@ -459,6 +463,7 @@ void advect_particles::do_step(double dt)
             }
             else if (ftype == facet_t::bounded)
             {
+              std::cout << "Hit bounded facet " << std::endl;
               // Then bounded bc
               apply_bounded_domain_bc(dt_rem, up, ci->index(), i, target_facet);
 
@@ -815,6 +820,9 @@ void advect_particles::do_substep(
       // Then remain within cell, finish time step
       _P->push_particle(dt_rem, up, cidx, pidx);
       dt_rem = 0.0;
+
+      if (bounded_domain_active)
+        bounded_domain_violation(cidx, pidx);
 
       if (step == (num_steps - 1))
         // Copy current position to old position
