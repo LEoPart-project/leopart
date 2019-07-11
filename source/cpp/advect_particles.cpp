@@ -26,8 +26,9 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
   // "periodic"   --> periodic bc (additional info on extent required)
   // "closed"     --> closed boundary
 
-  // This constructor cant take periodic:
+  // This constructor cant take periodic nor bounded:
   assert(type1 != "periodic");
+  assert(type1 != "bounded");
 
   // Set facet info
   update_facets_info();
@@ -72,6 +73,27 @@ advect_particles::advect_particles(
       pbc_lims.push_back(pbc_helper);
     }
     pbc_active = true;
+  }
+  else if (type1 == "bounded")
+  {
+    // Check if it has the right size. [xmin, xmax, ymin, ymax, zmin, zmax]
+    if ((pbc_limits.size() % (2 * gdim)) != 0)
+    {
+      dolfin_error("advect_particles.cpp::advect_particles",
+                   "construct periodic boundary information",
+                   "Incorrect shape of pbc_limits provided?");
+    }
+
+    std::size_t num_rows = pbc_limits.size() / gdim;
+    for (std::size_t i = 0; i < num_rows; i++)
+    {
+      std::vector<double> bounded_domain_lims_helper(2);
+      bounded_domain_lims_helper[0] = pbc_limits[2*i];
+      bounded_domain_lims_helper[1] = pbc_limits[2*i + 1];
+
+      bounded_domain_lims.push_back(bounded_domain_lims_helper);
+    }
+    bounded_domain_active = true;
   }
   else
   {
@@ -234,6 +256,8 @@ void advect_particles::set_bfacets(std::string btype)
     external_facet_type = facet_t::open;
   else if (btype == "periodic")
     external_facet_type = facet_t::periodic;
+  else if (btype == "bounded")
+    external_facet_type = facet_t::bounded;
   else
   {
     dolfin_error("advect_particles.cpp", "set external facet type",
@@ -270,9 +294,11 @@ void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
         facets_info[fi->index()].type = facet_t::open;
       else if (mesh_func[fi->index()] == 3)
         facets_info[fi->index()].type = facet_t::periodic;
+      else if (mesh_func[fi->index()] == 4)
+        facets_info[fi->index()].type = facet_t::bounded;
       else
         dolfin_error("advect_particles.cpp", "set external facet type",
-                     "Invalid value, must be 1, 2, or 3");
+                     "Invalid value, must be 1, 2, 3 or 4");
     }
     else
     {
@@ -334,6 +360,10 @@ void advect_particles::do_step(double dt)
           // Then remain within cell, finish time step
           _P->push_particle(dt_rem, up, ci->index(), i);
           dt_rem = 0.0;
+
+          if (bounded_domain_active)
+            bounded_domain_violation(ci->index(), i);
+
           // TODO: if step == last tstep: update particle position old to most
           // recent value If cidx_recv != ci->index(), particles crossed facet
           // and hence need to be relocated
@@ -380,6 +410,10 @@ void advect_particles::do_step(double dt)
                 pbc_limits_violation(ci->index(),
                                      i); // Check on sequence crossing internal
                                          // bc -> crossing periodic bc
+
+              if (bounded_domain_active)
+                bounded_domain_violation(ci->index(), i);
+
               // TODO: do same for closed bcs to handle (unlikely event):
               // internal bc-> closed bc
 
@@ -413,6 +447,26 @@ void advect_particles::do_step(double dt)
             {
               // Then periodic bc
               apply_periodic_bc(dt_rem, up, ci->index(), i, target_facet);
+              if (num_processes > 1) // Behavior in parallel
+                reloc.push_back(
+                    {ci->index(), i, std::numeric_limits<unsigned int>::max()});
+              else
+              {
+                // Behavior in serial
+                std::size_t cell_id = _P->mesh()
+                                          ->bounding_box_tree()
+                                          ->compute_first_entity_collision(
+                                              _P->x(ci->index(), i));
+                reloc.push_back({ci->index(), i, cell_id});
+              }
+              dt_rem = 0.0;
+            }
+            else if (ftype == facet_t::bounded)
+            {
+              std::cout << "Hit bounded facet " << std::endl;
+              // Then bounded bc
+              apply_bounded_domain_bc(dt_rem, up, ci->index(), i, target_facet);
+
               if (num_processes > 1) // Behavior in parallel
                 reloc.push_back(
                     {ci->index(), i, std::numeric_limits<unsigned int>::max()});
@@ -664,6 +718,38 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
+void advect_particles::apply_bounded_domain_bc(
+    double dt, Point& up, std::size_t cidx,
+    std::size_t pidx, std::size_t fidx)
+{
+  // First push particle
+  _P->push_particle(dt, up, cidx, pidx);
+
+  Point x = _P->x(cidx, pidx);
+  for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
+  {
+    x[i] = std::max(x[i], bounded_domain_lims[i][0]);
+    x[i] = std::min(x[i], bounded_domain_lims[i][1]);
+  }
+
+  _P->set_property(cidx, pidx, 0, x);
+}
+//-----------------------------------------------------------------------------
+void advect_particles::bounded_domain_violation(
+    std::size_t cidx, std::size_t pidx)
+{
+  // This method guarantees that particles can cross internal bc -> bounded bc
+  // in one time step without being deleted.
+  Point x = _P->x(cidx, pidx);
+  for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
+  {
+    x[i] = std::max(x[i], bounded_domain_lims[i][0]);
+    x[i] = std::min(x[i], bounded_domain_lims[i][1]);
+  }
+
+  _P->set_property(cidx, pidx, 0, x);
+}
+//-----------------------------------------------------------------------------
 void advect_particles::do_substep(
     double dt, Point& up, const std::size_t cidx, std::size_t pidx,
     const std::size_t step, const std::size_t num_steps,
@@ -705,6 +791,9 @@ void advect_particles::do_substep(
       if (pbc_active)
         pbc_limits_violation(cidx, pidx);
 
+      if (bounded_domain_active)
+        bounded_domain_violation(cidx, pidx);
+
       if (step == (num_steps - 1))
       {
         // Copy current position to old position
@@ -731,6 +820,9 @@ void advect_particles::do_substep(
       // Then remain within cell, finish time step
       _P->push_particle(dt_rem, up, cidx, pidx);
       dt_rem = 0.0;
+
+      if (bounded_domain_active)
+        bounded_domain_violation(cidx, pidx);
 
       if (step == (num_steps - 1))
         // Copy current position to old position
@@ -782,6 +874,9 @@ void advect_particles::do_substep(
           // Updates particle position if pbc_limits is violated
           if (pbc_active)
             pbc_limits_violation(cidx, pidx);
+
+          if (bounded_domain_active)
+            bounded_domain_violation(cidx, pidx);
 
           // Copy current position to old position
           if (step == (num_steps - 1) || hit_cbc)
@@ -850,6 +945,29 @@ void advect_particles::do_substep(
             reloc.push_back({cidx, pidx, cell_id});
           }
 
+          dt_rem = 0.0;
+        }
+        else if (ftype == facet_t::bounded)
+        {
+          // Then bounded bc
+          apply_bounded_domain_bc(dt_rem, up, cidx, pidx, target_facet);
+
+          // Copy current position to old position
+          if (step == (num_steps - 1))
+            _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
+
+          if (mpi_size > 1) // Behavior in parallel
+            reloc.push_back(
+                {cidx, pidx, std::numeric_limits<unsigned int>::max()});
+          else
+          {
+            // Behavior in serial
+            std::size_t cell_id = _P->mesh()
+                                      ->bounding_box_tree()
+                                      ->compute_first_entity_collision(
+                                          _P->x(cidx, pidx));
+            reloc.push_back({cidx, pidx, cell_id});
+          }
           dt_rem = 0.0;
         }
         else
