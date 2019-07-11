@@ -29,7 +29,8 @@ enum class facet_t : std::uint8_t
   internal,
   closed,
   open,
-  periodic
+  periodic,
+  bounded
 };
 
 // Facet info on each facet of mesh
@@ -82,6 +83,10 @@ protected:
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
   bool pbc_active = false;
 
+  // Limits for bounded facets
+  std::vector<std::vector<double>> bounded_domain_lims; // Coordinates of limits
+  bool bounded_domain_active = false;
+
   // Timestepping scheme related
   std::vector<double> dti;
   std::vector<double> weights;
@@ -89,7 +94,7 @@ protected:
   std::size_t _space_dimension, _value_size_loc;
 
   // Facet information
-  // (normal, midpoint, type(internal, open, closed, periodic))
+  // (normal, midpoint, type(internal, open, closed, periodic, bounded))
   std::vector<facet_info> facets_info;
 
   Function* uh;
@@ -109,8 +114,11 @@ protected:
                        std::size_t fidx);
   void apply_periodic_bc(double dt, Point& up, std::size_t cidx,
                          std::size_t pidx, std::size_t fidx);
+  void apply_bounded_domain_bc(double dt, Point& up, std::size_t cidx,
+                               std::size_t pidx, std::size_t fidx);
 
   void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
+  void bounded_domain_violation(std::size_t cidx, std::size_t pidx);
 
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes
