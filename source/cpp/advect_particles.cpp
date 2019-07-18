@@ -170,6 +170,33 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi
     _value_size_loc *= _element->value_dimension(i);
 }
 //-----------------------------------------------------------------------------
+advect_particles::advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+                                   const MeshFunction<std::size_t>& mesh_func,
+                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
+    : advect_particles(P, U, uhi, mesh_func, pbc_limits)
+{
+  std::size_t gdim = _P->mesh()->geometry().dim();
+  // Check if it has the right size. [xmin, xmax, ymin, ymax, zmin, zmax]
+  if ((bounded_limits.size() % (2 * gdim)) != 0)
+  {
+    dolfin_error("advect_particles.cpp::advect_particles",
+                 "construct periodic boundary information",
+                 "Incorrect shape of bounded_limits provided?");
+  }
+
+  std::size_t num_rows = bounded_limits.size() / gdim;
+  for (std::size_t i = 0; i < num_rows; i++)
+  {
+    std::vector<double> bounded_domain_lims_helper(2);
+    bounded_domain_lims_helper[0] = bounded_limits[2*i];
+    bounded_domain_lims_helper[1] = bounded_limits[2*i + 1];
+
+    bounded_domain_lims.push_back(bounded_domain_lims_helper);
+  }
+  bounded_domain_active = true;
+}
+//-----------------------------------------------------------------------------
 void advect_particles::update_facets_info()
 {
   // Cache midpoint, and normal of each facet in mesh
@@ -1030,6 +1057,17 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
   init_weights();
 }
 //-----------------------------------------------------------------------------
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+                       const MeshFunction<std::size_t>& mesh_func,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
+    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
+
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
 void advect_rk2::do_step(double dt)
 {
   if (dt <= 0.)
@@ -1136,6 +1174,17 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
+
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
+                       const MeshFunction<std::size_t>& mesh_func,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
+    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
 
 {
   update_particle_template();

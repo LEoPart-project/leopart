@@ -64,6 +64,13 @@ public:
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
+  // Document
+  advect_particles(
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
+
   // Step forward in time dt
   void do_step(double dt);
 
@@ -153,6 +160,13 @@ public:
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
+  // Document
+  advect_rk2(
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
+
   // Step forward in time dt
   void do_step(double dt);
 
@@ -204,6 +218,13 @@ public:
       particles& P, FunctionSpace& U, Function& uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
+
+  // Document
+  advect_rk3(
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
 
   // Step forward in time dt
   void do_step(double dt);
