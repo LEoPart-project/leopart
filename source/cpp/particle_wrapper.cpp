@@ -76,6 +76,11 @@ PYBIND11_MODULE(particle_wrapper, m)
            dolfin::particles&, dolfin::FunctionSpace&,
            dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_particles::do_step)
       .def("update_facets_info", &dolfin::advect_particles::update_facets_info);
 
@@ -93,6 +98,11 @@ PYBIND11_MODULE(particle_wrapper, m)
            dolfin::particles&, dolfin::FunctionSpace&,
            dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk2::do_step)
       .def("update_facets_info", &dolfin::advect_rk2::update_facets_info);
 
@@ -109,6 +119,11 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
            dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           dolfin::Function&, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk3::do_step)
       .def("update_facets_info", &dolfin::advect_rk3::update_facets_info);
