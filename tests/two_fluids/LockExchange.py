@@ -33,7 +33,7 @@ class Boundaries(SubDomain):
 # User input
 
 # Whcih projection: choose 'l2' or 'PDE'
-projection_type = 'PDE'
+projection_type = 'l2'
 
 # Domain, timestepping etc.
 xmin, xmax = 0., 30.
@@ -63,7 +63,7 @@ ub = np.sqrt(g_prime * (ymax - ymin))
 nu = Constant((ub * (ymax - ymin)) / Re)
 
 # Time stepping
-T_star_end = 10.
+T_star_end = 16.
 tscale = np.sqrt(g_prime / (ymax - ymin))
 T_end = T_star_end / tscale
 dt = Constant(1.25e-2/tscale)
@@ -88,13 +88,13 @@ if comm.rank == 0:
     print('Number of steps '+str(num_steps))
 
 # Directory for output
-outdir_base = './../../results/LockExchange_nproc'+str(comm.size)+'_'+projection_type+'map/'
+outdir_base = './../../results/LockExchange_nproc'+str(comm.size)+'_'+projection_type+'map_201907/'
 # Particle output
 fname_list = [outdir_base+'xp.pickle',
               outdir_base+'up.pickle',
               outdir_base+'rhop.pickle']
 property_list = [0, 2, 1]
-store_step = 20
+store_step = 40
 
 meta_data = outdir_base+"meta_data.txt"
 conservation_data = outdir_base+"conservation_data.csv"
@@ -245,6 +245,7 @@ with open(conservation_data, "w") as write_file:
     writer.writerow(["Time", "Total mass",
                      "Mass conservation (incl. bndry flux)",
                      "Mass conservation (excl. bndry flux)",
+                     "Momentum x", "Momentum y",
                      "Momentum conservation (incl. bndry flux)",
                      "Momentum conservation (excl. bndry flux)",
                      "Rho_min", "Rho_max"])
@@ -290,14 +291,16 @@ while step < num_steps:
 
     mx_change_noflux = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex)) * dx)
     my_change_noflux = assemble((rho * dot(ustar, ey) - dot(rho0 * Uh.sub(0), ey)) * dx)
-    mt_change_noflux = mx_change_noflux + my_change_noflux
+    mt_change_noflux = abs(mx_change_noflux) + abs(my_change_noflux)
 
     # Check (global) momentum conservation
+    mx = assemble(rho * dot(ustar, ex) * dx)
+    my = assemble(rho * dot(ustar, ey) * dx)
     mx_change = assemble((rho * dot(ustar, ex) - dot(rho0 * Uh.sub(0), ex)) * dx
                          + dt * dot(outer(rhobar * ustar_bar, ubar0_a) * n, ex) * ds)
     my_change = assemble((rho * dot(ustar, ey) - dot(rho0 * Uh.sub(0), ey)) * dx
                          + dt * dot(outer(rhobar * ustar_bar, ubar0_a)*n, ey) * ds)
-    mt_change = mx_change + my_change
+    mt_change = abs(mx_change) + abs(my_change)
 
     # Compute Rho_min and Rho_max
     rho_proc_0 = rho.vector().gather_on_zero()
@@ -308,6 +311,7 @@ while step < num_steps:
 
         with open(conservation_data, "a") as write_file:
             data = [t, total_mass, mass_change_flux, mass_change_noflux,
+                    mx, my,
                     mt_change, mt_change_noflux,
                     rho_min, rho_max]
             writer = csv.writer(write_file)
