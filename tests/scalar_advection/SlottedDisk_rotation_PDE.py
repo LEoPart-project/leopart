@@ -13,13 +13,14 @@
 """
 
 from dolfin import (UserExpression, Expression, Point, VectorFunctionSpace, Mesh, Constant,
-                    FunctionSpace, assemble, dx, refine, Function, XDMFFile, Timer)
+                    FunctionSpace, assemble, dx, refine, Function, XDMFFile, Timer,
+                    assign, DirichletBC)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
 from leopart import (particles, advect_rk3, PDEStaticCondensation, FormsPDEMap,
-                     RandomCircle, assign_particle_values)
+                     RandomCircle, assign_particle_values, l2projection)
 
 comm = pyMPI.COMM_WORLD
 
@@ -94,7 +95,7 @@ W = FunctionSpace(mesh, 'DG', k)
 T = FunctionSpace(mesh, 'DG', 0)
 Wbar = FunctionSpace(mesh, "DGT", k)
 (psi_h, psi_h0) = (Function(W), Function(W))
-psibar = Function(Wbar)
+psibar_h = Function(Wbar)
 
 
 V = VectorFunctionSpace(mesh, 'DG', 3)
@@ -114,7 +115,7 @@ ap = advect_rk3(p, V, uh, 'closed')
 
 # Define projections problem
 FuncSpace_adv = {'FuncSpace_local': W, 'FuncSpace_lambda': T, 'FuncSpace_bar': Wbar}
-forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(psi_h0, uadvect, dt,
+forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(psi_h0, uh, dt,
                                                                 Constant(1.0), zeta=Constant(20.),
                                                                 h=Constant(0.))
 pde_projection = PDEStaticCondensation(mesh, p,
@@ -145,18 +146,17 @@ while step < num_steps:
     if comm.Get_rank() == 0:
         print("Step "+str(step))
 
-
     ap.do_step(float(dt))
 
     pde_projection.assemble(True, True)
     pde_projection.solve_problem(psibar_h,  psi_h,
-                                  'mumps', 'default')
+                                 'mumps', 'default')
 
     assign(psi_h0, psi_h)
 
     if step % store_step == 0:
-        outfile..write_checkpoint(psi_h, function_name='psi',
-                                  time_step=t, append=True)
+        outfile.write_checkpoint(psi_h, function_name='psi',
+                                 time_step=t, append=True)
 
 timer.stop()
 
@@ -168,4 +168,3 @@ if comm.Get_rank() == 0:
     print('Area error '+str(abs(area_end-area_0)))
 
 outfile.close()
-

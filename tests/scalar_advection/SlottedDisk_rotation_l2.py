@@ -124,14 +124,13 @@ while step < num_steps:
     if comm.Get_rank() == 0:
         print("Step "+str(step))
 
-
     ap.do_step(float(dt))
 
     lstsq_psi.project(psi_h, lb, ub)
 
     if step % store_step == 0:
-        outfile..write_checkpoint(psi_h, function_name='psi',
-                                  time_step=t, append=True)
+        outfile.write_checkpoint(psi_h, function_name='psi',
+                                 time_step=t, append=True)
 
 timer.stop()
 
@@ -143,4 +142,3 @@ if comm.Get_rank() == 0:
     print('Area error '+str(abs(area_end-area_0)))
 
 outfile.close()
-
