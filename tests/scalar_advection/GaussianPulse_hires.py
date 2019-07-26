@@ -26,7 +26,6 @@ comm = pyMPI.COMM_WORLD
 # Whcih projection: choose 'l2' or 'PDE'
 projection_type = 'PDE'
 
-
 # Geometric properties
 x0, y0 = 0., 0.
 xc, yc = -0.15, 0.
@@ -52,7 +51,7 @@ dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_'+ projection_type + '/'
+outdir_base = './../../results/GaussianPulse_' + projection_type + '/'
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
@@ -160,7 +159,6 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             ap.do_step(float(dt))
             AD.do_sweep_failsafe(4)
             del(t1)
-
 
             if projection_type == 'PDE':
                 t1 = Timer("[P] Assemble PDE system")
