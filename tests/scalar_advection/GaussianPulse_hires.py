@@ -38,7 +38,7 @@ nx_list = [pow(2, i) for i in i_list]
 pres_list = [60 * pow(2, i) for i in i_list]
 
 # Polynomial order
-k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
+k_list = [1]          # Third order does not make sense for 3rd order advection scheme
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
