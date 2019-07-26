@@ -213,9 +213,9 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
         Point point_value;
 
         // Again the idx_func+1 for skipping position
-        for (std::size_t pidx = 0; pidx < _P->num_cell_particles(cidx); pidx++)
+        for (std::size_t p = 0; p < _P->num_cell_particles(cidx); ++p)
           point_value
-              += distance[pidx] * _P->property(cidx, pidx, idx_func + 1);
+              += distance[p] * _P->property(cidx, p, idx_func + 1);
 
         point_value /= distance_sum;
 
