@@ -33,7 +33,7 @@ class Boundaries(SubDomain):
 # User input
 
 # Whcih projection: choose 'l2' or 'PDE'
-projection_type = 'l2'
+projection_type = 'PDE'
 
 # Domain, timestepping etc.
 xmin, xmax = 0., 30.
@@ -88,7 +88,7 @@ if comm.rank == 0:
     print('Number of steps '+str(num_steps))
 
 # Directory for output
-outdir_base = './../../results/LockExchange_nproc'+str(comm.size)+'_'+projection_type+'map_201907/'
+outdir_base = './../../results/LockExchange_nproc'+str(comm.size)+'_'+projection_type+'map/'
 # Particle output
 fname_list = [outdir_base+'xp.pickle',
               outdir_base+'up.pickle',
