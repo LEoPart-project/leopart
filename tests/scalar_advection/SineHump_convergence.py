@@ -16,14 +16,17 @@ from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
                     Function, SubDomain, Expression, Constant,
                     Point, FiniteElement, CellType,
                     near, assemble, dx, dot, sqrt, assign, File,
-                    Timer, list_timings, TimingClear, TimingType)
+                    Timer, TimingType, TimingClear, timings)
 from leopart import (particles, advect_particles, PDEStaticCondensation,
-                     RegularRectangle, FormsPDEMap, SineHump)
+                     RegularRectangle, FormsPDEMap, SineHump, l2projection)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
 
 comm = pyMPI.COMM_WORLD
+
+# Which projection: choose 'l2' or 'PDE'
+projection_type = 'PDE'
 
 
 # Helper classes
@@ -81,7 +84,7 @@ dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
 storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
 
 # Directory for output
-outdir_base = './../../results/PeriodicPulse_Translation/'
+outdir_base = './../../results/SineHump_convergence_' + projection_type + '/'
 
 # Then start the loop over the tests set-ups
 for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
@@ -153,6 +156,9 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
                                                [], property_idx)
 
+        # Initialize the l2 projection
+        lstsq_psi = l2projection(p, W, property_idx)
+
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h, property_idx)
@@ -165,24 +171,31 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             step += 1
 
             # Advect particle, assemble and solve pde projection
-            t2 = Timer('[P] Do step')
+            t1 = Timer("[P] Advect particles step")
             ap.do_step(float(dt))
-            del(t2)
-            t2 = Timer('[P] Assemble particles')
-            pde_projection.assemble(True, True)
-            del(t2)
-            t3 = Timer('[P] Projection particles')
-            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                         lambda_h.cpp_object(), 'gmres', 'hypre_amg')
-            del(t3)
-            t2 = Timer('[P] Assign & output')
+            del(t1)
+
+            if projection_type == 'PDE':
+                t1 = Timer("[P] Assemble PDE system")
+                pde_projection.assemble(True, True)
+                del(t1)
+                t1 = Timer("[P] Solve projection")
+                pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
+                                             lambda_h.cpp_object(), 'mumps', 'default')
+                del(t1)
+            else:
+                t1 = Timer("[P] Solve projection")
+                lstsq_psi.project(psi_h)
+                del(t1)
+
+            t1 = Timer('[P] Assign & output')
             # Update old solution
             assign(psi0_h, psi_h)
 
             # Store
             if step % store_step == 0 or step == 1:
                 output_field << psi_h
-            del(t2)
+            del(t1)
 
         timer.stop()
 
@@ -205,4 +218,6 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                                   float(l2_error), np.float64(area_error_end),
                                   np.float(timer.elapsed()[0])))
 
-list_timings(TimingClear.keep, [TimingType.wall])
+        time_table = timings(TimingClear.keep, [TimingType.wall])
+        with open(outdir+"timings"+str(nx)+".log", "w") as out:
+            out.write(time_table.str(True))

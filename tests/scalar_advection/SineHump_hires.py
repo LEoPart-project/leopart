@@ -4,104 +4,133 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-"""
-    Tests the advection of a Gaussian pulse
-    on a circular disk, using solid body rotation
-    and control on number of particles
-"""
+'''
+    Tests the advection of a sinusoidal pulse
+    psi(x,0) = sin{2 pi x} sin{2 pi y}
+    on a bi-periodic unit square domain, using the
+    simple translational velocity field u = [1,1]^T
+    Particles are placed in a regular lattice.
+'''
 
-from dolfin import (Mesh, FiniteElement, Constant, VectorFunctionSpace, Function, FunctionSpace,
-                    Expression, Point, DirichletBC, assign, sqrt, dot, assemble, dx,
-                    refine, XDMFFile, Timer, TimingType, TimingClear, timings)
+from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
+                    Function, SubDomain, Expression, Constant,
+                    Point, FiniteElement, CellType,
+                    near, assemble, dx, dot, sqrt, assign, File,
+                    Timer, TimingType, TimingClear, timings)
+from leopart import (particles, advect_particles, PDEStaticCondensation,
+                     RegularRectangle, FormsPDEMap, SineHump, l2projection)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
-
-# Load from package
-from leopart import (particles, advect_rk3, l2projection, PDEStaticCondensation, RandomCircle,
-                     FormsPDEMap, GaussianPulse, AddDelete)
 
 comm = pyMPI.COMM_WORLD
 
 # Which projection: choose 'l2' or 'PDE'
 projection_type = 'PDE'
 
-# Geometric properties
-x0, y0 = 0., 0.
-xc, yc = -0.15, 0.
-r = 0.5
-sigma = Constant(0.1)
 
-# Mesh/particle properties, use safe number of particles
-i_list = [5]
-nx_list = [pow(2, i) for i in i_list]
-pres_list = [60 * pow(2, i) for i in i_list]
+# Helper classes
+class PeriodicBoundary(SubDomain):
+    # Left boundary is "target domain" G
+    def __init__(self, bdict):
+        SubDomain.__init__(self)
+        self.xmin, self.xmax = bdict['xmin'], bdict['xmax']
+        self.ymin, self.ymax = bdict['ymin'], bdict['ymax']
 
-# Polynomial order
-k_list = [1]
+    def inside(self, x, on_boundary):
+        # return True if on left or bottom boundary AND NOT
+        # on one of the two corners (0, 1) and (1, 0)
+        return bool((near(x[0], self.xmin) or near(x[1], self.ymin)) and
+                    (not ((near(x[0], self.xmin) and near(x[1], self.ymax)) or
+                          (near(x[0], self.xmax) and near(x[1], self.ymin))))
+                    and on_boundary)
+
+    def map(self, x, y):
+        if near(x[0], self.xmax) and near(x[1], self.ymax):
+            y[0] = x[0] - (self.xmax - self.xmin)
+            y[1] = x[1] - (self.ymax - self.ymin)
+        elif near(x[0], self.xmax):
+            y[0] = x[0] - (self.xmax - self.xmin)
+            y[1] = x[1]
+        else:   # near(x[1], 1)
+            y[0] = x[0]
+            y[1] = x[1] - (self.ymax - self.ymin)
+
+
+# Mesh properties
+xmin, ymin = 0., 0.
+xmax, ymax = 1., 1.
+nx_list = [128]
+
+lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
+                 [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
+lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
+
+# Particle resolution, approx 15 particles per cell
+pres_list = [45 * pow(2, i) for i in range(len(nx_list))]
+
+# Polynomial orders: k_list: state variable, l_list: Lagrange multiplier
+k_list = [3]
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
-# Magnitude solid body rotation .
-Uh = np.pi
+# Translatory velocity
+ux = '1'
+vy = '1'
 
-# Timestepping info, Tend corresponds to 2 rotations
-Tend = 2.
-dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
-storestep_list = [1 * pow(2, i) for i in i_list]
+# Timestepping info
+Tend = 1.
+dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
+storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_' + projection_type + '/'
+outdir_base = './../../results/SineHump_timing_' + projection_type + '/'
 
 # Then start the loop over the tests set-ups
-for (k, l, kbar) in zip(k_list, l_list, kbar_list):
-    outdir = outdir_base+'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nproc'+str(comm.Get_size())+'/'
-
+for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
+    # Set information for output
+    outdir = outdir_base+'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nprocs'+str(comm.Get_size())+'/'
     output_table = outdir+'output_table.txt'
+
     if comm.rank == 0:
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-
         with open(output_table, "w") as write_file:
-            write_file.write("%-12s %-15s %-20s %-10s %-20s %-20s %-10s %-20s \n" %
+            write_file.write("%-12s %-15s %-20s %-10s %-20s %-20s \n" %
                              ("Time step", "Number of cells", "Number of particles",
-                              "L2 T_half", "Global mass T_half",
-                              "L2 T_end", "Global mass T_end", "Wall clock time"))
+                              "L2 error", "Global mass error", "Wall clock time"))
 
     for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
 
+        output_field = File(outdir+'psi_h'+'_nx'+str(nx)+'.pvd')
+
         # Compute num steps till completion
         num_steps = np.rint(Tend/float(dt))
 
         # Generate mesh
-        mesh = Mesh('./../../meshes/circle_0.xml')
-        n = nx
-        while (n > 1):
-            mesh = refine(mesh)
-            n /= 2
-
-        output_field = XDMFFile(mesh.mpi_comm(), outdir+"psi_h_nx"+str(nx)+".xdmf")
+        mesh = RectangleMesh.create([Point(xmin, ymin), Point(xmax, ymax)], [nx, nx],
+                                    CellType.Type.triangle)
 
         # Velocity and initial condition
-        V = VectorFunctionSpace(mesh, 'DG', 3)
+        V = VectorFunctionSpace(mesh, 'CG', 1)
         uh = Function(V)
-        uh.assign(Expression(('-Uh*x[1]', 'Uh*x[0]'), Uh=Uh, degree=3))
+        uh.assign(Expression((ux, vy), degree=1))
 
-        psi0_expression = GaussianPulse(center=(xc, yc), sigma=float(sigma),
-                                        U=[Uh, Uh], time=0., height=1., degree=3)
+        psi0_expression = SineHump(center=[0.5, 0.5], U=[float(ux), float(vy)],
+                                   time=0., degree=6)
 
         # Generate particles
-        x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
+        x = RegularRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
         s = np.zeros((len(x), 1), dtype=np.float_)
 
         # Initialize particles with position x and scalar property s at the mesh
         p = particles(x, [s], mesh)
         property_idx = 1  # Scalar quantity is stored at slot 1
 
-        # Initialize advection class, use RK3 scheme
-        ap = advect_rk3(p, V, uh, 'open')
+        # Initialize advection class, simple forward Euler suffices
+        ap = advect_particles(p, V, uh, 'periodic', lims.flatten())
 
         # Define the variational (projection problem)
         W_e = FiniteElement("DG", mesh.ufl_cell(), k)
@@ -110,14 +139,11 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
         W = FunctionSpace(mesh, W_e)
         T = FunctionSpace(mesh, T_e)
-        Wbar = FunctionSpace(mesh, Wbar_e)
+        Wbar = FunctionSpace(mesh, Wbar_e, constrained_domain=PeriodicBoundary(lim_dict))
 
         psi_h, psi0_h = Function(W), Function(W)
         lambda_h = Function(T)
         psibar_h = Function(Wbar)
-
-        # Boundary conditions
-        bc = DirichletBC(Wbar, Constant(0.), "on_boundary")
 
         # Initialize forms
         FuncSpace_adv = {'FuncSpace_local': W, 'FuncSpace_lambda': T, 'FuncSpace_bar': Wbar}
@@ -128,36 +154,25 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                                forms_pde['H_a'],
                                                forms_pde['B_a'],
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                               [bc], property_idx)
+                                               [], property_idx)
 
         # Initialize the l2 projection
         lstsq_psi = l2projection(p, W, property_idx)
 
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
-        p.interpolate(psi0_h.cpp_object(), property_idx)
-
-        # Initialize add/delete particle
-        AD = AddDelete(p, 15, 25, [psi0_h])
+        p.interpolate(psi0_h, property_idx)
 
         step = 0
-        t = 0.
         area_0 = assemble(psi0_h*dx)
-        timer = Timer()
-
+        timer = Timer('[P] Advection loop')
         timer.start()
         while step < num_steps:
             step += 1
-            t += float(dt)
-
-            if comm.rank == 0:
-                print("Step "+str(step))
 
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
-            AD.do_sweep()
             ap.do_step(float(dt))
-            AD.do_sweep_failsafe(4)
             del(t1)
 
             if projection_type == 'PDE':
@@ -165,35 +180,27 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                 pde_projection.assemble(True, True)
                 del(t1)
                 t1 = Timer("[P] Solve projection")
-                pde_projection.solve_problem(psibar_h,  psi_h,
-                                             'mumps', 'default')
+                pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
+                                             lambda_h.cpp_object(), 'mumps', 'default')
                 del(t1)
             else:
                 t1 = Timer("[P] Solve projection")
                 lstsq_psi.project(psi_h)
                 del(t1)
 
-            t1 = Timer("[P] Update and store")
+            t1 = Timer('[P] Assign & output')
             # Update old solution
             assign(psi0_h, psi_h)
 
-            # Store field
+            # Store
             if step % store_step == 0 or step == 1:
-                output_field.write(psi_h, t)
-
-            # Avoid getting accused of cheating, compute
-            # L2 error and mass error at half rotation
-            if int(np.floor(2*step - num_steps)) == 0:
-                psi0_expression.t = step * float(dt)
-                l2_error_half = sqrt(assemble(dot(psi_h - psi0_expression,
-                                                  psi_h - psi0_expression)*dx))
-                area_half = assemble(psi_h*dx)
+                output_field << psi_h
             del(t1)
+
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)
-        psi0_expression.t = step * float(dt)
-        l2_error = sqrt(assemble(dot(psi_h - psi0_expression, psi_h - psi0_expression)*dx))
+        l2_error = sqrt(abs(assemble(dot(psi_h - psi0_expression, psi_h - psi0_expression)*dx)))
 
         # The global mass conservation error should be zero
         area_end = assemble(psi_h*dx)
@@ -204,18 +211,10 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             # Store in error error table
             num_cells_t = mesh.num_entities_global(2)
             num_particles = len(x)
-            try:
-                area_error_half = np.float64((area_half-area_0))
-            except BaseException:
-                area_error_half = float('NaN')
-                l2_error_half = float('NaN')
-
             area_error_end = np.float64((area_end-area_0))
-
             with open(output_table, "a") as write_file:
-                write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g %-20.2e %-20.3g %-20.3g \n" %
+                write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g %-20.3g \n" %
                                  (float(dt), int(num_cells_t), int(num_particles),
-                                  float(l2_error_half), np.float64(area_error_half),
                                   float(l2_error), np.float64(area_error_end),
                                   np.float(timer.elapsed()[0])))
 
