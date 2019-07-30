@@ -22,11 +22,12 @@ from leopart import (particles, advect_particles, PDEStaticCondensation,
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
+import csv
 
 comm = pyMPI.COMM_WORLD
 
 # Which projection: choose 'l2' or 'PDE'
-projection_type = 'PDE'
+projection_type = 'l2'
 
 
 # Helper classes
@@ -60,14 +61,14 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0., 0.
 xmax, ymax = 1., 1.
-nx_list = [8, 16, 32, 64, 128]
+nx_list = [11, 22, 44, 88, 176]
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 
 # Particle resolution, approx 15 particles per cell
-pres_list = [45 * pow(2, i) for i in range(len(nx_list))]
+pres_list = [60 * pow(2, i) for i in range(len(nx_list))]
 
 # Polynomial orders: k_list: state variable, l_list: Lagrange multiplier
 k_list = [1, 2, 3]
@@ -75,13 +76,12 @@ l_list = [0] * len(k_list)
 kbar_list = k_list
 
 # Translatory velocity
-ux = '1'
-vy = '1'
+(ux, vy) = ('1', '1')
 
 # Timestepping info
 Tend = 1.
 dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
-storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
+storestep_list = [1 * pow(2, i) for i in range(len(dt_list))]
 
 # Directory for output
 outdir_base = './../../results/SineHump_convergence_' + projection_type + '/'
@@ -96,15 +96,21 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         with open(output_table, "w") as write_file:
-            write_file.write("%-12s %-15s %-20s %-10s %-20s %-20s \n" %
+            write_file.write("%-12s %-15s %-20s %-10s %-20s \n" %
                              ("Time step", "Number of cells", "Number of particles",
-                              "L2 error", "Global mass error", "Wall clock time"))
+                              "L2 error", "Global mass error"))
 
     for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
 
         output_field = File(outdir+'psi_h'+'_nx'+str(nx)+'.pvd')
+
+        conservation_data = outdir + 'conservation_nx' + str(nx) + '.csv'
+        if comm.rank == 0:
+            with open(conservation_data, "w") as write_file:
+                writer = csv.writer(write_file)
+                writer.writerow(["Time", "Total mass", "Mass conservation"])
 
         # Compute num steps till completion
         num_steps = np.rint(Tend/float(dt))
@@ -169,6 +175,8 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         timer.start()
         while step < num_steps:
             step += 1
+            if comm.rank == 0:
+                print("Step number" + str(step))
 
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
@@ -180,43 +188,48 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                 pde_projection.assemble(True, True)
                 del(t1)
                 t1 = Timer("[P] Solve projection")
-                pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                             lambda_h.cpp_object(), 'mumps', 'default')
+                pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'default')
                 del(t1)
             else:
                 t1 = Timer("[P] Solve projection")
                 lstsq_psi.project(psi_h)
                 del(t1)
 
+            # The global mass conservation error should be zero
+            area_n = assemble(psi_h*dx)
+
             t1 = Timer('[P] Assign & output')
             # Update old solution
             assign(psi0_h, psi_h)
 
-            # Store
+            # Store some results
             if step % store_step == 0 or step == 1:
                 output_field << psi_h
-            del(t1)
 
+                # Write conservation data
+                if comm.rank == 0:
+                    area_error = abs(np.float64((area_n - area_0)))
+                    with open(conservation_data, "a") as write_file:
+                        data = [step * float(dt), area_n, area_error]
+                        writer = csv.writer(write_file)
+                        writer.writerow(['{:10.7g}'.format(val) for val in data])
+            del(t1)
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)
         l2_error = sqrt(abs(assemble(dot(psi_h - psi0_expression, psi_h - psi0_expression)*dx)))
 
-        # The global mass conservation error should be zero
-        area_end = assemble(psi_h*dx)
-
+        num_part = p.number_of_particles()
         if comm.Get_rank() == 0:
             print("l2 error "+str(l2_error))
 
             # Store in error error table
             num_cells_t = mesh.num_entities_global(2)
-            num_particles = len(x)
-            area_error_end = np.float64((area_end-area_0))
+            area_error_end = abs(np.float64((area_n-area_0)))
             with open(output_table, "a") as write_file:
-                write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g %-20.3g \n" %
-                                 (float(dt), int(num_cells_t), int(num_particles),
-                                  float(l2_error), np.float64(area_error_end),
-                                  np.float(timer.elapsed()[0])))
+                write_file.write("%-12.5g %-15d %-20d %-10.2e %-20.3g \n" %
+                                 (float(dt), int(num_cells_t), int(num_part),
+                                  float(l2_error), np.float64(area_error_end)))
 
         time_table = timings(TimingClear.keep, [TimingType.wall])
         with open(outdir+"timings"+str(nx)+".log", "w") as out:

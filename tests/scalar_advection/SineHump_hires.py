@@ -60,14 +60,14 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0., 0.
 xmax, ymax = 1., 1.
-nx_list = [128]
+nx_list = [176]
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 
 # Particle resolution, approx 15 particles per cell
-pres_list = [45 * pow(2, i) for i in range(len(nx_list))]
+pres_list = [60 * pow(2, 4)]  # for i in range(len(nx_list))]
 
 # Polynomial orders: k_list: state variable, l_list: Lagrange multiplier
 k_list = [3]
@@ -75,13 +75,12 @@ l_list = [0] * len(k_list)
 kbar_list = k_list
 
 # Translatory velocity
-ux = '1'
-vy = '1'
+(ux, vy) = ('1', '1')
 
 # Timestepping info
 Tend = 1.
-dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
-storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
+dt_list = [Constant(0.1/pow(2, 4))]
+storestep_list = [5 * pow(2, 4)]
 
 # Directory for output
 outdir_base = './../../results/SineHump_timing_' + projection_type + '/'
@@ -89,8 +88,8 @@ outdir_base = './../../results/SineHump_timing_' + projection_type + '/'
 # Then start the loop over the tests set-ups
 for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
     # Set information for output
-    outdir = outdir_base+'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nprocs'+str(comm.Get_size())+'/'
-    output_table = outdir+'output_table.txt'
+    outdir = outdir_base + 'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nprocs'+str(comm.Get_size())+'/'
+    output_table = outdir + 'output_table.txt'
 
     if comm.rank == 0:
         if not os.path.exists(outdir):
@@ -180,8 +179,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                 pde_projection.assemble(True, True)
                 del(t1)
                 t1 = Timer("[P] Solve projection")
-                pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                             lambda_h.cpp_object(), 'mumps', 'default')
+                pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'default')
                 del(t1)
             else:
                 t1 = Timer("[P] Solve projection")
@@ -196,7 +194,6 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
             if step % store_step == 0 or step == 1:
                 output_field << psi_h
             del(t1)
-
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)
