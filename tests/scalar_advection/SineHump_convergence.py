@@ -15,8 +15,8 @@
 from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
                     Function, SubDomain, Expression, Constant,
                     Point, FiniteElement, CellType,
-                    near, assemble, dx, dot, sqrt, assign, File,
-                    Timer, TimingType, TimingClear, timings)
+                    near, assemble, dx, dot, sqrt, assign, linear_solver_methods,
+                    Timer, TimingType, TimingClear, timings, XDMFFile)
 from leopart import (particles, advect_particles, PDEStaticCondensation,
                      RegularRectangle, FormsPDEMap, SineHump, l2projection)
 from mpi4py import MPI as pyMPI
@@ -27,7 +27,13 @@ import csv
 comm = pyMPI.COMM_WORLD
 
 # Which projection: choose 'l2' or 'PDE'
-projection_type = 'l2'
+projection_type = 'PDE'
+
+# Set solver
+if 'superlu_dist' in linear_solver_methods():
+    solver = 'superlu_dist'
+else:
+    solver = 'mumps'
 
 
 # Helper classes
@@ -104,7 +110,10 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         if comm.Get_rank() == 0:
             print("Starting computation with grid resolution "+str(nx))
 
-        output_field = File(outdir+'psi_h'+'_nx'+str(nx)+'.pvd')
+        # Particle output
+        fname_list = [outdir + 'xp_nx' + str(nx) + '.pickle',
+                      outdir + 'rhop_nx' + str(nx) + '.pickle']
+        property_list = [0, 1]
 
         conservation_data = outdir + 'conservation_nx' + str(nx) + '.csv'
         if comm.rank == 0:
@@ -118,6 +127,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         # Generate mesh
         mesh = RectangleMesh.create([Point(xmin, ymin), Point(xmax, ymax)], [nx, nx],
                                     CellType.Type.triangle)
+        output_field = XDMFFile(mesh.mpi_comm(), outdir+'psi_h'+'_nx'+str(nx)+'.xdmf')
 
         # Velocity and initial condition
         V = VectorFunctionSpace(mesh, 'CG', 1)
@@ -173,6 +183,8 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         area_0 = assemble(psi0_h*dx)
         timer = Timer('[P] Advection loop')
         timer.start()
+
+        output_field.write_checkpoint(psi0_h, function_name='psi', time_step=0)
         while step < num_steps:
             step += 1
             if comm.rank == 0:
@@ -188,7 +200,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                 pde_projection.assemble(True, True)
                 del(t1)
                 t1 = Timer("[P] Solve projection")
-                pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'default')
+                pde_projection.solve_problem(psibar_h, psi_h, solver, 'default')
                 del(t1)
             else:
                 t1 = Timer("[P] Solve projection")
@@ -204,7 +216,8 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
             # Store some results
             if step % store_step == 0 or step == 1:
-                output_field << psi_h
+                output_field.write_checkpoint(psi_h, function_name='psi',
+                                              time_step=step * float(dt), append=True)
 
                 # Write conservation data
                 if comm.rank == 0:
@@ -215,6 +228,10 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                         writer.writerow(['{:10.7g}'.format(val) for val in data])
             del(t1)
         timer.stop()
+        output_field.close()
+
+        # Particle output
+        p.dump2file(mesh, fname_list, property_list, 'wb')
 
         # Compute error (we should accurately recover initial condition)
         l2_error = sqrt(abs(assemble(dot(psi_h - psi0_expression, psi_h - psi0_expression)*dx)))
