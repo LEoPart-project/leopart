@@ -123,7 +123,10 @@ area_0 = assemble(psi_h0*dx)
 timer = Timer()
 timer.start()
 
+# Write initial field and dump initial particle field
 outfile.write_checkpoint(psi_h0, function_name='psi', time_step=0)
+p.dump2file(mesh, fname_list, property_list, 'wb')
+
 while step < num_steps:
     step += 1
     t += float(dt)
@@ -151,6 +154,8 @@ while step < num_steps:
     if step % store_step == 0:
         outfile.write_checkpoint(psi_h, function_name='psi',
                                  time_step=t, append=True)
+        # Dump particles to file
+        p.dump2file(mesh, fname_list, property_list, 'ab')
 
 timer.stop()
 
