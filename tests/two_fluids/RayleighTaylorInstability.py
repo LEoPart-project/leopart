@@ -5,6 +5,8 @@ from mpi4py import MPI as pyMPI
 
 comm = pyMPI.COMM_WORLD
 
+parameters["std_out_all_processes"] = False
+
 # Buoyant layer thickness
 db = 0.2
 # Aspect ratio
@@ -12,32 +14,30 @@ lmbda = Constant(0.9142)
 xmin, xmax = 0.0, float(lmbda)
 ymin, ymax = 0.0, 1.0
 
+# Number of cells
+nx, ny = 160, 160
+
 class StepFunction(UserExpression):
 
     def eval_cell(self, values, x, cell):
         c = Cell(mesh, cell.index)
         if c.midpoint()[1] > db + 0.02*np.cos(np.pi*x[0]/float(lmbda)):
-            values[0] = 0.0
-        else:
             values[0] = 1.0
-
-
-lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
-                 [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
-lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
+        else:
+            values[0] = 0.0
 
 mesh = RectangleMesh.create(
     comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
-    [80, 80], CellType.Type.triangle, "left/right")
+    [nx, ny], CellType.Type.triangle, "left/right")
 
 # Shift the mesh to line up with the initial step function condition
-# scale = db * (1.0 - db)
-# shift = Expression(("0.0", "x[1]*(H - x[1])/S*A*cos(pi/L*x[0])"),
-#                    A=0.02, L=lmbda, H=1.0, S=scale, degree=4)
-#
-# V = VectorFunctionSpace(mesh, "CG", 1)
-# displacement = interpolate(shift, V)
-# ALE.move(mesh, displacement)
+scale = db * (1.0 - db)
+shift = Expression(("0.0", "x[1]*(H - x[1])/S*A*cos(pi/L*x[0])"),
+                   A=0.02, L=lmbda, H=1.0, S=scale, degree=4)
+
+V = VectorFunctionSpace(mesh, "CG", 1)
+displacement = interpolate(shift, V)
+ALE.move(mesh, displacement)
 
 # Entrainment functional measures
 de = 1
@@ -46,8 +46,8 @@ CompiledSubDomain("x[1] > db - DOLFIN_EPS", db=db).mark(cf, de)
 dx = Measure("dx", subdomain_data=cf)
 
 # Setup particles
-pres = 300
-x = RegularRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
+pres = 100
+x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
 s = np.zeros((len(x), 1), dtype=np.float_)
 
 # Interpolate initial function onto particles, index slot 1
@@ -68,7 +68,9 @@ Wbarh = FunctionSpace(mesh, Wbar_e)
 gamma = interpolate(StepFunction(), Wh)
 gamma0 = interpolate(StepFunction(), Wh)
 
+ad = AddDelete(ptcls, 25, 30, [gamma], [1], [0.0, 1.0])
 ptcls.interpolate(gamma, property_idx)
+ad.do_sweep()
 
 lambda_h = Function(Th)
 psibar_h = Function(Wbarh)
@@ -91,13 +93,17 @@ dt = Constant(1e-2)
 # Initialise advection forms
 FuncSpace_adv = {'FuncSpace_local': Wh, 'FuncSpace_lambda': Th, 'FuncSpace_bar': Wbarh}
 forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(gamma0, u_vec,
-                                                                dt, Constant(1.0), zeta=Constant(25.0))
+                                                                dt, Constant(1.0),
+                                                                theta_L=Constant(1.0),
+                                                                zeta=Constant(25.0))
 pde_projection = PDEStaticCondensation(mesh, ptcls,
                                        forms_pde['N_a'], forms_pde['G_a'], forms_pde['L_a'],
                                        forms_pde['H_a'],
                                        forms_pde['B_a'],
                                        forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                       [DirichletBC(Wbarh, Constant(1.0), "near(x[1], 0.0)")], property_idx)
+                                       [DirichletBC(Wbarh, Constant(0.0), "near(x[1], 0.0)", "geometric"),
+                                        DirichletBC(Wbarh, Constant(1.0), "near(x[1], 1.0)", "geometric")],
+                                       property_idx)
 
 # Function spaces for Stokes
 mixedL = FunctionSpace(mesh, MixedElement([W_e_2, Q_E]))
@@ -112,10 +118,11 @@ bcs = [DirichletBC(mixedG.sub(0), Constant((0, 0)), "near(x[1], 0.0) or near(x[1
 
 # Forms Stokes
 alpha = Constant(6*k*k)
-beta = Constant(0.)
 Rb = Constant(1.0)
-eta = Constant(1.0)
-forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(eta, Rb*gamma*Constant((0, 1)))
+eta_top = Constant(1.0)
+eta_bottom = Constant(0.01)
+eta = eta_bottom + gamma * (eta_top - eta_bottom)
+forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(eta, Rb*gamma*Constant((0, -1)))
 
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
@@ -123,7 +130,7 @@ ssc = StokesStaticCondensation(mesh,
                                forms_stokes['Q_S'], forms_stokes['S_S'])
 
 # Particle advector
-C_CFL = 0.2
+C_CFL = 0.5
 hmin = MPI.min(comm, mesh.hmin())
 ap = advect_rk3(ptcls, u_vec.function_space(), u_vec, "closed")
 
@@ -135,38 +142,50 @@ def output_functionals(fname, vals, append=True):
 points_list = list(Point(*pp) for pp in ptcls.positions())
 particles_values = ptcls.get_property(property_idx)
 XDMFFile("./pts/step%.4d.xdmf" % 0).write(points_list, particles_values)
-# Time loop
+
+n_particles =  MPI.sum(comm, len(points_list))
+info("Solving with %d particles" % n_particles)
+
 XDMFFile("gamma.xdmf").write_checkpoint(gamma, "gamma", float(t), append=False)
 conservation0 = assemble(gamma * dx)
 
 velocity_assigner = FunctionAssigner(u_vec.function_space(), mixedL.sub(0))
 gamma_assigner = FunctionAssigner(gamma0.function_space(), gamma.function_space())
 
-for j in range(5000):
-    info("step %d, dt %.3e" % (j, float(dt)))
-    t.assign(float(t) + float(dt))
-    if float(t) > 2010.0:
-        break
+data_filename = "data_nx%d_ny%d_Rb%f_CFL%f_k%d_nparticles%d.dat" \
+                % (nx, ny, float(Rb), C_CFL, k, n_particles)
 
-    # Solve Stokes
-    time = Timer("ZZZ Stokes assemble")
-    ssc.assemble_global_system(True)
-    del time
-    time = Timer("ZZZ Stokes solve")
-    for bc in bcs:
-        ssc.apply_boundary(bc)
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
-    del time
+def output_data_step(append=False):
+    urms = (1.0/lmbda * assemble(dot(u_vec, u_vec) * dx))**0.5
+    conservation = assemble(gamma * dx) / conservation0
+    entrainment = assemble(1.0/(lmbda * Constant(db)) * gamma * dx(de))
+    output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
+                       append=append)
 
-    velocity_assigner.assign(u_vec, Uh.sub(0))
+# Initial Stokes solve
+time = Timer("ZZZ Stokes assemble")
+ssc.assemble_global_system(True)
+del time
+time = Timer("ZZZ Stokes solve")
+for bc in bcs:
+    ssc.apply_boundary(bc)
+ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+del time
+
+velocity_assigner.assign(u_vec, Uh.sub(0))
+output_data_step(append=False)
+
+XDMFFile("u.xdmf").write_checkpoint(Uh.sub(0), "u", float(t), append=False)
+
+for j in range(50000):
     max_u_vec = u_vec.vector().norm("linf")
     dt.assign(C_CFL * hmin / max_u_vec)
 
-    urms = (1.0/lmbda *assemble(dot(u_vec, u_vec)*dx))**0.5
-    conservation = assemble(gamma * dx) / conservation0
-    entrainment = assemble(1.0/(lmbda*Constant(db)) * gamma * dx(de))
-    output_functionals("data.dat", [float(t), float(dt), urms, conservation, entrainment],
-                       append=j!=0)
+    t.assign(float(t) + float(dt))
+    if float(t) > 2000.0:
+        break
+
+    info("Timestep %d, dt = %.3e, t = %.3e" % (j, float(dt), float(t)))
 
     time = Timer("ZZZ Do_step")
     ap.do_step(float(dt))
@@ -183,11 +202,24 @@ for j in range(5000):
 
     gamma_assigner.assign(gamma0, gamma)
 
+    # Solve Stokes
+    time = Timer("ZZZ Stokes assemble")
+    ssc.assemble_global_system(True)
+    del time
+    time = Timer("ZZZ Stokes solve")
+    for bc in bcs:
+        ssc.apply_boundary(bc)
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+    del time
+
+    velocity_assigner.assign(u_vec, Uh.sub(0))
+    output_data_step(append=True)
+
     points_list = list(Point(*pp) for pp in ptcls.positions())
     particles_values = ptcls.get_property(property_idx)
-    info("num particles: %d" % MPI.sum(comm, len(points_list)))
+
     XDMFFile("./pts/step%.4d.xdmf" % (j+1)).write(points_list, particles_values)
     XDMFFile("gamma.xdmf").write_checkpoint(gamma, "gamma", float(t), append=True)
-    quit()
+    XDMFFile("u.xdmf").write_checkpoint(Uh.sub(0), "u", float(t), append=True)
 
 list_timings(TimingClear.clear, [TimingType.wall])
