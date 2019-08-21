@@ -1,7 +1,18 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2019 Nathan Sime
+# Contact: nsime _at_ carnegiescience.edu
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 import numpy as np
 from dolfin import *
 from leopart import *
 from mpi4py import MPI as pyMPI
+
+'''
+    Rayleigh-Taylor instability benchmark problem in geodynamics as documented in
+    https://doi.org/10.1029/97JB01353
+'''
 
 comm = pyMPI.COMM_WORLD
 
@@ -15,8 +26,9 @@ xmin, xmax = 0.0, float(lmbda)
 ymin, ymax = 0.0, 1.0
 
 # Number of cells
-nx, ny = 160, 160
+nx, ny = 40, 40
 
+# Initial composition field
 class StepFunction(UserExpression):
 
     def eval_cell(self, values, x, cell):
@@ -65,11 +77,11 @@ Wh = FunctionSpace(mesh, W_e)
 Th = FunctionSpace(mesh, T_e)
 Wbarh = FunctionSpace(mesh, Wbar_e)
 
-gamma = interpolate(StepFunction(), Wh)
+phi = interpolate(StepFunction(), Wh)
 gamma0 = interpolate(StepFunction(), Wh)
 
-ad = AddDelete(ptcls, 25, 30, [gamma], [1], [0.0, 1.0])
-ptcls.interpolate(gamma, property_idx)
+ad = AddDelete(ptcls, 25, 30, [phi], [1], [0.0, 1.0])
+ptcls.interpolate(phi, property_idx)
 ad.do_sweep()
 
 lambda_h = Function(Th)
@@ -88,8 +100,10 @@ Qbar_E = FiniteElement("DGT", mesh.ufl_cell(), k)
 W_2 = FunctionSpace(mesh, W_e_2)
 u_vec = Function(W_2)
 
+# Simulation time and time step Constants
 t = Constant(0.0)
 dt = Constant(1e-2)
+
 # Initialise advection forms
 FuncSpace_adv = {'FuncSpace_local': Wh, 'FuncSpace_lambda': Th, 'FuncSpace_bar': Wbarh}
 forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(gamma0, u_vec,
@@ -121,8 +135,8 @@ alpha = Constant(6*k*k)
 Rb = Constant(1.0)
 eta_top = Constant(1.0)
 eta_bottom = Constant(0.01)
-eta = eta_bottom + gamma * (eta_top - eta_bottom)
-forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(eta, Rb*gamma*Constant((0, -1)))
+eta = eta_bottom + phi * (eta_top - eta_bottom)
+forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(eta, Rb * phi * Constant((0, -1)))
 
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
@@ -134,11 +148,8 @@ C_CFL = 0.5
 hmin = MPI.min(comm, mesh.hmin())
 ap = advect_rk3(ptcls, u_vec.function_space(), u_vec, "closed")
 
-def output_functionals(fname, vals, append=True):
-    if comm.rank == 0:
-        with open(fname, "a" if append else "w") as fi:
-            fi.write(",".join(map(lambda v: "%.6e" % v, vals)) + "\n")
 
+# Write particles and their values to XDMF file
 points_list = list(Point(*pp) for pp in ptcls.positions())
 particles_values = ptcls.get_property(property_idx)
 XDMFFile("./pts/step%.4d.xdmf" % 0).write(points_list, particles_values)
@@ -146,19 +157,29 @@ XDMFFile("./pts/step%.4d.xdmf" % 0).write(points_list, particles_values)
 n_particles =  MPI.sum(comm, len(points_list))
 info("Solving with %d particles" % n_particles)
 
-XDMFFile("gamma.xdmf").write_checkpoint(gamma, "gamma", float(t), append=False)
-conservation0 = assemble(gamma * dx)
+# Write the intitial compostition field to XDMF file
+XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=False)
+conservation0 = assemble(phi * dx)
 
+# Function assigners to copy subsets of functions between spaces
 velocity_assigner = FunctionAssigner(u_vec.function_space(), mixedL.sub(0))
-gamma_assigner = FunctionAssigner(gamma0.function_space(), gamma.function_space())
+gamma_assigner = FunctionAssigner(gamma0.function_space(), phi.function_space())
 
+# Functionals output filename
 data_filename = "data_nx%d_ny%d_Rb%f_CFL%f_k%d_nparticles%d.dat" \
                 % (nx, ny, float(Rb), C_CFL, k, n_particles)
 
+# Function to output an iterable of numbers to file
+def output_functionals(fname, vals, append=True):
+    if comm.rank == 0:
+        with open(fname, "a" if append else "w") as fi:
+            fi.write(",".join(map(lambda v: "%.6e" % v, vals)) + "\n")
+
+# Compute and output functionals
 def output_data_step(append=False):
     urms = (1.0/lmbda * assemble(dot(u_vec, u_vec) * dx))**0.5
-    conservation = assemble(gamma * dx) / conservation0
-    entrainment = assemble(1.0/(lmbda * Constant(db)) * gamma * dx(de))
+    conservation = abs(assemble(phi * dx) - conservation0)
+    entrainment = assemble(1.0 / (lmbda * Constant(db)) * phi * dx(de))
     output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
                        append=append)
 
@@ -172,10 +193,9 @@ for bc in bcs:
 ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
 del time
 
+# Transfer the computed velocity function and compute functionals
 velocity_assigner.assign(u_vec, Uh.sub(0))
 output_data_step(append=False)
-
-XDMFFile("u.xdmf").write_checkpoint(Uh.sub(0), "u", float(t), append=False)
 
 for j in range(50000):
     max_u_vec = u_vec.vector().norm("linf")
@@ -196,11 +216,11 @@ for j in range(50000):
     del time
 
     time = Timer("ZZZ PDE project solve")
-    pde_projection.solve_problem(psibar_h.cpp_object(), gamma.cpp_object(),
+    pde_projection.solve_problem(psibar_h.cpp_object(), phi.cpp_object(),
                                  lambda_h.cpp_object(), 'mumps', 'default')
     del time
 
-    gamma_assigner.assign(gamma0, gamma)
+    gamma_assigner.assign(gamma0, phi)
 
     # Solve Stokes
     time = Timer("ZZZ Stokes assemble")
@@ -215,11 +235,10 @@ for j in range(50000):
     velocity_assigner.assign(u_vec, Uh.sub(0))
     output_data_step(append=True)
 
+    # Output particles and composition field
     points_list = list(Point(*pp) for pp in ptcls.positions())
     particles_values = ptcls.get_property(property_idx)
-
     XDMFFile("./pts/step%.4d.xdmf" % (j+1)).write(points_list, particles_values)
-    XDMFFile("gamma.xdmf").write_checkpoint(gamma, "gamma", float(t), append=True)
-    XDMFFile("u.xdmf").write_checkpoint(Uh.sub(0), "u", float(t), append=True)
+    XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=True)
 
 list_timings(TimingClear.clear, [TimingType.wall])
