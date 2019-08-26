@@ -4,9 +4,16 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+import os
 import numpy as np
-from dolfin import *
-from leopart import *
+from dolfin import (Cell, UserExpression, RectangleMesh, parameters, Constant, Point, CellType,
+                    Expression, VectorFunctionSpace, interpolate, ALE, MeshFunction,
+                    CompiledSubDomain, Measure, FiniteElement, FunctionSpace, Function,
+                    VectorElement, DirichletBC, MixedElement, MPI, XDMFFile, info,
+                    assemble, FunctionAssigner, Timer, dot, list_timings, TimingClear, TimingType)
+from leopart import (particles, RandomRectangle, AddDelete, FormsPDEMap, PDEStaticCondensation,
+                     FormsStokes,
+                     StokesStaticCondensation, advect_rk3)
 from mpi4py import MPI as pyMPI
 
 '''
@@ -28,6 +35,7 @@ ymin, ymax = 0.0, 1.0
 # Number of cells
 nx, ny = 40, 40
 
+
 # Initial composition field
 class StepFunction(UserExpression):
 
@@ -37,6 +45,7 @@ class StepFunction(UserExpression):
             values[0] = 1.0
         else:
             values[0] = 0.0
+
 
 mesh = RectangleMesh.create(
     comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
@@ -110,13 +119,14 @@ forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(gamma0, u_vec,
                                                                 dt, Constant(1.0),
                                                                 theta_L=Constant(1.0),
                                                                 zeta=Constant(25.0))
+phi_bcs = [DirichletBC(Wbarh, Constant(0.0), "near(x[1], 0.0)", "geometric"),
+           DirichletBC(Wbarh, Constant(1.0), "near(x[1], 1.0)", "geometric")]
 pde_projection = PDEStaticCondensation(mesh, ptcls,
                                        forms_pde['N_a'], forms_pde['G_a'], forms_pde['L_a'],
                                        forms_pde['H_a'],
                                        forms_pde['B_a'],
                                        forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                       [DirichletBC(Wbarh, Constant(0.0), "near(x[1], 0.0)", "geometric"),
-                                        DirichletBC(Wbarh, Constant(1.0), "near(x[1], 1.0)", "geometric")],
+                                       phi_bcs,
                                        property_idx)
 
 # Function spaces for Stokes
@@ -128,7 +138,8 @@ Uhbar = Function(mixedG)
 
 # BCs
 bcs = [DirichletBC(mixedG.sub(0), Constant((0, 0)), "near(x[1], 0.0) or near(x[1], 1.0)"),
-       DirichletBC(mixedG.sub(0).sub(0), Constant(0), CompiledSubDomain("near(x[0], 0.0) or near(x[0], lmbda)", lmbda=lmbda)),]
+       DirichletBC(mixedG.sub(0).sub(0), Constant(0),
+                   CompiledSubDomain("near(x[0], 0.0) or near(x[0], lmbda)", lmbda=lmbda))]
 
 # Forms Stokes
 alpha = Constant(6*k*k)
@@ -136,7 +147,8 @@ Rb = Constant(1.0)
 eta_top = Constant(1.0)
 eta_bottom = Constant(0.01)
 eta = eta_bottom + phi * (eta_top - eta_bottom)
-forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(eta, Rb * phi * Constant((0, -1)))
+forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha) \
+    .forms_steady(eta, Rb * phi * Constant((0, -1)))
 
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
@@ -150,11 +162,13 @@ ap = advect_rk3(ptcls, u_vec.function_space(), u_vec, "closed")
 
 
 # Write particles and their values to XDMF file
+particles_directory = "./particles/"
 points_list = list(Point(*pp) for pp in ptcls.positions())
 particles_values = ptcls.get_property(property_idx)
-XDMFFile("./pts/step%.4d.xdmf" % 0).write(points_list, particles_values)
+XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % 0)) \
+    .write(points_list, particles_values)
 
-n_particles =  MPI.sum(comm, len(points_list))
+n_particles = MPI.sum(comm, len(points_list))
 info("Solving with %d particles" % n_particles)
 
 # Write the intitial compostition field to XDMF file
@@ -169,11 +183,13 @@ gamma_assigner = FunctionAssigner(gamma0.function_space(), phi.function_space())
 data_filename = "data_nx%d_ny%d_Rb%f_CFL%f_k%d_nparticles%d.dat" \
                 % (nx, ny, float(Rb), C_CFL, k, n_particles)
 
+
 # Function to output an iterable of numbers to file
 def output_functionals(fname, vals, append=True):
     if comm.rank == 0:
         with open(fname, "a" if append else "w") as fi:
             fi.write(",".join(map(lambda v: "%.6e" % v, vals)) + "\n")
+
 
 # Compute and output functionals
 def output_data_step(append=False):
@@ -182,6 +198,7 @@ def output_data_step(append=False):
     entrainment = assemble(1.0 / (lmbda * Constant(db)) * phi * dx(de))
     output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
                        append=append)
+
 
 # Initial Stokes solve
 time = Timer("ZZZ Stokes assemble")
@@ -238,7 +255,8 @@ for j in range(50000):
     # Output particles and composition field
     points_list = list(Point(*pp) for pp in ptcls.positions())
     particles_values = ptcls.get_property(property_idx)
-    XDMFFile("./pts/step%.4d.xdmf" % (j+1)).write(points_list, particles_values)
+    XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % (j+1))) \
+        .write(points_list, particles_values)
     XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=True)
 
 list_timings(TimingClear.clear, [TimingType.wall])
