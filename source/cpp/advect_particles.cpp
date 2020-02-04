@@ -755,8 +755,9 @@ void advect_particles::apply_bounded_domain_bc(
   Point x = _P->x(cidx, pidx);
   for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
   {
-    x[i] = std::max(x[i], bounded_domain_lims[i][0]);
-    x[i] = std::min(x[i], bounded_domain_lims[i][1]);
+    const double xmin = bounded_domain_lims[i][0];
+    const double xmax = bounded_domain_lims[i][1];
+    x[i] = std::min(std::max(x[i], xmin), xmax);
   }
 
   _P->set_property(cidx, pidx, 0, x);
@@ -770,8 +771,9 @@ void advect_particles::bounded_domain_violation(
   Point x = _P->x(cidx, pidx);
   for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
   {
-    x[i] = std::max(x[i], bounded_domain_lims[i][0]);
-    x[i] = std::min(x[i], bounded_domain_lims[i][1]);
+    const double xmin = bounded_domain_lims[i][0];
+    const double xmax = bounded_domain_lims[i][1];
+    x[i] = std::min(std::max(x[i], xmin), xmax);
   }
 
   _P->set_property(cidx, pidx, 0, x);
