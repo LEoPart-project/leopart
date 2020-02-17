@@ -7,7 +7,7 @@
 from dolfin import UserExpression, pi
 import numpy as np
 
-__all__ = ['BinaryBlock', 'GaussianPulse', 'SineHump', 'CosineHill']
+__all__ = ['BinaryBlock', 'GaussianPulse', 'SlottedDisk', 'SineHump', 'CosineHill']
 
 
 class BinaryBlock(UserExpression):
@@ -58,6 +58,30 @@ class GaussianPulse(UserExpression):
                                               + x[1]*np.sin(U[1]*t) - xc, 2)
                                           + pow(-x[0]*np.sin(U[0]*t)
                                                 + x[1]*np.cos(U[1]*t)-yc, 2))/(2*pow(sigma, 2)))
+
+    def value_shape(self):
+        return ()
+
+
+class SlottedDisk(UserExpression):
+    def __init__(self, radius, center, width, depth, lb=0., ub=1., **kwargs):
+        self.r = radius
+        self.width = width
+        self.depth = depth
+        self.center = center
+        self.lb = lb
+        self.ub = ub
+        super().__init__(self, **kwargs)
+
+    def eval(self, value, x):
+        xc = self.center[0]
+        yc = self.center[1]
+
+        if(((x[0] - xc)**2 + (x[1] - yc)**2 <= self.r**2) and not
+           ((xc - self.width) <= x[0] <= (xc + self.width) and x[1] >= yc + self.depth)):
+            value[0] = self.ub
+        else:
+            value[0] = self.lb
 
     def value_shape(self):
         return ()
