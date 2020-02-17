@@ -98,8 +98,8 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
     lstsq_rho.project(vh.cpp_object(), lb, ub)
 
     # Assert if it stays within bounds
-    assert np.any(vh.vector().get_local() < ub + 1e-12)
-    assert np.any(vh.vector().get_local() > lb - 1e-12)
+    assert np.all(vh.vector().get_local() < ub + 1e-12)
+    assert np.all(vh.vector().get_local() > lb - 1e-12)
 
 # TODO: Vector Function L2
 # TODO: PDE constrained projection
