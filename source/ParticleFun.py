@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 import numpy as np
 import dolfin.cpp as cpp
 from mpi4py import MPI as pyMPI
-
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+import pickle
+import os
 
 """
     Wrapper for the CPP functionalities
@@ -69,11 +72,40 @@ class particles(compiled_module.particles):
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
-    def number_of_particles(self, mesh):
+    def number_of_particles(self):
         xp_root = comm.gather(self.positions(), root=0)
-        if comm.Get_rank() == 0:
+        if comm.rank == 0:
             xp_root = np.float16(np.vstack(xp_root))
-            print("Number of particles is "+str(len(xp_root)))
+            num_particles = len(xp_root)
+        else:
+            num_particles = None
+        num_particles = comm.bcast(num_particles, root=0)
+        return num_particles
+
+    def dump2file(self, mesh, fname_list, property_list, mode, clean_old=False):
+        if isinstance(fname_list, str) and isinstance(property_list, int):
+            fname_list = [fname_list]
+            property_list = [property_list]
+
+        assert isinstance(fname_list, list) and isinstance(property_list, list), ("Wrong dump2file"
+                                                                                  " request")
+        assert len(fname_list) == len(property_list), ('Property list and index list must '
+                                                       'have same length')
+
+        # Remove files if clean_old = True
+        if clean_old:
+            for fname in fname_list:
+                try:
+                    os.remove(fname)
+                except OSError:
+                    pass
+
+        for (property_idx, fname) in zip(property_list, fname_list):
+            property_root = comm.gather(self.return_property(mesh, property_idx).T, root=0)
+            if comm.Get_rank() == 0:
+                with open(fname, mode) as f:
+                    property_root = np.float16(np.hstack(property_root).T)
+                    pickle.dump(property_root, f)
         return
 
 

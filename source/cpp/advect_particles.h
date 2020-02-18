@@ -2,35 +2,26 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
 
 #ifndef ADVECT_PARTICLES_H
 #define ADVECT_PARTICLES_H
 
-#include "particle.h"
-#include "particles.h"
-#include "utils.h"
-#include <ufc.h>
-
 #include <Eigen/Dense>
-#include <algorithm>
-#include <dolfin/fem/FiniteElement.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <dolfin/la/GenericVector.h>
-#include <dolfin/mesh/BoundaryMesh.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Facet.h>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/MeshEntity.h>
-#include <dolfin/mesh/MeshEntityIterator.h>
-#include <dolfin/mesh/MeshFunction.h>
-#include <dolfin/mesh/Vertex.h>
-#include <iostream>
-#include <limits>
-#include <numeric>
+#include <vector>
+#include <memory>
+
+#include <dolfin/geometry/Point.h>
+
+#include "particles.h"
 
 namespace dolfin
 {
+  // Forward declarations
+  class FunctionSpace;
+  class Function;
+  class FiniteElement;
+  template<typename T> class MeshFunction;
 
 // enum for external facet types
 enum class facet_t : std::uint8_t
@@ -63,20 +54,13 @@ public:
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
+  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+                   const MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt
@@ -92,14 +76,7 @@ protected:
   particles* _P;
 
   void set_bfacets(const std::string btype);
-  void set_bfacets(
-      const BoundaryMesh& bmesh, const std::string btype,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
-
-  std::vector<std::size_t> boundary_facets();
-  std::vector<std::size_t> boundary_facets(
-      const BoundaryMesh& bmesh,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> bidcs);
+  void set_bfacets(const MeshFunction<std::size_t>& mesh_func);
 
   // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
@@ -139,11 +116,11 @@ protected:
   // Method for substepping in multistep schemes
 
   void do_substep(double dt, Point& up, const std::size_t cidx,
-                  std::size_t* pidx, const std::size_t step,
+                  std::size_t pidx, const std::size_t step,
                   const std::size_t num_steps, const std::size_t xp0_idx,
                   const std::size_t up0_idx,
-                  std::vector<std::size_t>& reloc_local_c,
-                  std::vector<particle>& reloc_local_p);
+                  std::vector<std::array<std::size_t, 3>>& reloc);
+
 };
 
 class advect_rk2 : public advect_particles
@@ -152,22 +129,20 @@ public:
   // Constructors
   advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
              const std::string type1);
+
+  // Document
   advect_rk2(
       particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-  advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
 
+  // Document
+  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+                   const MeshFunction<std::size_t>& mesh_func);
+
+  // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt
@@ -206,22 +181,20 @@ public:
   // Constructors
   advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
              const std::string type1);
+
+  // Document
   advect_rk3(
       particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-  advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2);
 
+  // Document
+  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
+                   const MeshFunction<std::size_t>& mesh_func);
+
+  // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi, const BoundaryMesh& bmesh,
-      const std::string type1,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices1,
-      const std::string type2,
-      Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>> indices2,
+      particles& P, FunctionSpace& U, Function& uhi,
+      const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Step forward in time dt

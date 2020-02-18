@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08-02'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 """
     Unit tests for the least squares and PDE-constrained projection.
@@ -10,21 +11,13 @@
 from dolfin import (UserExpression, Expression, FiniteElement,
                     FunctionSpace, VectorFunctionSpace, Function, Point, Constant,
                     RectangleMesh, assemble, dx, dot)
-from DolfinParticles import (particles, l2projection, PDEStaticCondensation,
-                             FormsPDEMap, RandomRectangle)
+from leopart import (particles, l2projection, PDEStaticCondensation,
+                     FormsPDEMap, RandomRectangle, assign_particle_values)
 import numpy as np
 from mpi4py import MPI as pyMPI
 import pytest
 
 comm = pyMPI.COMM_WORLD
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 class SlottedDisk(UserExpression):
@@ -75,8 +68,6 @@ def test_l2projection(polynomial_order, in_expression):
 
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [x, s, x, x, s], mesh)
@@ -107,8 +98,6 @@ def test_l2projection_bounded(polynomial_order, lb, ub):
 
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
     p = particles(x, [x, s, x, x, s], mesh)
@@ -118,8 +107,8 @@ def test_l2projection_bounded(polynomial_order, lb, ub):
     lstsq_rho.project(vh, lb, ub)
 
     # Assert if it stays within bounds
-    assert np.any(vh.vector().get_local() < ub + 1e-12)
-    assert np.any(vh.vector().get_local() > lb - 1e-12)
+    assert np.all(vh.vector().get_local() < ub + 1e-12)
+    assert np.all(vh.vector().get_local() > lb - 1e-12)
 
 
 @pytest.mark.parametrize('polynomial_order, in_expression', [(2, "pow(x[0], 2)"),
@@ -154,8 +143,6 @@ def test_pde_constrained(polynomial_order, in_expression):
     # Define particles
     x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([500, 500])
     s = assign_particle_values(x, interpolate_expression)
-    x = comm.bcast(x, root=0)
-    s = comm.bcast(s, root=0)
     psi0_h.assign(interpolate_expression)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed

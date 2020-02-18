@@ -2,6 +2,28 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
+
+#include <iostream>
+#include <memory>
+
+#include <dolfin/fem/Assembler.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/la/GenericVector.h>
+#include <dolfin/la/Matrix.h>
+#include <dolfin/la/Vector.h>
+#include <dolfin/la/solve.h>
+#include <dolfin/mesh/Cell.h>
+#include <dolfin/mesh/Mesh.h>
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/SparseCore>
+
+#include "QuadProg++.hh"
+#include "particles.h"
 
 #include "l2projection.h"
 
@@ -91,7 +113,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
   Eigen::MatrixXd CE, CI;
   Eigen::VectorXd ce0, ci0;
 
-  CE.resize(0, _space_dimension);
+  CE.resize(_space_dimension, 0);
   ce0.resize(0);
 
   CI.resize(_space_dimension, _space_dimension * _value_size_loc * 2);
@@ -125,7 +147,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
     Eigen::MatrixXd AtA = q * (q.transpose());
     Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
-    solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
+    quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
 }

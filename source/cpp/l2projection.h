@@ -2,35 +2,23 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
 
 #ifndef L2PROJECTION_H
 #define L2PROJECTION_H
 
-#include <iostream>
+#include <vector>
+#include <memory>
 
-#include <dolfin/common/ArrayView.h>
-#include <dolfin/fem/GenericDofMap.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Mesh.h>
-
-#include "dolfin/la/solve.h"
-#include <dolfin/fem/Assembler.h>
-#include <dolfin/la/GenericVector.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
-
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/SparseCore>
-
-#include "eigquadprog.h"
-#include "particles.h"
 
 namespace dolfin
 {
-class l2projection
+  class Function;
+  class FunctionSpace;
+  class particles;
+
+
+  class l2projection
 {
 public:
   l2projection(particles& P, FunctionSpace& V, const std::size_t idx);

@@ -3,6 +3,7 @@ build/
 results/
 deprecate/
 CMakeFiles/
+private_tests/
 
 # Files
 *.pyc
@@ -14,7 +15,7 @@ cmake_install.cmake
 *.pvd
 *.pvtu
 *.vtu
-*.png
+*.xml
 
 .cache/
 htmlcov/

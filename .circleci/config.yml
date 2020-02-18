@@ -31,7 +31,12 @@ jobs:
             echo $(pwd)
             cd ../.. && sudo python3 setup.py install
       - run:
-          name: Running unit tests
+          name: Running unit tests (serial)
           command: |
             cd unit_tests
-            python3 -m pytest -v -s test*
+            python3 -m pytest -v -s test*.py
+      - run:
+          name: Running unit tests (MPI)
+          command: |
+            cd unit_tests
+            mpirun -n 3 python3 -m pytest -v -s test*.py

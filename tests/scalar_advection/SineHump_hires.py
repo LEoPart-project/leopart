@@ -4,28 +4,29 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-"""
+'''
     Tests the advection of a sinusoidal pulse
     psi(x,0) = sin{2 pi x} sin{2 pi y}
     on a bi-periodic unit square domain, using the
     simple translational velocity field u = [1,1]^T
-    Particles are placed in a regular lattice, and
-    an explicit control on the number of particles
-    is used.
-"""
+    Particles are placed in a regular lattice.
+'''
 
 from dolfin import (RectangleMesh, FunctionSpace, VectorFunctionSpace,
                     Function, SubDomain, Expression, Constant,
                     Point, FiniteElement, CellType,
                     near, assemble, dx, dot, sqrt, assign, File,
-                    Timer)
+                    Timer, TimingType, TimingClear, timings)
 from leopart import (particles, advect_particles, PDEStaticCondensation,
-                     RegularRectangle, FormsPDEMap, SineHump, AddDelete)
+                     RegularRectangle, FormsPDEMap, SineHump, l2projection)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import os
 
 comm = pyMPI.COMM_WORLD
+
+# Which projection: choose 'l2' or 'PDE'
+projection_type = 'PDE'
 
 
 # Helper classes
@@ -59,36 +60,36 @@ class PeriodicBoundary(SubDomain):
 # Mesh properties
 xmin, ymin = 0., 0.
 xmax, ymax = 1., 1.
-nx_list = [8, 16, 32, 64, 128]
+nx_list = [176]
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
 lim_dict = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
 
-# Particle resolution, just 2 particles per cell
-pres_list = [15 * pow(2, i) for i in range(len(nx_list))]
+# Particle resolution, approx 15 particles per cell
+pres_list = [60 * pow(2, 4)]  # for i in range(len(nx_list))]
 
-# Polynomial orders: k_list --> state variable, l_list --> Lagrange multiplier
-k_list = [1, 2, 3]
+# Polynomial orders: k_list: state variable, l_list: Lagrange multiplier
+k_list = [3]
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
 # Translatory velocity
-ux, vy = '1', '1'
+(ux, vy) = ('1', '1')
 
 # Timestepping info
 Tend = 1.
-dt_list = [Constant(0.1/pow(2, i)) for i in range(len(nx_list))]
-storestep_list = [5 * pow(2, i) for i in range(len(dt_list))]
+dt_list = [Constant(0.1/pow(2, 4))]
+storestep_list = [5 * pow(2, 4)]
 
 # Directory for output
-outdir_base = './../../results/PeriodicPulse_Translation_adddelete/'
+outdir_base = './../../results/SineHump_timing_' + projection_type + '/'
 
 # Then start the loop over the tests set-ups
 for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
     # Set information for output
-    outdir = outdir_base+'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nprocs'+str(comm.Get_size())+'/'
-    output_table = outdir+'output_table.txt'
+    outdir = outdir_base + 'k'+str(k)+'l'+str(l)+'kbar'+str(kbar)+'_nprocs'+str(comm.Get_size())+'/'
+    output_table = outdir + 'output_table.txt'
 
     if comm.rank == 0:
         if not os.path.exists(outdir):
@@ -121,7 +122,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Generate particles
         x = RegularRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
-        s = np.zeros(len(x), dtype=np.float_)
+        s = np.zeros((len(x), 1), dtype=np.float_)
 
         # Initialize particles with position x and scalar property s at the mesh
         p = particles(x, [s], mesh)
@@ -154,36 +155,45 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
                                                [], property_idx)
 
+        # Initialize the l2 projection
+        lstsq_psi = l2projection(p, W, property_idx)
+
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
-        p.interpolate(psi0_h.cpp_object(), property_idx)
-
-        # Add/Delete particles
-        AD = AddDelete(p, 10, 20, [psi0_h])
+        p.interpolate(psi0_h, property_idx)
 
         step = 0
         area_0 = assemble(psi0_h*dx)
-        timer = Timer()
-
+        timer = Timer('[P] Advection loop')
         timer.start()
         while step < num_steps:
             step += 1
 
-            # Add/delete particles, must be done before advection!
-            AD.do_sweep()
             # Advect particle, assemble and solve pde projection
+            t1 = Timer("[P] Advect particles step")
             ap.do_step(float(dt))
+            del(t1)
 
-            pde_projection.assemble(True, True)
-            pde_projection.solve_problem(psibar_h.cpp_object(), psi_h.cpp_object(),
-                                         'gmres', 'hypre_amg')
+            if projection_type == 'PDE':
+                t1 = Timer("[P] Assemble PDE system")
+                pde_projection.assemble(True, True)
+                del(t1)
+                t1 = Timer("[P] Solve projection")
+                pde_projection.solve_problem(psibar_h, psi_h, 'superlu_dist', 'default')
+                del(t1)
+            else:
+                t1 = Timer("[P] Solve projection")
+                lstsq_psi.project(psi_h)
+                del(t1)
+
+            t1 = Timer('[P] Assign & output')
             # Update old solution
             assign(psi0_h, psi_h)
 
             # Store
-            # if step % store_step is 0 or step is 1:
-            output_field << psi_h
-
+            if step % store_step == 0 or step == 1:
+                output_field << psi_h
+            del(t1)
         timer.stop()
 
         # Compute error (we should accurately recover initial condition)
@@ -204,3 +214,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                                  (float(dt), int(num_cells_t), int(num_particles),
                                   float(l2_error), np.float64(area_error_end),
                                   np.float(timer.elapsed()[0])))
+
+        time_table = timings(TimingClear.keep, [TimingType.wall])
+        with open(outdir+"timings"+str(nx)+".log", "w") as out:
+            out.write(time_table.str(True))

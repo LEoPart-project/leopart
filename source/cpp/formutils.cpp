@@ -2,6 +2,14 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
+
+#include <dolfin/fem/Form.h>
+#include <dolfin/fem/GenericDofMap.h>
+#include <dolfin/fem/LocalAssembler.h>
+#include <dolfin/fem/UFC.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/mesh/Cell.h>
 
 #include "formutils.h"
 

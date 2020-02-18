@@ -1,7 +1,13 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 from dolfin import (UnitSquareMesh, FunctionSpace, Function, Expression,
                     Point, sqrt, assemble, dx)
-from DolfinParticles import (particles, AddDelete, RandomRectangle,
-                             l2projection)
+from leopart import (particles, AddDelete, RandomRectangle,
+                     l2projection)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
@@ -33,6 +39,9 @@ def test_add_particles():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([1, 1])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)
@@ -63,6 +72,9 @@ def test_remove_particles():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([100, 100])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)
@@ -94,6 +106,9 @@ def test_failsafe_sweep():
     # Initialize particles
     x = RandomRectangle(Point(0.0, 0.0), Point(1., 1.)).generate([100, 100])
     s = assign_particle_values(x, interpolate_expression)
+    # Broadcast to other procs
+    x = comm.bcast(x, root=0)
+    s = comm.bcast(s, root=0)
 
     property_idx = 1
     p = particles(x, [s], mesh)

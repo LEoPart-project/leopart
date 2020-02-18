@@ -2,36 +2,26 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
 
 #ifndef ADDDELETE_H
 #define ADDDELETE_H
 
-#include <algorithm>
-#include <array>
-#include <iostream>
+#include <memory>
 #include <vector>
-
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-
-#include <dolfin/common/Array.h>
-#include <dolfin/math/basic.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/MeshEntity.h>
-#include <dolfin/mesh/MeshEntityIterator.h>
-#include <dolfin/mesh/MeshFunction.h>
-
-#include "particle.h"
-#include "particles.h"
-#include "utils.h"
 
 namespace dolfin
 {
+// Forward declarations
+class Function;
+class Point;
+class Cell;
+
+class particles;
+
 class AddDelete
 {
 public:
-  AddDelete(std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
             std::vector<std::shared_ptr<const Function>> FList);
   AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
@@ -74,7 +64,6 @@ private:
   //
   std::vector<std::size_t> _pbound;
   std::vector<double> _bounds;
-
 };
 } // namespace dolfin
 #endif // ADDDELETE_H

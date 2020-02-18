@@ -10,10 +10,10 @@ from dolfin import (SubDomain, Constant, Expression, FunctionSpace, VectorElemen
                     Timer, list_timings, TimingClear, TimingType, MPI)
 import numpy as np
 from mpi4py import MPI as pyMPI
-from DolfinParticles import (particles, advect_rk3, RandomBox,
-                             AddDelete, PDEStaticCondensation,
-                             StokesStaticCondensation,
-                             FormsPDEMap, FormsStokes)
+from leopart import (particles, advect_rk3, RandomBox,
+                     AddDelete, PDEStaticCondensation,
+                     StokesStaticCondensation,
+                     FormsPDEMap, FormsStokes, assign_particle_values)
 
 comm = pyMPI.COMM_WORLD
 
@@ -82,19 +82,11 @@ class Corner(SubDomain):
         return near(x[0], self.xmax) and near(x[1], self.ymax) and near(x[2], zmax)
 
 
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
-
-
 # USER INPUT
 geometry = {'xmin': -1., 'ymin': -1., 'zmin': -1, 'xmax': 1., 'ymax': 1., 'zmax': 1.}
 
 # Mesh resolution
-nx, ny, nz = 20, 20, 20
+(nx, ny, nz) = (20, 20, 20)
 
 # Particle resolution
 pres = 150
@@ -187,14 +179,8 @@ Udiv.assign(u_exact)
 curl_func = Function(W_2)
 
 # Initialize particles
-if comm.Get_rank() == 0:
-    x = RandomBox(Point(xmin, ymin, zmin), Point(xmax, ymax, zmax)).generate([pres, pres, pres])
-    s = assign_particle_values(x, u_exact)
-else:
-    x = None
-    s = None
-x = comm.bcast(x, root=0)
-s = comm.bcast(s, root=0)
+x = RandomBox(Point(xmin, ymin, zmin), Point(xmax, ymax, zmax)).generate([pres, pres, pres])
+s = assign_particle_values(x, u_exact)
 
 lims = np.array([[xmin, xmin, ymin, ymax, zmin, zmax], [xmax, xmax, ymin, ymax, zmin, zmax],
                  [xmin, xmax, ymin, ymin, zmin, zmax], [xmin, xmax, ymax, ymax, zmin, zmax],

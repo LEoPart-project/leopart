@@ -2,24 +2,20 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
+
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/geometry/Point.h>
+#include <dolfin/math/basic.h>
+#include <dolfin/mesh/Cell.h>
 
 #include "adddelete.h"
+#include "particles.h"
+#include "utils.h"
 
 using namespace dolfin;
 
-AddDelete::AddDelete(std::vector<std::shared_ptr<const Function>> flist)
-{
-  std::cout << "Received" << std::endl;
-  // Test if you can do anything useful
-
-  for (std::size_t i = 0; i < flist.size(); ++i)
-  {
-    std::cout << "Space dim "
-              << flist[i]->function_space()->element()->space_dimension()
-              << std::endl;
-  }
-}
-//
 AddDelete::AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
                      std::vector<std::shared_ptr<const Function>> FList)
     : _P(&P), _np_min(np_min), _np_max(np_max), _FList(FList)
@@ -129,7 +125,9 @@ void AddDelete::insert_particles(const std::size_t Np_def,
   Utils::cell_bounding_box(x_min_max, vertex_coordinates, gdim);
 
   // Needed for point generation and placement
-  seed(Np_def * dolfin_cell.index());
+  const std::size_t cidx = dolfin_cell.index();
+
+  seed(Np_def * cidx);
   ufc::cell ufc_cell;
   dolfin_cell.get_cell_data(ufc_cell);
 
@@ -140,9 +138,10 @@ void AddDelete::insert_particles(const std::size_t Np_def,
     initialize_random_position(xp_new, x_min_max, dolfin_cell);
     Eigen::Map<Eigen::VectorXd> xp_array(xp_new.coordinates(), gdim);
 
-    particle pnew = {xp_new};
+    const int pidx = _P->add_particle(cidx);
+    _P->set_property(cidx, pidx, 0, xp_new);
 
-    // Eval other properties and push
+    // Eval other properties and set
     for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
     {
       // +1 to skip position slot
@@ -156,16 +155,13 @@ void AddDelete::insert_particles(const std::size_t Np_def,
       // Check if bounded update
       check_bounded_update(pproperty, idx_func);
 
-      pnew.push_back(pproperty);
+      _P->set_property(cidx, pidx, idx_func + 1, pproperty);
     }
 
-    // If necessary, push back remaining slots (initialized with positions,
+    // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    while (pnew.size() < _P->num_properties())
-      pnew.push_back(xp_new);
-
-    // Push back to particles
-    _P->add_particle(dolfin_cell.index(), pnew);
+    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+      _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //
@@ -194,8 +190,8 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
     Point xp_new;
     initialize_random_position(xp_new, x_min_max, dolfin_cell);
 
-    particle pnew;
-    pnew.push_back(xp_new);
+    int pidx = _P->add_particle(cidx);
+    _P->set_property(cidx, pidx, 0, xp_new);
 
     // Loop over other particles to compute weights
     std::vector<double> distance;
@@ -217,16 +213,16 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
         Point point_value;
 
         // Again the idx_func+1 for skipping position
-        for (std::size_t pidx = 0; pidx < _P->num_cell_particles(cidx); pidx++)
+        for (std::size_t p = 0; p < _P->num_cell_particles(cidx); ++p)
           point_value
-              += distance[pidx] * _P->property(cidx, pidx, idx_func + 1);
+              += distance[p] * _P->property(cidx, p, idx_func + 1);
 
         point_value /= distance_sum;
 
         // Check if bounded update
         check_bounded_update(point_value, idx_func);
 
-        pnew.push_back(point_value);
+        _P->set_property(cidx, pidx, idx_func + 1, point_value);
       }
     }
     else
@@ -250,16 +246,14 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
         // Check if bounded update
         check_bounded_update(pproperty, idx_func);
 
-        pnew.push_back(pproperty);
+        _P->set_property(cidx, pidx, idx_func + 1, pproperty);
       }
     }
 
-    // If necessary, push back remaining slots (initialized with positions,
+    // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    while (pnew.size() < _P->num_properties())
-      pnew.push_back(xp_new);
-
-    _P->add_particle(dolfin_cell.index(), pnew);
+    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+      _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //

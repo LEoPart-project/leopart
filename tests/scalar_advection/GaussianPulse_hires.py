@@ -18,10 +18,13 @@ import numpy as np
 import os
 
 # Load from package
-from DolfinParticles import (particles, advect_rk3, PDEStaticCondensation, RandomCircle,
-                             FormsPDEMap, GaussianPulse, AddDelete)
+from leopart import (particles, advect_rk3, l2projection, PDEStaticCondensation, RandomCircle,
+                     FormsPDEMap, GaussianPulse, AddDelete)
 
 comm = pyMPI.COMM_WORLD
+
+# Which projection: choose 'l2' or 'PDE'
+projection_type = 'PDE'
 
 # Geometric properties
 x0, y0 = 0., 0.
@@ -30,12 +33,12 @@ r = 0.5
 sigma = Constant(0.1)
 
 # Mesh/particle properties, use safe number of particles
-i_list = [i for i in range(5)]
+i_list = [5]
 nx_list = [pow(2, i) for i in i_list]
 pres_list = [60 * pow(2, i) for i in i_list]
 
 # Polynomial order
-k_list = [1, 2]          # Third order does not make sense for 3rd order advection scheme
+k_list = [1]
 l_list = [0] * len(k_list)
 kbar_list = k_list
 
@@ -48,7 +51,7 @@ dt_list = [Constant(0.08/(pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = './../../results/GaussianPulse_Rotation_AddDelete/'
+outdir_base = './../../results/GaussianPulse_' + projection_type + '/'
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
@@ -90,15 +93,8 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                         U=[Uh, Uh], time=0., height=1., degree=3)
 
         # Generate particles
-        if comm.Get_rank() == 0:
-            x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
-            s = np.zeros((len(x), 1), dtype=np.float_)
-        else:
-            x = None
-            s = None
-
-        x = comm.bcast(x, root=0)
-        s = comm.bcast(s, root=0)
+        x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
+        s = np.zeros((len(x), 1), dtype=np.float_)
 
         # Initialize particles with position x and scalar property s at the mesh
         p = particles(x, [s], mesh)
@@ -134,6 +130,9 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                                                forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
                                                [bc], property_idx)
 
+        # Initialize the l2 projection
+        lstsq_psi = l2projection(p, W, property_idx)
+
         # Set initial condition at mesh and particles
         psi0_h.interpolate(psi0_expression)
         p.interpolate(psi0_h.cpp_object(), property_idx)
@@ -161,22 +160,25 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             AD.do_sweep_failsafe(4)
             del(t1)
 
-            t1 = Timer("[P] Assemble PDE system")
-            pde_projection.assemble(True, True)
-            # pde_projection.apply_boundary(bc)
-            del(t1)
-
-            t1 = Timer("[P] Solve PDE constrained projection")
-            pde_projection.solve_problem(psibar_h.cpp_object(),  psi_h.cpp_object(),
-                                         'mumps', 'default')
-            del(t1)
+            if projection_type == 'PDE':
+                t1 = Timer("[P] Assemble PDE system")
+                pde_projection.assemble(True, True)
+                del(t1)
+                t1 = Timer("[P] Solve projection")
+                pde_projection.solve_problem(psibar_h,  psi_h,
+                                             'mumps', 'default')
+                del(t1)
+            else:
+                t1 = Timer("[P] Solve projection")
+                lstsq_psi.project(psi_h)
+                del(t1)
 
             t1 = Timer("[P] Update and store")
             # Update old solution
             assign(psi0_h, psi_h)
 
             # Store field
-            if step % store_step is 0 or step is 1:
+            if step % store_step == 0 or step == 1:
                 output_field.write(psi_h, t)
 
             # Avoid getting accused of cheating, compute

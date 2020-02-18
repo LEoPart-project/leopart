@@ -2,8 +2,19 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
+
+#include <dolfin/function/Function.h>
+#include <dolfin/function/FunctionSpace.h>
+#include <dolfin/geometry/BoundingBoxTree.h>
+#include <dolfin/mesh/Cell.h>
+#include <dolfin/mesh/Mesh.h>
+#include <limits>
+
+#include <dolfin/fem/FiniteElement.h>
 
 #include "particles.h"
+#include "utils.h"
 
 using namespace dolfin;
 
@@ -25,9 +36,6 @@ particles::particles(
   _comm_snd.resize(MPI::size(_mpi_comm));
 
   _cell2part.resize(mesh.num_cells());
-
-  // Initialize bounding boxes
-  make_bounding_boxes();
 
   // Calculate the offset for each particle property and overall size
   std::vector<unsigned int> offset = {0};
@@ -58,11 +66,18 @@ particles::particles(
       // carries the old values
 
       // Push back to particle structure
-      add_particle(cell_id, pnew);
+      _cell2part[cell_id].push_back(pnew);
     }
   }
 }
-
+//-----------------------------------------------------------------------------
+int particles::add_particle(int c)
+{
+  particle p(_ptemplate.size());
+  _cell2part[c].push_back(p);
+  return _cell2part[c].size() - 1;
+}
+//-----------------------------------------------------------------------------
 void particles::interpolate(const Function& phih,
                             const std::size_t property_idx)
 {
@@ -280,58 +295,21 @@ void particles::push_particle(const double dt, const Point& up,
   _cell2part[cidx][pidx][0] += up * dt;
 }
 
-void particles::make_bounding_boxes()
-{
-  std::size_t gdim = _mesh->geometry().dim();
-
-  // Create bounding boxes of mesh
-  std::vector<double> x_min_max(2 * gdim);
-  std::vector<double> coordinates = _mesh->coordinates();
-  for (std::size_t i = 0; i < gdim; ++i)
-  {
-    for (auto it = coordinates.begin() + i; it < coordinates.end(); it += gdim)
-    {
-      if (it == coordinates.begin() + i)
-      {
-        x_min_max[i] = *it;
-        x_min_max[gdim + i] = *it;
-      }
-      else
-      {
-        x_min_max[i] = std::min(x_min_max[i], *it);
-        x_min_max[gdim + i] = std::max(x_min_max[gdim + i], *it);
-      }
-    }
-  }
-
-  // Communicate bounding boxes
-  MPI::all_gather(_mpi_comm, x_min_max, _bounding_boxes);
-}
-
 void particles::particle_communicator_collect(const std::size_t cidx,
                                               const std::size_t pidx)
 {
   // Assertion to check if comm_snd has size of num_procs
-
-  const std::size_t num_processes = MPI::size(_mpi_comm);
-  dolfin_assert(_comm_snd.size() == num_processes);
+  dolfin_assert(_comm_snd.size() == MPI::size(_mpi_comm));
 
   // Get position
   particle ptemp = _cell2part[cidx][pidx];
-  std::vector<double> xp_temp(ptemp[0].coordinates(),
-                              ptemp[0].coordinates() + _Ndim);
+
+  const std::vector<unsigned int> procs
+      = _mesh->bounding_box_tree()->compute_process_collisions(x(cidx, pidx));
 
   // Loop over processes
-  for (std::size_t p = 0; p < num_processes; p++)
-  {
-    // Check if in bounding box
-    if (in_bounding_box(xp_temp, _bounding_boxes[p], 1e-12))
-      _comm_snd[p].push_back(ptemp);
-  }
-
-  // Erase particle
-  delete_particle(cidx, pidx);
-  // Decrement particle iterator (?!)
+  for (const auto& p : procs)
+    _comm_snd[p].push_back(ptemp);
 }
 
 void particles::particle_communicator_push()
@@ -382,7 +360,7 @@ void particles::particle_communicator_push()
       dolfin_assert(pos_iter % _plen == 0);
 
       // Push back new particle to hosting cell
-      add_particle(cell_id, pnew);
+      _cell2part[cell_id].push_back(pnew);
     }
     else
     {
@@ -397,12 +375,10 @@ void particles::relocate()
   // Method to relocate particles on moving mesh
 
   // Update bounding boxes
-  const std::size_t num_processes = MPI::size(_mpi_comm);
-  update_bounding_boxes();
+  _mesh->bounding_box_tree()->build(*(_mesh));
 
   // Init relocate local
-  std::vector<std::size_t> reloc_local_c;
-  std::vector<particle> reloc_local_p;
+  std::vector<std::array<std::size_t, 3>> reloc;
 
   // Loop over particles
   for (CellIterator ci(*(_mesh)); !ci.end(); ++ci)
@@ -417,76 +393,14 @@ void particles::relocate()
       {
         // Do entity collision
         std::size_t cell_id
-            = _mesh
-                ->bounding_box_tree()
-                ->compute_first_entity_collision(xp);
+            = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
 
-        if (cell_id != std::numeric_limits<unsigned int>::max())
-        {
-          // Then stay local
-          reloc_local_c.push_back(cell_id);
-          reloc_local_p.push_back(get_particle(ci->index(), i));
-          delete_particle(ci->index(), i);
-        }
-        else if (num_processes > 1)
-        {
-          // Then push to parallel
-           particle_communicator_collect(ci->index(), i);
-        }
-        else
-        {
-          // Particle can escape through moving boundary
-          // if so, delete particle here when run in serial
-          delete_particle(ci->index(), i);
-        }
+        reloc.push_back({ci->index(), i, cell_id});
       }
     }
   }
 
-  // Do the local relocation
-  for (std::size_t i = 0; i < reloc_local_c.size(); ++i)
-  {
-    if (reloc_local_c[i] != std::numeric_limits<unsigned int>::max())
-      add_particle(reloc_local_c[i], reloc_local_p[i]);
-    else
-    {
-      dolfin_error("particles.cpp::relocate_particles",
-                   "find a hosting cell on local process", "Unknown");
-    }
-  }
-
-  // Do the global push
-  if (num_processes > 1)
-    particle_communicator_push();
-}
-
-bool particles::in_bounding_box(const std::vector<double>& point,
-                                const std::vector<double>& bounding_box,
-                                const double tol)
-{
-  // Return false if bounding box is empty
-  if (bounding_box.empty())
-    return false;
-
-  const std::size_t gdim = point.size();
-  dolfin_assert(bounding_box.size() == 2 * gdim);
-  for (std::size_t i = 0; i < gdim; ++i)
-  {
-    if (!(point[i] >= (bounding_box[i] - tol)
-          && point[i] <= (bounding_box[gdim + i] + tol)))
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-void particles::update_bounding_boxes()
-{
-  // Private method for rebuilding bounding boxes (on moving meshes)
-  _mesh->bounding_box_tree()->build(*(_mesh));
-  // FIXME: more efficient than full rebuild of bounding boxes possible?
-  make_bounding_boxes();
+  relocate(reloc);
 }
 
 std::vector<double> particles::unpack_particle(const particle part)
@@ -562,4 +476,41 @@ void particles::get_particle_contributions(
                  "Cells without particle not yet handled, empty cell (%d)",
                  cidx);
   }
+}
+
+void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
+{
+  const std::size_t mpi_size = MPI::size(_mpi_comm);
+
+  // Relocate local and global
+  for (const auto& r : reloc)
+  {
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    const std::size_t& cidx_recv = r[2];
+
+    if (cidx_recv == std::numeric_limits<unsigned int>::max())
+    {
+      if (mpi_size > 1)
+        particle_communicator_collect(cidx, pidx);
+    }
+    else
+    {
+      particle p = _cell2part[cidx][pidx];
+      _cell2part[cidx_recv].push_back(p);
+    }
+  }
+
+  // Sort into reverse order
+  std::sort(reloc.rbegin(), reloc.rend());
+  for (const auto& r : reloc)
+  {
+    const std::size_t& cidx = r[0];
+    const std::size_t& pidx = r[1];
+    delete_particle(cidx, pidx);
+  }
+
+  // Relocate global
+  if (mpi_size > 1)
+    particle_communicator_push();
 }

@@ -2,6 +2,7 @@
 // Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
 // Copyright: (c) 2018
 // License: GNU Lesser GPL version 3 or any later version
+// SPDX-License-Identifier:    LGPL-3.0-or-later
 
 #ifndef STOKESSTATICCONDENSATION_H
 #define STOKESSTATICCONDENSATION_H
@@ -9,33 +10,18 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <memory>
-#include <ufc.h>
 #include <vector>
-
-#include <dolfin/common/ArrayView.h>
-#include <dolfin/fem/Assembler.h>
-#include <dolfin/fem/AssemblerBase.h>
-#include <dolfin/fem/DirichletBC.h>
-#include <dolfin/fem/Form.h>
-#include <dolfin/fem/GenericDofMap.h>
-#include <dolfin/fem/LocalAssembler.h>
-#include <dolfin/fem/UFC.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/function/FunctionSpace.h>
-#include <dolfin/la/Matrix.h>
-#include <dolfin/la/Vector.h>
-#include <dolfin/la/solve.h>
-#include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/Mesh.h>
-#include <dolfin/mesh/MeshEntity.h>
-#include <dolfin/mesh/MeshEntityIterator.h>
-#include <dolfin/mesh/MeshFunction.h>
-
-#include "formutils.h"
 
 namespace dolfin
 {
-class StokesStaticCondensation
+  // Forward declarations
+  class Form;
+  class Mesh;
+  class DirichletBC;
+  class Function;
+
+
+  class StokesStaticCondensation
 {
 public:
   // Constructors with assumed symmetry

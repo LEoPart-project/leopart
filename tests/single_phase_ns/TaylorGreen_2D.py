@@ -10,10 +10,10 @@ from dolfin import (SubDomain, Constant, Expression, FunctionSpace, VectorElemen
                     Timer, list_timings, TimingClear, TimingType, MPI)
 import numpy as np
 from mpi4py import MPI as pyMPI
-from DolfinParticles import (particles, advect_rk3, RandomRectangle,
-                             AddDelete, PDEStaticCondensation,
-                             StokesStaticCondensation,
-                             FormsPDEMap, FormsStokes)
+from leopart import (particles, advect_rk3, RandomRectangle,
+                     AddDelete, PDEStaticCondensation,
+                     StokesStaticCondensation,
+                     FormsPDEMap, FormsStokes, assign_particle_values)
 
 comm = pyMPI.COMM_WORLD
 
@@ -54,14 +54,6 @@ class Corner(SubDomain):
 
     def inside(self, x, on_boundary):
         return near(x[0], self.xmax) and near(x[1], self.ymax)
-
-
-def assign_particle_values(x, u_exact):
-    if comm.Get_rank() == 0:
-        s = np.asarray([u_exact(x[i, :]) for i in range(len(x))], dtype=np.float_)
-    else:
-        s = None
-    return s
 
 
 # USER INPUT
@@ -158,14 +150,8 @@ ubar0_a.assign(u_exact)
 Udiv.assign(u_exact)
 
 # Initialize particles
-if comm.Get_rank() == 0:
-    x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
-    s = assign_particle_values(x, u_exact)
-else:
-    x = None
-    s = None
-x = comm.bcast(x, root=0)
-s = comm.bcast(s, root=0)
+x = RandomRectangle(Point(xmin, ymin), Point(xmax, ymax)).generate([pres, pres])
+s = assign_particle_values(x, u_exact)
 
 lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
                  [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])

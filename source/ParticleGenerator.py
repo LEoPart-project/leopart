@@ -1,7 +1,8 @@
-# __author__ = 'Jakob Maljaars <j.m.maljaars@tudelft.nl>'
-# __date__   = '2018-08'
-# __copyright__ = 'Copyright (C) 2011' + __author__
-# __license__  = 'GNU Lesser GPL version 3 or any later version'
+# -*- coding: utf-8 -*-
+# Copyright (C) 2018 Jakob Maljaars
+# Contact: j.m.maljaars _at_ tudelft.nl/jakobmaljaars _at_ gmail.com
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
 import numpy as np
 from math import sqrt
@@ -68,7 +69,11 @@ class RandomGenerator(object):
         else:
             points_inside = None
 
+        # Broadcast to other processes
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside
+
+    # TODO generate in parallel
 
 
 class RandomRectangle(RandomGenerator):
@@ -153,7 +158,7 @@ class RegularRectangle(RandomGenerator):
             points_inside = np.array(list(filter(self.rule, points)))
         else:
             points_inside = None
-
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside
 
 
@@ -199,7 +204,7 @@ class RegularBox(RandomGenerator):
             points_inside = np.array(list(filter(self.rule, points)))
         else:
             points_inside = None
-
+        points_inside = comm.bcast(points_inside, root=0)
         return points_inside
 
 
