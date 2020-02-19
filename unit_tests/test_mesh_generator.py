@@ -8,7 +8,7 @@
 """
 
 from dolfin import RectangleMesh, BoxMesh, Point
-from DolfinParticles import MeshGenerator
+from leopart import MeshGenerator
 
 
 def test_mesh_generator_2d():
