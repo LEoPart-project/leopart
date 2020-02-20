@@ -8,9 +8,10 @@ import numpy as np
 from math import sqrt
 from itertools import product
 from mpi4py import MPI as pyMPI
+from dolfin import cells, vertices
 
 __all__ = ['RandomRectangle', 'RandomCircle', 'RandomBox', 'RandomSphere',
-           'RegularRectangle', 'RegularBox']
+           'RegularRectangle', 'RegularBox', 'RandomCell']
 
 comm = pyMPI.COMM_WORLD
 
@@ -204,4 +205,59 @@ class RegularBox(RandomGenerator):
         else:
             points_inside = None
         points_inside = comm.bcast(points_inside, root=0)
+        return points_inside
+
+
+class RandomCell(object):
+    """Generate particles in an existing Mesh."""
+    def __init__(self, mesh):
+        self.mesh = mesh
+
+    def _random_bary(self, n):
+        """Generate random barycentric coordinates between n points."""
+        if (n == 3):
+            x = np.random.random()
+            y = np.random.random()
+            if (x + y) > 1.0:
+                x, y = 1.0 - x, 1.0 - y
+            z = 1.0 - x - y
+            return (x, y, z)
+
+        assert n == 4, "Only support triangle and tetrahedron"
+        s = np.random.random()
+        t = np.random.random()
+        u = np.random.random()
+
+        # Fold space in cube into tetrahedron
+        if (s + t > 1.0):
+            s, t = 1.0 - s, 1.0 - t
+        if (t + u > 1.0):
+            t, u = 1.0 - s - u,  1.0 - t
+        elif (s + t + u > 1.0):
+            u += s + t - 1.0
+            s -= u
+
+        v = 1 - s - t - u
+        return (s, t, u, v)
+
+    def generate(self, N):
+        """Generate a random set of N points per cell."""
+
+        # TODO - number of points per cell could be random too, with a minimum
+        # value, and should be related to the cell volume.
+
+        points_inside = []
+
+        for c in cells(self.mesh):
+            pts = [v.point().array() for v in vertices(c)]
+
+            for i in range(N):
+                x = self._random_bary(len(pts))
+                points_inside.append(sum([a * b for (a, b) in zip(x, pts)]))
+
+        points_inside = np.array(points_inside)
+
+        if (self.mesh.geometry().dim() == 2):
+            points_inside = points_inside[:, :2]
+
         return points_inside
