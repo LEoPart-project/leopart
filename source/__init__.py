@@ -12,5 +12,5 @@ from .FormsPDEMap import FormsPDEMap
 from .FormsStokes import FormsStokes
 from .InitialConditions import (BinaryBlock, GaussianPulse, SlottedDisk, SineHump, CosineHill)
 from .ParticleGenerator import (RandomRectangle, RandomCircle, RegularRectangle,
-                                RandomBox, RegularBox, MeshGenerator)
+                                RandomBox, RegularBox, RandomCell)
 from .utils import assign_particle_values

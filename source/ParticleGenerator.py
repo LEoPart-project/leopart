@@ -11,7 +11,7 @@ from mpi4py import MPI as pyMPI
 from dolfin import cells, vertices
 
 __all__ = ['RandomRectangle', 'RandomCircle', 'RandomBox', 'RandomSphere',
-           'RegularRectangle', 'RegularBox']
+           'RegularRectangle', 'RegularBox', 'RandomCell']
 
 comm = pyMPI.COMM_WORLD
 
@@ -208,7 +208,7 @@ class RegularBox(RandomGenerator):
         return points_inside
 
 
-class MeshGenerator(object):
+class RandomCell(object):
     """Generate particles in an existing Mesh."""
     def __init__(self, mesh):
         self.mesh = mesh
