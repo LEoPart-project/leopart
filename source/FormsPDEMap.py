@@ -10,7 +10,49 @@ import numpy as np
 
 
 class FormsPDEMap:
+    """"
+    Class for defining the forms related to the PDE-constrained projection
+
+    **Attributes:**
+
+    Attributes
+    ----------
+    W: FunctionSpace
+        Function space for the local unknown
+    T: FunctionSpace
+        FunctionSpace for the Lagrange multiplier space
+    Wbar: FunctionSpace
+        Function space for the control variable
+    n: FacetNormal
+        Symbolic facet normal for mesh
+    beta_map: Constant
+        Penalty/Regularizatio term to establish coupling between local unknown and control
+    ds: Measure
+        ds Measure of mesh
+    gdim: int
+        Geometric dimension of mesh
+    """
+
     def __init__(self, mesh, FuncSpace_dict, beta_map=Constant(1E-6), ds=ds):
+        """
+        Instantiate FormsPDEMap
+
+        Parameters
+        ----------
+        mesh: Mesh
+            Dolfin Mesh
+        FuncSpace_dict: dict
+            Dictionary containing the function space definitions. Following keys are required:
+                - FuncSpace_local: function space for local variable
+                - FuncSpace_lambda: function space for Lagrange multiplier
+                - FuncSpace_bar: function space for control variable
+        beta_map: Constant, optional
+            Penalty/Regularizatio term to establish coupling between local unknown and control.
+            Defaults to Constant(1e-6)
+        ds: Measure, optional
+            ds Measure of mesh
+        """
+
         self.W = FuncSpace_dict['FuncSpace_local']
         self.T = FuncSpace_dict['FuncSpace_lambda']
         self.Wbar = FuncSpace_dict['FuncSpace_bar']
@@ -23,7 +65,26 @@ class FormsPDEMap:
     def forms_theta_linear(self, psih0, uh, dt, theta_map,
                            theta_L=Constant(1.0), dpsi0=Constant(0.), dpsi00=Constant(0.),
                            h=Constant(0.), neumann_idx=99,  zeta=Constant(0)):
+        """
+        Set PDEMap forms for a linear advection problem.
 
+        Parameters
+        ----------
+        psih0
+        uh
+        dt
+        theta_map
+        theta_L
+        dpsi0
+        dpsi00
+        h
+        neumann_idx
+        zeta
+
+        Returns
+        -------
+
+        """
         (psi, lamb, psibar) = self.__trial_functions()
         (w, tau, wbar) = self.__test_functions()
 
@@ -59,6 +120,25 @@ class FormsPDEMap:
     def forms_theta_nlinear(self, v0, Ubar0, dt, theta_map=Constant(1.0),
                             theta_L=Constant(1.0), duh0=Constant((0., 0.)), duh00=Constant((0., 0)),
                             h=Constant((0., 0.)), neumann_idx=99):
+        """
+        Set PDEMap forms for a non-linear (but linearized) advection problem,
+
+        Parameters
+        ----------
+        v0
+        Ubar0
+        dt
+        theta_map
+        theta_L
+        duh0
+        duh00
+        h
+        neumann_idx
+
+        Returns
+        -------
+
+        """
 
         # Define trial test functions
         (v, lamb, vbar) = self.__trial_functions()
@@ -105,7 +185,29 @@ class FormsPDEMap:
                                theta_L=Constant(1.0), duh0=Constant((0., 0.)),
                                duh00=Constant((0., 0)), h=Constant((0., 0.)),
                                neumann_idx=99):
+        """
+        Set PDEMap forms for a non-linear (but linearized) advection problem,
+        assumes however that the mass matrix can be obtained from the mesh
+        (and not from particles)
 
+        TODO: depcrecate?
+        Parameters
+        ----------
+        v0
+        v_int
+        Ubar0
+        dt
+        theta_map
+        theta_L
+        duh0
+        duh00
+        h
+        neumann_idx
+
+        Returns
+        -------
+
+        """
         '''
         No particles in mass matrix
         '''
@@ -155,7 +257,30 @@ class FormsPDEMap:
                                        theta_L=Constant(1.0), duh0=Constant((0., 0.)),
                                        duh00=Constant((0., 0)),
                                        h=Constant((0., 0.)), neumann_idx=99):
+        """
+        Set PDEMap forms for a non-linear (but linearized) advection problem
+        including density.
 
+        Parameters
+        ----------
+        rho
+        rho0
+        rho00
+        rhobar
+        v0
+        Ubar0
+        dt
+        theta_map
+        theta_L
+        duh0
+        duh00
+        h
+        neumann_idx
+
+        Returns
+        -------
+
+        """
         (v, lamb, vbar) = self.__trial_functions()
         (w, tau, wbar) = self.__test_functions()
 
@@ -197,6 +322,18 @@ class FormsPDEMap:
 
     # Short-cut function for evaluating sum_{K} \int_{K} (integrand) ds
     def facet_integral(self, integrand):
+        """
+        Facet integral of mesh
+
+        Parameters
+        ----------
+        integrand: UFL
+
+        Returns
+        -------
+        UFL Form
+
+        """
         return integrand('-')*dS + integrand('+')*dS + integrand*ds
 
     def __fem_forms(self, N_a, G_a, L_a, H_a, B_a, Q_a, R_a, S_a):

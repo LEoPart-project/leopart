@@ -12,17 +12,39 @@ __all__ = ['BinaryBlock', 'GaussianPulse', 'SlottedDisk', 'SineHump', 'CosineHil
 
 class BinaryBlock(UserExpression):
     """
-    Overloaded Expression which initializes a binary valued block based
+    Overloaded Expression initializing a binary valued block based
     on a given geometry dictionary with keys xmin/max, and ymin/max.
     """
 
     def __init__(self, geometry, value_inside, value_outside, **kwargs):
+        """
+        Instantiate BinaryBlock class
+
+        Parameters
+        ----------
+        geometry: dict
+            Dictionary specifying the geometry of the binary block. Required keys are:
+                - xmin: min x-coordinate of binary block
+                - xmax: max x-coordinate of binary block
+                - ymin: min y-coordinate of binary block
+                - ymax: max y-coordinate of binary block
+        value_inside: float, int
+            Value inside domain [xmin, xmax] x [ymin, ymax]
+        value_outside: float, int
+            Value outside domain
+        kwargs
+        """
+
+        # TODO: generalize for 3D
         self.geometry = geometry
         self.value_inside = value_inside
         self.value_outside = value_outside
         super().__init__(self, **kwargs)
 
     def eval(self, value, x):
+        """
+        Overload the eval method
+        """
         if((self.geometry['xmin'] <= x[0] <= self.geometry['xmax']) and
            (self.geometry['ymin'] <= x[1] <= self.geometry['ymax'])):
             value[0] = self.value_inside
@@ -40,6 +62,18 @@ class GaussianPulse(UserExpression):
     """
 
     def __init__(self, center, sigma, U, time=0, height=1.0, **kwargs):
+        """
+        Instantiate GaussianPulse class
+
+        Parameters
+        ----------
+        center
+        sigma
+        U
+        time
+        height
+        kwargs
+        """
         self.center = center
         self.sigma = sigma
         self.height = height
@@ -48,12 +82,12 @@ class GaussianPulse(UserExpression):
         super().__init__(self, **kwargs)
 
     def eval(self, value, x):
+        """
+        Overload the eval method
+        """
         xc = self.center[0]
         yc = self.center[1]
         U, t, sigma = self.U, self.t, self.sigma
-        # value[0] = self.height * np.exp(-(pow(x[0] - xc - U[0]* x[1] * self.t,2)
-        #                   +pow(x[1]-yc - U[1]* x[0] * self.t,2))/(2*pow(self.sigma,2)))
-
         value[0] = self.height * np.exp(-(pow(x[0]*np.cos(U[0]*t)
                                               + x[1]*np.sin(U[1]*t) - xc, 2)
                                           + pow(-x[0]*np.sin(U[0]*t)
