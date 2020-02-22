@@ -7,7 +7,7 @@
 from dolfin import UserExpression, pi
 import numpy as np
 
-__all__ = ['BinaryBlock', 'GaussianPulse', 'SlottedDisk', 'SineHump', 'CosineHill']
+__all__ = ["BinaryBlock", "GaussianPulse", "SlottedDisk", "SineHump", "CosineHill"]
 
 
 class BinaryBlock(UserExpression):
@@ -45,8 +45,9 @@ class BinaryBlock(UserExpression):
         """
         Overload the eval method
         """
-        if((self.geometry['xmin'] <= x[0] <= self.geometry['xmax']) and
-           (self.geometry['ymin'] <= x[1] <= self.geometry['ymax'])):
+        if (self.geometry["xmin"] <= x[0] <= self.geometry["xmax"]) and (
+            self.geometry["ymin"] <= x[1] <= self.geometry["ymax"]
+        ):
             value[0] = self.value_inside
         else:
             value[0] = self.value_outside
@@ -88,17 +89,20 @@ class GaussianPulse(UserExpression):
         xc = self.center[0]
         yc = self.center[1]
         U, t, sigma = self.U, self.t, self.sigma
-        value[0] = self.height * np.exp(-(pow(x[0]*np.cos(U[0]*t)
-                                              + x[1]*np.sin(U[1]*t) - xc, 2)
-                                          + pow(-x[0]*np.sin(U[0]*t)
-                                                + x[1]*np.cos(U[1]*t)-yc, 2))/(2*pow(sigma, 2)))
+        value[0] = self.height * np.exp(
+            -(
+                pow(x[0] * np.cos(U[0] * t) + x[1] * np.sin(U[1] * t) - xc, 2)
+                + pow(-x[0] * np.sin(U[0] * t) + x[1] * np.cos(U[1] * t) - yc, 2)
+            )
+            / (2 * pow(sigma, 2))
+        )
 
     def value_shape(self):
         return ()
 
 
 class SlottedDisk(UserExpression):
-    def __init__(self, radius, center, width, depth, lb=0., ub=1., **kwargs):
+    def __init__(self, radius, center, width, depth, lb=0.0, ub=1.0, **kwargs):
         self.r = radius
         self.width = width
         self.depth = depth
@@ -111,8 +115,9 @@ class SlottedDisk(UserExpression):
         xc = self.center[0]
         yc = self.center[1]
 
-        if(((x[0] - xc)**2 + (x[1] - yc)**2 <= self.r**2) and not
-           ((xc - self.width) <= x[0] <= (xc + self.width) and x[1] >= yc + self.depth)):
+        if ((x[0] - xc) ** 2 + (x[1] - yc) ** 2 <= self.r ** 2) and not (
+            (xc - self.width) <= x[0] <= (xc + self.width) and x[1] >= yc + self.depth
+        ):
             value[0] = self.ub
         else:
             value[0] = self.lb
@@ -132,8 +137,7 @@ class SineHump(UserExpression):
         xc = self.center[0]
         yc = self.center[1]
         U, t = self.U, self.t
-        value[0] = np.sin(2*pi*(x[0] - xc - U[0]*t)) * \
-            np.sin(2*pi*(x[1]-yc - U[1]*t))
+        value[0] = np.sin(2 * pi * (x[0] - xc - U[0] * t)) * np.sin(2 * pi * (x[1] - yc - U[1] * t))
 
 
 class CosineHill(UserExpression):

@@ -14,8 +14,16 @@ import os
     Wrapper for the CPP functionalities
 """
 
-__all__ = ['particles', 'advect_particles', 'advect_rk2', 'advect_rk3', 'l2projection',
-           'StokesStaticCondensation', 'PDEStaticCondensation', 'AddDelete']
+__all__ = [
+    "particles",
+    "advect_particles",
+    "advect_rk2",
+    "advect_rk3",
+    "l2projection",
+    "StokesStaticCondensation",
+    "PDEStaticCondensation",
+    "AddDelete",
+]
 
 from .cpp import particle_wrapper as compiled_module
 
@@ -37,15 +45,13 @@ class particles(compiled_module.particles):
         p_array = xp
         for p_property in particle_properties:
             # Assert if correct size
-            assert p_property.shape[0] == xp.shape[0], \
-                "Incorrect particle property shape"
+            assert p_property.shape[0] == xp.shape[0], "Incorrect particle property shape"
             if len(p_property.shape) == 1:
                 p_array = np.append(p_array, np.array([p_property]).T, axis=1)
             else:
                 p_array = np.append(p_array, p_property, axis=1)
 
-        compiled_module.particles.__init__(self, p_array, particle_template,
-                                           mesh)
+        compiled_module.particles.__init__(self, p_array, particle_template, mesh)
         self.ptemplate = particle_template
         return
 
@@ -87,10 +93,12 @@ class particles(compiled_module.particles):
             fname_list = [fname_list]
             property_list = [property_list]
 
-        assert isinstance(fname_list, list) and isinstance(property_list, list), ("Wrong dump2file"
-                                                                                  " request")
-        assert len(fname_list) == len(property_list), ('Property list and index list must '
-                                                       'have same length')
+        assert isinstance(fname_list, list) and isinstance(property_list, list), (
+            "Wrong dump2file" " request"
+        )
+        assert len(fname_list) == len(property_list), (
+            "Property list and index list must " "have same length"
+        )
 
         # Remove files if clean_old = True
         if clean_old:
