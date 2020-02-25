@@ -139,21 +139,21 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("project_cg", &dolfin::l2projection::project_cg);
 
   py::class_<dolfin::StokesStaticCondensation>(m, "StokesStaticCondensation")
-      .def(py::init<const dolfin::Mesh&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&>())
-      .def(py::init<const dolfin::Mesh&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
                     std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
-      .def(py::init<const dolfin::Mesh&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&>())
-      .def(py::init<const dolfin::Mesh&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&,
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
                     std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
       .def("assemble_global",
            &dolfin::StokesStaticCondensation::assemble_global)
