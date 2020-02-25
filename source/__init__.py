@@ -10,7 +10,7 @@ from .ParticleFun import (particles, advect_particles, advect_rk2, advect_rk3, l
                           StokesStaticCondensation, PDEStaticCondensation, AddDelete)
 from .FormsPDEMap import FormsPDEMap
 from .FormsStokes import FormsStokes
-from .InitialConditions import (BinaryBlock, GaussianPulse, SineHump, CosineHill)
+from .InitialConditions import (BinaryBlock, GaussianPulse, SlottedDisk, SineHump, CosineHill)
 from .ParticleGenerator import (RandomRectangle, RandomCircle, RegularRectangle,
-                                RandomBox, RegularBox)
+                                RandomBox, RegularBox, RandomCell)
 from .utils import assign_particle_values

@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 # Version number
-major = 2017
+major = 2018
 minor = 1
 
 setup(name = "leopart",
