@@ -172,16 +172,16 @@ PYBIND11_MODULE(particle_wrapper, m)
 
   py::class_<dolfin::PDEStaticCondensation>(m, "PDEStaticCondensation")
       .def(
-          py::init<const dolfin::Mesh&, dolfin::particles&, const dolfin::Form&,
-                   const dolfin::Form&, const dolfin::Form&,
-                   const dolfin::Form&, const dolfin::Form&,
-                   const dolfin::Form&, const dolfin::Form&,
-                   const dolfin::Form&, const std::size_t>())
-      .def(py::init<const dolfin::Mesh&, dolfin::particles&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
-                    const dolfin::Form&, const dolfin::Form&,
+          py::init<std::shared_ptr<const dolfin::Mesh>, dolfin::particles&, std::shared_ptr<const dolfin::Form>,
+                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                   std::shared_ptr<const dolfin::Form>, const std::size_t>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, dolfin::particles&,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
                     std::vector<std::shared_ptr<const dolfin::DirichletBC>>,
                     const std::size_t>())
       .def("assemble", &dolfin::PDEStaticCondensation::assemble)
