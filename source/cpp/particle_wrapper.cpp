@@ -168,7 +168,10 @@ PYBIND11_MODULE(particle_wrapper, m)
            (void (dolfin::StokesStaticCondensation::*)(
                dolfin::Function&, dolfin::Function&, const std::string,
                const std::string))
-               & dolfin::StokesStaticCondensation::solve_problem);
+               & dolfin::StokesStaticCondensation::solve_problem)
+      .def("get_global_lhs_matrix", &dolfin::StokesStaticCondensation::get_global_lhs_matrix)
+      .def("get_global_rhs_vector", &dolfin::StokesStaticCondensation::get_global_rhs_vector)
+      .def("backsubstitute", &dolfin::StokesStaticCondensation::backsubstitute);
 
   py::class_<dolfin::PDEStaticCondensation>(m, "PDEStaticCondensation")
       .def(

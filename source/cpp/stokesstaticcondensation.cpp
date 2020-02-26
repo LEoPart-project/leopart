@@ -345,7 +345,7 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal,
     // iterations"<<num_it<<std::endl;
   }
   // Backsubtitution in Ulocal
-  backsubtitute(Uglobal, Ulocal);
+  backsubstitute(Uglobal, Ulocal);
 }
 
 void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
@@ -356,8 +356,8 @@ void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
               << A_g.is_symmetric(1E-6) << std::endl;
 }
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::backsubtitute(const Function& Uglobal,
-                                             Function& Ulocal)
+void StokesStaticCondensation::backsubstitute(const Function& Uglobal,
+                                              Function& Ulocal)
 {
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {

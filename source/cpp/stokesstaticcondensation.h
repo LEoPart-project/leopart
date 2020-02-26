@@ -54,9 +54,13 @@ public:
                      const std::string solver = "none",
                      const std::string preconditioner = "default");
 
+  Matrix& get_global_lhs_matrix() { return A_g; }
+  Vector& get_global_rhs_vector() { return f_g; }
+
+  void backsubstitute(const Function& Uglobal, Function& Ulocal);
+
 private:
   // Private Methods
-  void backsubtitute(const Function& Uglobal, Function& Ulocal);
   void test_rank(const Form& a, const std::size_t rank);
 
   // Private Attributes
