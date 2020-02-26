@@ -24,14 +24,14 @@
 
 using namespace dolfin;
 
-StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
-                                                   const Form& A, const Form& G,
-                                                   const Form& B, const Form& Q,
-                                                   const Form& S)
-    : mesh(&mesh), A(&A), B(&B), G(&G), Q(&Q), S(&S),
-      invAe_list(mesh.num_cells()), Ge_list(mesh.num_cells()),
-      Be_list(mesh.num_cells()), Qe_list(mesh.num_cells()),
-      mpi_comm(mesh.mpi_comm())
+StokesStaticCondensation::StokesStaticCondensation(std::shared_ptr<const Mesh> mesh,
+                                                   std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                                                   std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+                                                   std::shared_ptr<const Form> S)
+    : mesh(mesh), A(A), B(B), G(G), Q(Q), S(S),
+      invAe_list(mesh->num_cells()), Ge_list(mesh->num_cells()),
+      Be_list(mesh->num_cells()), Qe_list(mesh->num_cells()),
+      mpi_comm(mesh->mpi_comm())
 {
   // Check that global problem is square, otherwise, raise error
   // TODO: Perform some checks on functionspaces
@@ -50,8 +50,8 @@ StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
 }
 //-----------------------------------------------------------------------------
 StokesStaticCondensation::StokesStaticCondensation(
-    const Mesh& mesh, const Form& A, const Form& G, const Form& B,
-    const Form& Q, const Form& S,
+    std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G, std::shared_ptr<const Form> B,
+    std::shared_ptr<const Form> Q, std::shared_ptr<const Form> S,
     std::vector<std::shared_ptr<const DirichletBC>> bcs)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, B, Q, S)
 {
@@ -62,24 +62,24 @@ StokesStaticCondensation::StokesStaticCondensation(
   // TODO: Check that B is square, rectangular not yet implemented
 }
 //-----------------------------------------------------------------------------
-StokesStaticCondensation::StokesStaticCondensation(const Mesh& mesh,
-                                                   const Form& A, const Form& G,
-                                                   const Form& GT,
-                                                   const Form& B, const Form& Q,
-                                                   const Form& S)
+StokesStaticCondensation::StokesStaticCondensation(std::shared_ptr<const Mesh> mesh,
+                                                   std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                                                   std::shared_ptr<const Form> GT,
+                                                   std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+                                                   std::shared_ptr<const Form> S)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, B, Q, S)
 {
-  this->GT = &GT;
+  this->GT = GT;
   test_rank(*(this->GT), 2);
 
-  GTe_list.resize(mesh.num_cells());
+  GTe_list.resize(mesh->num_cells());
   // Set assume_symmetric to false
   assume_symmetric = false;
 }
 //-----------------------------------------------------------------------------
 StokesStaticCondensation::StokesStaticCondensation(
-    const Mesh& mesh, const Form& A, const Form& G, const Form& GT,
-    const Form& B, const Form& Q, const Form& S,
+    std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G, std::shared_ptr<const Form> GT,
+    std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> S,
     std::vector<std::shared_ptr<const DirichletBC>> bcs)
     : StokesStaticCondensation::StokesStaticCondensation(mesh, A, G, GT, B, Q,
                                                          S)
@@ -345,7 +345,7 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal,
     // iterations"<<num_it<<std::endl;
   }
   // Backsubtitution in Ulocal
-  backsubtitute(Uglobal, Ulocal);
+  backsubstitute(Uglobal, Ulocal);
 }
 
 void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
@@ -356,8 +356,8 @@ void StokesStaticCondensation::apply_boundary(DirichletBC& DBC)
               << A_g.is_symmetric(1E-6) << std::endl;
 }
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::backsubtitute(const Function& Uglobal,
-                                             Function& Ulocal)
+void StokesStaticCondensation::backsubstitute(const Function& Uglobal,
+                                              Function& Ulocal)
 {
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
