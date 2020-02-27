@@ -35,7 +35,7 @@ xmin, xmax = 0.0, float(lmbda)
 ymin, ymax = 0.0, 1.0
 
 # Number of cells
-nx, ny = 40, 40
+nx, ny = 20, 20
 
 
 # Initial composition field
@@ -49,9 +49,17 @@ class StepFunction(UserExpression):
             values[0] = 0.0
 
 
+parameters["ghost_mode"] = "shared_facet"
 mesh = RectangleMesh.create(
     comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
     [nx, ny], CellType.Type.triangle, "left/right")
+parameters["ghost_mode"] = "none"
+
+ptcl_mesh = RectangleMesh.create(
+    comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
+    [nx, ny], CellType.Type.triangle, "left/right")
+
+from vtkplotter.dolfin import plot
 
 # Shift the mesh to line up with the initial step function condition
 scale = db * (1.0 - db)
@@ -61,6 +69,9 @@ shift = Expression(("0.0", "x[1]*(H - x[1])/S*A*cos(pi/L*x[0])"),
 V = VectorFunctionSpace(mesh, "CG", 1)
 displacement = interpolate(shift, V)
 ALE.move(mesh, displacement)
+V = VectorFunctionSpace(ptcl_mesh, "CG", 1)
+displacement = interpolate(shift, V)
+ALE.move(ptcl_mesh, displacement)
 
 # Entrainment functional measures
 de = 1
@@ -75,11 +86,11 @@ s = np.zeros((len(x), 1), dtype=np.float_)
 
 # Interpolate initial function onto particles, index slot 1
 property_idx = 1
-ptcls = particles(x, [s], mesh)
+ptcls = particles(x, [s], ptcl_mesh)
 
 # Define the variational (projection problem)
 k = 1
-W_e = FiniteElement("DG", mesh.ufl_cell(), k)
+W_e = FiniteElement("DG", mesh.ufl_cell(), 0)
 T_e = FiniteElement("DG", mesh.ufl_cell(), 0)
 Wbar_e = FiniteElement("DGT", mesh.ufl_cell(), k)
 
@@ -164,8 +175,10 @@ wbar, qbar = TestFunctions(forms_stokes_formulator.mixedG)
 n = FacetNormal(mesh)
 he = CellDiameter(mesh)
 nu = eta
-A_p = forms_stokes_formulator.facet_integral(alpha/he * 2 * nu*dot(ubar, wbar))
-A_p += forms_stokes_formulator.facet_integral(nu**-1 * pbar * qbar)
+A_p = forms_stokes_formulator.facet_integral(alpha/he * 2 * nu*dot(ubar, wbar)) \
+      - forms_stokes_formulator.facet_integral(dot(pbar*n, wbar)) \
+      - forms_stokes_formulator.facet_integral(dot(ubar, n)*qbar)
+A_p += forms_stokes_formulator.facet_integral((nu)**-1 * pbar * qbar)
 
 # Particle advector
 C_CFL = 0.5
@@ -233,14 +246,15 @@ opts = PETSc.Options()
 # opts["pc_type"] = "lu"
 # opts["pc_factor_mat_solver_type"] = "mumps"
 opts["ksp_type"] = "minres"
-opts["pc_type"] = "lu"
+opts["pc_type"] = "jacobi"
+opts["ksp_rtol"] = 1e-12
 # opts["pc_factor_mat_solver_type"] = "mumps"
 opts["ksp_monitor"] = None
 ksp.setFromOptions()
 
 from dolfin import PETScMatrix
 P = PETScMatrix(mesh.mpi_comm())
-for j in range(50000):
+for j in range(500000):
     max_u_vec = u_vec.vector().norm("linf")
     dt.assign(C_CFL * hmin / max_u_vec)
 
@@ -275,6 +289,8 @@ for j in range(50000):
 
     # ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
     assemble(A_p, tensor=P)
+    for bc in bcs:
+        bc.apply(P)
     ksp.setOperators(as_backend_type(ssc.get_global_lhs_matrix()).mat(),
                      P.mat())
     ksp.solve(as_backend_type(ssc.get_global_rhs_vector()).vec(), Uhbar.vector().vec())

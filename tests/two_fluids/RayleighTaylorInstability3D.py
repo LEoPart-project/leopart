@@ -28,7 +28,7 @@ parameters["std_out_all_processes"] = False
 # Buoyant layer thickness
 db = 0.2
 # Aspect ratio
-lmbdax, lmbdaz = Constant(0.9142), Constant(0.9142)
+lmbdax, lmbdaz = Constant(0.9142), Constant(0.7142)
 xmin, xmax = 0.0, float(lmbdax)
 ymin, ymax = 0.0, 1.0
 zmin, zmax = 0.0, float(lmbdaz)
@@ -196,7 +196,7 @@ def output_functionals(fname, vals, append=True):
 
 # Compute and output functionals
 def output_data_step(append=False):
-    urms = (1.0 / lmbdax * assemble(dot(u_vec, u_vec) * dx)) ** 0.5
+    urms = (1.0 / (lmbdax*lmbdaz) * assemble(dot(u_vec, u_vec) * dx)) ** 0.5
     conservation = abs(assemble(phi * dx) - conservation0)
     entrainment = assemble(1.0 / (lmbdax * Constant(db)) * phi * dx(de))
     output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
