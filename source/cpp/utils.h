@@ -25,12 +25,6 @@ public:
                                       const Cell& dolfin_cell,
                                       const Function* phih)
   {
-    // TODO: This phi_cell is a workaround for when shared facet ghost mode is required.
-    // I.e. in this case phih is defined on a mesh identical to the particle mesh,
-    // however the phih mesh has shared facet ghost mode and the particle mesh has
-    // none ghost mode.
-    const Cell phi_cell = Cell(*phih->function_space()->mesh(), dolfin_cell.index());
-
     // Get expansion coefficients phi_i in N_i . phi_i
     std::vector<double> vertex_coordinates;
     dolfin_cell.get_vertex_coordinates(vertex_coordinates);
@@ -41,9 +35,7 @@ public:
         = phih->function_space()->element();
     coeffs.resize(element->space_dimension());
     // Get coefficients
-    // TODO: Here is the implementation of the workaround. We restrict phih to its own cell
-    // and *not* the particle mesh cell
-    phih->restrict(coeffs.data(), *element, phi_cell,
+    phih->restrict(coeffs.data(), *element, dolfin_cell,
                    vertex_coordinates.data(), ufc_cell);
   }
 
