@@ -102,7 +102,7 @@ class FormsStokes:
                               ufl_forms['Q_S'], ufl_forms['S_S'])
 
     def facet_integral(self, integrand):
-        return integrand('-')*dS + integrand('+')*dS + integrand*ds
+        return integrand('-')*dS + integrand('+')*dS + integrand*self.ds
 
     def ufl_forms(self, nu, f):
         (w, q, wbar, qbar) = self.test_functions()
