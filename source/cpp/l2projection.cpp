@@ -99,6 +99,8 @@ void l2projection::project(Function& u)
     // Insert in vector
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
+
+  u.vector()->update_ghost_values();
 }
 //-----------------------------------------------------------------------------
 void l2projection::project(Function& u, const double lb, const double ub)
@@ -150,6 +152,8 @@ void l2projection::project(Function& u, const double lb, const double ub)
     quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
+
+  u.vector()->update_ghost_values();
 }
 //-----------------------------------------------------------------------------
 void l2projection::project_cg(const Form& A, const Form& f, Function& u)
