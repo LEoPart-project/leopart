@@ -30,17 +30,36 @@ or randomly placed (RandomRectangle/RandomCircle)
 
 
 class RandomGenerator(object):
-
     """
-    Fill object by random points.
+    Base class for seeding particles at random positions in a geometric object.
+
+    **Attributes:**
+
+    Attributes
+    ----------
+    domain: list
+        List that contains bounding box coordinates of domain
+    rule: function
+        lambda expression or function that defines the rule for filling the domain.
+    dim: int
+        Geometric dimension of domain
+    rank: int
+        MPI rank
     """
 
     def __init__(self, domain, rule):
         """
-        Domain specifies bounding box for the shape and is used to generate
-        points. The rule filter points of inside the bounding box that are
-        axctually inside the shape.
+        Initialize RandomGenerator object.
+
+        Parameters
+        ----------
+        domain: list
+            Domain specifies bounding box of the geometry
+        rule: function
+            The rule filters the generated points in the bounding box into the
+            desired shape.
         """
+
         assert isinstance(domain, list)
         self.domain = domain
         self.rule = rule
@@ -48,7 +67,22 @@ class RandomGenerator(object):
         self.rank = comm.Get_rank()
 
     def generate(self, N, method="full"):
-        "Genererate points."
+        """
+        Generate points
+
+        Parameters
+        ----------
+        N: int
+            Number of points to generate.
+        method: str, optional
+            Method that is used for generating the random point
+            locations either "full"  or "tensor". Defaults to "full"
+        Returns
+        -------
+        np.array
+            Numpy array of generated points.
+        """
+
         assert len(N) == self.dim
         assert method in ["full", "tensor"]
         np.random.seed(10)
@@ -79,11 +113,24 @@ class RandomGenerator(object):
         points_inside = comm.bcast(points_inside, root=0)
         return points_inside
 
-    # TODO generate in parallel
-
 
 class RandomRectangle(RandomGenerator):
+    """
+    Overloads the RendomGenerator class for generating random particle locations
+    within a rectangular object.
+    """
     def __init__(self, ll, ur):
+        """
+        Initialize Random Rectangle object.
+
+        Parameters
+        ----------
+        ll: dolfin.Point
+            Point containing lower-left x and y coordinate of rectangle.
+        ur: dolfin.Point
+            Point containing upper-right x and y coordinate of rectangle.
+        """
+
         # a is lower left, b is upper right
         ax, ay = ll.x(), ll.y()
         bx, by = ur.x(), ur.y()
@@ -92,7 +139,21 @@ class RandomRectangle(RandomGenerator):
 
 
 class RandomCircle(RandomGenerator):
+    """
+    Overloads the RendomGenerator class for generating random particle locations
+    within a rectangular object.
+    """
     def __init__(self, center, radius):
+        """
+        Initialize RandomCircle class
+
+        Parameters
+        ----------
+        center: Point, list, np.ndarray
+            Center coordinates
+        radius: float
+            Radius of circle
+        """
         assert radius > 0
         domain = [
             [center[0] - radius, center[0] + radius],
@@ -104,7 +165,24 @@ class RandomCircle(RandomGenerator):
 
 
 class RandomBox(RandomGenerator):
+    """
+    Overloads the RendomGenerator class for generating random particle locations
+    within a box-shaped object.
+    """
+
     def __init__(self, ll, ur):
+        """
+        Initialize RandomBox object.
+
+        Parameters
+        ----------
+        ll: dolfin.Point
+            Lower left coordinate of box
+        ur: dolfin.Point
+            Upper left coordinate of box
+
+        """
+
         # a is lower left, b is upper right
         ax, ay, az = ll.x(), ll.y(), ll.z()
         bx, by, bz = ur.x(), ur.y(), ur.z()
@@ -114,7 +192,22 @@ class RandomBox(RandomGenerator):
 
 
 class RandomSphere(RandomGenerator):
+    """
+    Overloads the RendomGenerator class for generating random particle locations
+    within a sphere.
+    """
+
     def __init__(self, center, radius):
+        """
+        Initialize RandomSphere object.
+
+        Parameters
+        ----------
+        center: dolfin.Point
+            Center coordinates of sphere.
+        radius: float
+            Radius of sphere
+        """
         assert len(center) == 3
         assert radius > 0
         domain = [
@@ -133,15 +226,44 @@ class RandomSphere(RandomGenerator):
 
 
 class RegularRectangle(RandomGenerator):
+    """
+    Class for generating points on a regular lattice in a rectangle
+    """
+
     def __init__(self, ll, ur):
-        # ll is Point(lower left coordinate), ur is Point(upper right coordinate)
+        """
+        Initialize RegularRectangle object.
+
+        Parameters
+        ----------
+        ll: dolfin.Point
+            Lower left corner of rectangle
+        ur: dolfin.Point
+            Upper right corner of rectangle
+        """
+
         ax, ay = ll.x(), ll.y()
         bx, by = ur.x(), ur.y()
         assert ax < bx and ay < by
         RandomGenerator.__init__(self, [[ax, bx], [ay, by]], lambda x: True)
 
     def generate(self, N, method="open"):
-        "Genererate points."
+        """
+        Generate points on regular lattice in rectangle.
+
+        Parameters
+        ----------
+        N: list
+            Number of points to generate in each dimension
+        method: str, optional
+            Which method to use. Either "open" [endpoints not included],
+            "closed" [endpoints included] or "half open"
+
+        Returns
+        -------
+        np.ndarray
+            Numpy array with coordinates
+        """
         assert len(N) == self.dim
 
         if self.rank == 0:
@@ -175,7 +297,22 @@ class RegularRectangle(RandomGenerator):
 
 
 class RegularBox(RandomGenerator):
+    """
+    Class for generating points on a regular lattice in a box
+    """
+
     def __init__(self, ll, ur):
+        """
+        Initialize RegularBox instance.
+
+        Parameters
+        ----------
+        ll: dolfin.Point
+            Lower left coordinate of regular box.
+        ur: dolfin.Point
+            Upper right coordinate of regular box.
+        """
+
         # a is lower left, b is upper right
         ax, ay, az = ll.x(), ll.y(), ll.z()
         bx, by, bz = ur.x(), ur.y(), ur.z()
@@ -184,7 +321,23 @@ class RegularBox(RandomGenerator):
         RandomGenerator.__init__(self, domain, lambda x: True)
 
     def generate(self, N, method="open"):
-        "Genererate points."
+        """
+        Generate  points on regular lattice in box.
+
+        Parameters
+        ----------
+        N: list
+            Number of points to generate in each dimension
+        method: str, optional
+            Which method to use. Either "open" [endpoints not included],
+            "closed" [endpoints included] or "half open"
+
+        Returns
+        -------
+        np.ndarray
+            Numpy array with coordinates
+        """
+
         assert len(N) == self.dim
         if self.rank == 0:
             if method == "closed":
@@ -221,9 +374,19 @@ class RegularBox(RandomGenerator):
 
 
 class RandomCell(object):
-    """Generate particles in an existing Mesh."""
-
+    """
+    Generate random particle locations within a dolfin.cell (as yet, only simplicial
+    meshes supported).
+    """
     def __init__(self, mesh):
+        """
+        Initialize RandomCell generator
+
+        Parameters
+        ----------
+        mesh: dolfin.Mesh
+            Mesh on which to generate particles.
+        """
         self.mesh = mesh
 
     def _random_bary(self, n):
@@ -254,11 +417,21 @@ class RandomCell(object):
         return (s, t, u, v)
 
     def generate(self, N):
-        """Generate a random set of N points per cell."""
+        """
+        Generate a random set of N points per cell.
+
+        Parameters
+        ----------
+        N: int
+            Number of points per cell.
+        Returns
+        -------
+        np.ndarray
+            Coordinate array of points.
+        """
 
         # TODO - number of points per cell could be random too, with a minimum
         # value, and should be related to the cell volume.
-
         points_inside = []
 
         for c in cells(self.mesh):
