@@ -391,7 +391,7 @@ class RandomCell(object):
 
     def _random_bary(self, n):
         """Generate random barycentric coordinates between n points."""
-        if n == 3:
+        if (n == 3):
             x = np.random.random()
             y = np.random.random()
             if (x + y) > 1.0:
@@ -405,15 +405,14 @@ class RandomCell(object):
         u = np.random.random()
 
         # Fold space in cube into tetrahedron
-        if s + t > 1.0:
+        if (s + t) > 1.0:
             s, t = 1.0 - s, 1.0 - t
-        if t + u > 1.0:
-            t, u = 1.0 - s - u, 1.0 - t
-        elif s + t + u > 1.0:
-            u += s + t - 1.0
-            s -= u
-
-        v = 1 - s - t - u
+        if (s + t + u) > 1.0:
+            if (t + u) > 1.0:
+                t, u = 1.0 - u, 1.0 - s - t
+            else:
+                s, u = 1.0 - t - u, s + t + u - 1.0
+        v = 1.0 - s - t - u
         return (s, t, u, v)
 
     def generate(self, N):
