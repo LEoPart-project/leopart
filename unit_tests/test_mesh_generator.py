@@ -44,7 +44,7 @@ def test_mesh_generator_3d():
     s = assign_particle_values(pts, interpolate_expression, on_root=False)
 
     assert np.linalg.norm(np.sum(pts, axis=1) - s) <= 1e-15
-    # TODO: fix below assertion, probably needs fix in barycentric map
+
     p = particles(pts, [s], mesh)
     assert pts.shape == p.positions().shape
 
