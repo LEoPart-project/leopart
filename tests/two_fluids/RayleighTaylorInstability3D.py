@@ -11,7 +11,7 @@ from dolfin import (Cell, UserExpression, BoxMesh, parameters, Constant, Point, 
                     CompiledSubDomain, Measure, FiniteElement, FunctionSpace, Function,
                     VectorElement, DirichletBC, MixedElement, MPI, XDMFFile, info,
                     assemble, FunctionAssigner, Timer, dot, list_timings, TimingClear, TimingType)
-from leopart import (particles, RandomRectangle, AddDelete, FormsPDEMap, PDEStaticCondensation,
+from leopart import (particles, AddDelete, FormsPDEMap, PDEStaticCondensation,
                      FormsStokes,
                      StokesStaticCondensation, advect_rk3, RandomBox)
 from mpi4py import MPI as pyMPI
@@ -28,7 +28,7 @@ parameters["std_out_all_processes"] = False
 # Buoyant layer thickness
 db = 0.2
 # Aspect ratio
-lmbdax, lmbdaz = Constant(0.9142), Constant(0.7142)
+lmbdax, lmbdaz = Constant(0.9142), Constant(0.8142)
 xmin, xmax = 0.0, float(lmbdax)
 ymin, ymax = 0.0, 1.0
 zmin, zmax = 0.0, float(lmbdaz)
@@ -90,7 +90,7 @@ Wbarh = FunctionSpace(mesh, Wbar_e)
 phi = interpolate(StepFunction(), Wh)
 gamma0 = interpolate(StepFunction(), Wh)
 
-ad = AddDelete(ptcls, 25, 30, [phi], [1], [0.0, 1.0])
+ad = AddDelete(ptcls, 50, 55, [phi], [1], [0.0, 1.0])
 ptcls.interpolate(phi, property_idx)
 ad.do_sweep()
 
@@ -198,7 +198,7 @@ def output_functionals(fname, vals, append=True):
 def output_data_step(append=False):
     urms = (1.0 / (lmbdax*lmbdaz) * assemble(dot(u_vec, u_vec) * dx)) ** 0.5
     conservation = abs(assemble(phi * dx) - conservation0)
-    entrainment = assemble(1.0 / (lmbdax * Constant(db)) * phi * dx(de))
+    entrainment = assemble(1.0 / (lmbdax * lmbdaz * Constant(db)) * phi * dx(de))
     output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
                        append=append)
 
@@ -216,6 +216,9 @@ del time
 # Transfer the computed velocity function and compute functionals
 velocity_assigner.assign(u_vec, Uh.sub(0))
 output_data_step(append=False)
+
+time_snap_shot_interval = 5.0
+next_snap_shot_time = time_snap_shot_interval
 
 for j in range(50000):
     max_u_vec = u_vec.vector().norm("linf")
@@ -256,10 +259,13 @@ for j in range(50000):
     output_data_step(append=True)
 
     # Output particles and composition field
-    points_list = list(Point(*pp) for pp in ptcls.positions())
-    particles_values = ptcls.get_property(property_idx)
-    XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % (j+1))) \
-        .write(points_list, particles_values)
-    XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=True)
+    if float(t) > next_snap_shot_time:
+        points_list = list(Point(*pp) for pp in ptcls.positions())
+        particles_values = ptcls.get_property(property_idx)
+        XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % (j+1))) \
+            .write(points_list, particles_values)
+        XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=True)
+
+        next_snap_shot_time += time_snap_shot_interval
 
 list_timings(TimingClear.clear, [TimingType.wall])
