@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2019 Nathan Sime
+# Copyright (C) 2020 Nathan Sime
 # Contact: nsime _at_ carnegiescience.edu
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
@@ -17,8 +17,8 @@ from leopart import (particles, AddDelete, FormsPDEMap, PDEStaticCondensation,
 from mpi4py import MPI as pyMPI
 
 '''
-    Rayleigh-Taylor instability benchmark problem in geodynamics as documented in
-    https://doi.org/10.1029/97JB01353
+    3D extrusion of the Rayleigh-Taylor instability benchmark problem in geodynamics 
+    as documented in https://doi.org/10.1029/97JB01353
 '''
 
 comm = pyMPI.COMM_WORLD
