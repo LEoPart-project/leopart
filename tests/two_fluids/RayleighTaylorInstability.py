@@ -4,13 +4,15 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+from petsc4py import PETSc
 import os
 import numpy as np
 from dolfin import (Cell, UserExpression, RectangleMesh, parameters, Constant, Point, CellType,
                     Expression, VectorFunctionSpace, interpolate, ALE, MeshFunction,
                     CompiledSubDomain, Measure, FiniteElement, FunctionSpace, Function,
                     VectorElement, DirichletBC, MixedElement, MPI, XDMFFile, info,
-                    assemble, FunctionAssigner, Timer, dot, list_timings, TimingClear, TimingType)
+                    assemble, FunctionAssigner, Timer, dot, list_timings, TimingClear, TimingType,
+                    as_backend_type)
 from leopart import (particles, RandomRectangle, AddDelete, FormsPDEMap, PDEStaticCondensation,
                      FormsStokes,
                      StokesStaticCondensation, advect_rk3)
@@ -147,13 +149,23 @@ Rb = Constant(1.0)
 eta_top = Constant(1.0)
 eta_bottom = Constant(0.01)
 eta = eta_bottom + phi * (eta_top - eta_bottom)
-forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha) \
+forms_stokes_formulator = FormsStokes(mesh, mixedL, mixedG, alpha)
+forms_stokes = forms_stokes_formulator \
     .forms_steady(eta, Rb * phi * Constant((0, -1)))
 
 ssc = StokesStaticCondensation(mesh,
                                forms_stokes['A_S'], forms_stokes['G_S'],
                                forms_stokes['B_S'],
                                forms_stokes['Q_S'], forms_stokes['S_S'])
+
+from dolfin import FacetNormal, inner, grad, sym, TrialFunctions, TestFunctions, CellDiameter
+ubar, pbar = TrialFunctions(forms_stokes_formulator.mixedG)
+wbar, qbar = TestFunctions(forms_stokes_formulator.mixedG)
+n = FacetNormal(mesh)
+he = CellDiameter(mesh)
+nu = eta
+A_p = forms_stokes_formulator.facet_integral(alpha/he * 2 * nu*dot(ubar, wbar))
+A_p += forms_stokes_formulator.facet_integral(nu**-1 * pbar * qbar)
 
 # Particle advector
 C_CFL = 0.5
@@ -214,6 +226,20 @@ del time
 velocity_assigner.assign(u_vec, Uh.sub(0))
 output_data_step(append=False)
 
+ksp = PETSc.KSP().create(mesh.mpi_comm())
+
+opts = PETSc.Options()
+# opts["ksp_type"] = "preonly"
+# opts["pc_type"] = "lu"
+# opts["pc_factor_mat_solver_type"] = "mumps"
+opts["ksp_type"] = "minres"
+opts["pc_type"] = "lu"
+# opts["pc_factor_mat_solver_type"] = "mumps"
+opts["ksp_monitor"] = None
+ksp.setFromOptions()
+
+from dolfin import PETScMatrix
+P = PETScMatrix(mesh.mpi_comm())
 for j in range(50000):
     max_u_vec = u_vec.vector().norm("linf")
     dt.assign(C_CFL * hmin / max_u_vec)
@@ -246,7 +272,14 @@ for j in range(50000):
     time = Timer("ZZZ Stokes solve")
     for bc in bcs:
         ssc.apply_boundary(bc)
-    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+
+    # ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
+    assemble(A_p, tensor=P)
+    ksp.setOperators(as_backend_type(ssc.get_global_lhs_matrix()).mat(),
+                     P.mat())
+    ksp.solve(as_backend_type(ssc.get_global_rhs_vector()).vec(), Uhbar.vector().vec())
+    Uhbar.vector().update_ghost_values()
+    ssc.backsubstitute(Uhbar.cpp_object(), Uh.cpp_object())
     del time
 
     velocity_assigner.assign(u_vec, Uh.sub(0))
