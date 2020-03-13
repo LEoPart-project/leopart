@@ -1279,3 +1279,139 @@ void advect_rk3::do_step(double dt)
 }
 //-----------------------------------------------------------------------------
 advect_rk3::~advect_rk3() {}
+//
+//-----------------------------------------------------------------------------
+//
+//      RUNGE KUTTA 4
+//
+//-----------------------------------------------------------------------------
+//
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+                       const std::string type1)
+    : advect_particles(P, U, uhi, type1)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk4::advect_rk4(
+    particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+    : advect_particles(P, U, uhi, type1, pbc_limits)
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+                       const MeshFunction<std::size_t>& mesh_func)
+    : advect_particles(P, U, uhi, mesh_func)
+
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+                       const MeshFunction<std::size_t>& mesh_func,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+    : advect_particles(P, U, uhi, mesh_func, pbc_limits)
+
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+                       const MeshFunction<std::size_t>& mesh_func,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
+    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
+
+{
+  update_particle_template();
+  init_weights();
+}
+//-----------------------------------------------------------------------------
+void advect_rk4::do_step(double dt)
+{
+  if (dt < 0.)
+    dolfin_error("advect_particles.cpp::step", "set timestep.",
+                 "Timestep should be > 0.");
+
+  const Mesh* mesh = _P->mesh();
+  const std::size_t gdim = mesh->geometry().dim();
+  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
+  std::size_t num_substeps = 4;
+
+  for (std::size_t step = 0; step < num_substeps; step++)
+  {
+    // Needed for local reloc
+    std::vector<std::array<std::size_t, 3>> reloc;
+
+    Function& uh_step = uh(step, dt);
+
+    for (CellIterator ci(*mesh); !ci.end(); ++ci)
+    {
+      if (step == 0)
+      { // Restrict once per cell, once per timestep
+        std::vector<double> coeffs;
+        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
+        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
+                                           coeffs.begin(), coeffs.end());
+      }
+
+      // Loop over particles
+      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      {
+        Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
+        Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
+                                   _element);
+
+        // Compute value at point using expansion coeffs and basis matrix, first
+        // convert to Eigen matrix
+        Eigen::Map<Eigen::VectorXd> exp_coeffs(
+            coeffs_storage[ci->index()].data(), _space_dimension);
+        Eigen::VectorXd u_p = basis_mat * exp_coeffs;
+
+        Point up(gdim, u_p.data());
+
+        // Then reset position to the old position
+        _P->set_property(ci->index(), i, 0,
+                         _P->property(ci->index(), i, xp0_idx));
+
+        if (step == 0)
+          _P->set_property(ci->index(), i, up0_idx, up * (weights[step]));
+        else if (step == 1 or step == 2)
+        {
+          Point p = _P->property(ci->index(), i, up0_idx);
+          if (p[0] == std::numeric_limits<double>::max())
+            continue;
+          _P->set_property(ci->index(), i, up0_idx, p + up * (weights[step]));
+        }
+        else if (step == 3)
+        {
+          Point p = _P->property(ci->index(), i, up0_idx);
+          if (p[0] == std::numeric_limits<double>::max())
+            continue;
+          up *= weights[step];
+          up += _P->property(ci->index(), i, up0_idx);
+        }
+
+//        // Reset position to old
+//        if (step == 1)
+//          _P->set_property(ci->index(), i, 0,
+//                           _P->property(ci->index(), i, xp0_idx));
+
+        // Do substep
+        do_substep(dt * dti[step], up, ci->index(), i, step, num_substeps,
+                   xp0_idx, up0_idx, reloc);
+      }
+    }
+
+    // Relocate local and global
+    _P->relocate(reloc);
+  }
+}
+//-----------------------------------------------------------------------------
+advect_rk4::~advect_rk4() {}

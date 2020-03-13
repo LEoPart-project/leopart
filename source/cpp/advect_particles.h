@@ -261,5 +261,64 @@ private:
     weights = {2. / 9., 3. / 9., 4. / 9.};
   }
 };
+
+class advect_rk4 : public advect_particles
+{
+public:
+  // Constructors
+  advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+             const std::string type1);
+
+  // Document
+  advect_rk4(
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
+
+  // Document
+  advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+                   const MeshFunction<std::size_t>& mesh_func);
+
+  // Document
+  advect_rk4(
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
+
+  // Document
+  advect_rk4(
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
+
+  // Step forward in time dt
+  void do_step(double dt);
+
+  // Destructor
+  ~advect_rk4();
+
+private:
+  std::size_t xp0_idx, up0_idx;
+
+  void update_particle_template()
+  {
+    const std::size_t gdim = _P->mesh()->geometry().dim();
+    xp0_idx = _P->expand_template(gdim);
+    up0_idx = _P->expand_template(gdim);
+
+    // Copy position to xp0 property
+    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
+    {
+      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
+        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
+    }
+  }
+
+  void init_weights()
+  {
+    dti = {0.5, 0.5, 1.0, 1.0};
+    weights = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
+  }
+};
 } // namespace dolfin
 #endif // ADVECT_PARTICLES_H

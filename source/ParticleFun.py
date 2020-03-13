@@ -142,6 +142,17 @@ class advect_rk3(compiled_module.advect_rk3):
         return self.eval(*args)
 
 
+class advect_rk4(compiled_module.advect_rk4):
+    def __init__(self, *args):
+        a = list(args)
+        a[1] = a[1]._cpp_object
+        # a[2] = a[2]._cpp_object
+        super().__init__(*tuple(a))
+
+    def __call__(self, *args):
+        return self.eval(*args)
+
+
 class l2projection(compiled_module.l2projection):
     def __init__(self, *args):
         a = list(args)

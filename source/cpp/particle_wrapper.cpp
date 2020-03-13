@@ -129,6 +129,28 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("do_step", &dolfin::advect_rk3::do_step)
       .def("update_facets_info", &dolfin::advect_rk3::update_facets_info);
 
+  py::class_<dolfin::advect_rk4>(m, "advect_rk4")
+      .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                    std::function<dolfin::Function&(int, double)>, const std::string>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           std::function<dolfin::Function&(int, double)>, const std::string,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<
+           dolfin::particles&, dolfin::FunctionSpace&,
+           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def("do_step", &dolfin::advect_rk4::do_step)
+      .def("update_facets_info", &dolfin::advect_rk4::update_facets_info);
+
   py::class_<dolfin::l2projection>(m, "l2projection")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
                     const std::size_t>())
