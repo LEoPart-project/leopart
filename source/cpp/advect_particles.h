@@ -46,27 +46,33 @@ class advect_particles
 
 public:
   // Constructors
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+  advect_particles(particles& P, FunctionSpace& U,
+                   std::function<Function&(int, double)> uhi,
                    const std::string type1);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, FunctionSpace& U,
+      std::function<Function&(int, double)> uhi,
+      const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+  advect_particles(particles& P, FunctionSpace& U,
+                   std::function<Function&(int, double)> uhi,
                    const MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U,
+      std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U,
+      std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
@@ -104,7 +110,7 @@ protected:
   // (normal, midpoint, type(internal, open, closed, periodic, bounded))
   std::vector<facet_info> facets_info;
 
-  Function* uh;
+  std::function<Function&(int, double)> uh;
   std::shared_ptr<const FiniteElement> _element;
 
   // Must receive a point xp
@@ -142,27 +148,27 @@ class advect_rk2 : public advect_particles
 {
 public:
   // Constructors
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
              const std::string type1);
 
   // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
                    const MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
   advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
@@ -201,27 +207,27 @@ class advect_rk3 : public advect_particles
 {
 public:
   // Constructors
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
              const std::string type1);
 
   // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
+  advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
                    const MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
   advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);

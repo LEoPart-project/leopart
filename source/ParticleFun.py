@@ -113,7 +113,7 @@ class advect_particles(compiled_module.advect_particles):
     def __init__(self, *args):
         a = list(args)
         a[1] = a[1]._cpp_object
-        a[2] = a[2]._cpp_object
+        # a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
@@ -124,7 +124,7 @@ class advect_rk2(compiled_module.advect_rk2):
     def __init__(self, *args):
         a = list(args)
         a[1] = a[1]._cpp_object
-        a[2] = a[2]._cpp_object
+        # a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
@@ -135,7 +135,7 @@ class advect_rk3(compiled_module.advect_rk3):
     def __init__(self, *args):
         a = list(args)
         a[1] = a[1]._cpp_object
-        a[2] = a[2]._cpp_object
+        # a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
