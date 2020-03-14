@@ -47,7 +47,7 @@ release = u"0.0.0"
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
-autodoc_mock_imports = ["leopart"]
+autodoc_mock_imports = ["leopart", "dolfin", "mpi4py"]
 
 # -- Options for HTML output -------------------------------------------------
 
