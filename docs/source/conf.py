@@ -25,6 +25,9 @@ author = "J.M. Maljaars, C.N. Richardson, N. Sime"
 
 # -- General configuration ---------------------------------------------------
 
+# Name of master document
+master_doc = 'index'
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
@@ -47,6 +50,7 @@ release = u"0.0.0"
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+# Mock imports
 autodoc_mock_imports = ["leopart", "dolfin", "mpi4py"]
 
 # -- Options for HTML output -------------------------------------------------
