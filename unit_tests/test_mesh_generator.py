@@ -16,29 +16,29 @@ def test_mesh_generator_2d():
     """Basic functionality test."""
     mesh = RectangleMesh(Point(0.0, 0.0), Point(1.0, 1.0), 5, 5)
     for x in mesh.coordinates():
-        x[0] += 0.5*x[1]
+        x[0] += 0.5 * x[1]
 
     w = RandomCell(mesh)
     pts = w.generate(3)
-    assert len(pts) == mesh.num_cells()*3
+    assert len(pts) == mesh.num_cells() * 3
 
     interpolate_expression = Expression("x[0] + x[1]", degree=1)
     s = assign_particle_values(pts, interpolate_expression, on_root=False)
     p = particles(pts, [s], mesh)
 
     assert np.linalg.norm(np.sum(pts, axis=1) - s) <= 1e-15
-    assert np.linalg.norm(pts-p.positions()) <= 1e-15
+    assert np.linalg.norm(pts - p.positions()) <= 1e-15
 
 
 def test_mesh_generator_3d():
     """Basic functionality test."""
     mesh = BoxMesh(Point(0.0, 0.0, 0.0), Point(1.0, 1.0, 1.0), 5, 5, 5)
     for x in mesh.coordinates():
-        x[0] += 0.5*x[1] + 0.2*x[2]
+        x[0] += 0.5 * x[1] + 0.2 * x[2]
 
     w = RandomCell(mesh)
     pts = w.generate(3)
-    assert len(pts) == mesh.num_cells()*3
+    assert len(pts) == mesh.num_cells() * 3
 
     interpolate_expression = Expression("x[0] + x[1] + x[2]", degree=1)
     s = assign_particle_values(pts, interpolate_expression, on_root=False)
@@ -50,7 +50,7 @@ def test_mesh_generator_3d():
 
     for i in range(10000):
         s, t, u, v = w._random_bary(4)
-        assert (s >= 0 and s <= 1)
-        assert (t >= 0 and t <= 1)
-        assert (u >= 0 and u <= 1)
-        assert (v >= 0 and v <= 1)
+        assert s >= 0 and s <= 1
+        assert t >= 0 and t <= 1
+        assert u >= 0 and u <= 1
+        assert v >= 0 and v <= 1

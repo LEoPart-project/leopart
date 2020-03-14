@@ -4,10 +4,26 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-from dolfin import (UserExpression, Expression, Point, BoxMesh, Function, FunctionSpace,
-                    VectorFunctionSpace, assemble, dx, dot)
-from leopart import (particles, l2projection,
-                     RandomBox, RegularBox, AddDelete, assign_particle_values)
+from dolfin import (
+    UserExpression,
+    Expression,
+    Point,
+    BoxMesh,
+    Function,
+    FunctionSpace,
+    VectorFunctionSpace,
+    assemble,
+    dx,
+    dot,
+)
+from leopart import (
+    particles,
+    l2projection,
+    RandomBox,
+    RegularBox,
+    AddDelete,
+    assign_particle_values,
+)
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest
@@ -16,7 +32,7 @@ comm = pyMPI.COMM_WORLD
 
 
 class Ball(UserExpression):
-    def __init__(self, radius, center, lb=0., ub=1., **kwargs):
+    def __init__(self, radius, center, lb=0.0, ub=1.0, **kwargs):
         assert len(center) == 3
         self.r = radius
         self.center = center
@@ -27,7 +43,7 @@ class Ball(UserExpression):
     def eval(self, value, x):
         (xc, yc, zc) = self.center
 
-        if (x[0] - xc)**2 + (x[1] - yc)**2 + (x[2] - zc)**2 <= self.r**2:
+        if (x[0] - xc) ** 2 + (x[1] - yc) ** 2 + (x[2] - zc) ** 2 <= self.r ** 2:
             value[0] = self.ub
         else:
             value[0] = self.lb
@@ -36,10 +52,10 @@ class Ball(UserExpression):
         return ()
 
 
-@pytest.mark.parametrize('polynomial_order, in_expression', [(2, " pow(x[0],2) + pow(x[1],2)")])
+@pytest.mark.parametrize("polynomial_order, in_expression", [(2, " pow(x[0],2) + pow(x[1],2)")])
 def test_l2_projection_3D(polynomial_order, in_expression):
-    xmin, ymin, zmin = 0., 0., 0.
-    xmax, ymax, zmax = 1., 1., 1.
+    xmin, ymin, zmin = 0.0, 0.0, 0.0
+    xmax, ymax, zmax = 1.0, 1.0, 1.0
     nx = 25
 
     property_idx = 1
@@ -55,7 +71,7 @@ def test_l2_projection_3D(polynomial_order, in_expression):
     v_exact = Function(V)
     v_exact.assign(interpolate_expression)
 
-    x = RandomBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([4, 4, 4])
+    x = RandomBox(Point(0.0, 0.0, 0.0), Point(1.0, 1.0, 1.0)).generate([4, 4, 4])
     s = assign_particle_values(x, interpolate_expression)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
@@ -69,15 +85,15 @@ def test_l2_projection_3D(polynomial_order, in_expression):
     lstsq_vh = l2projection(p, V, property_idx)
     lstsq_vh.project(vh.cpp_object())
 
-    error_sq = abs(assemble(dot(v_exact - vh, v_exact - vh)*dx))
+    error_sq = abs(assemble(dot(v_exact - vh, v_exact - vh) * dx))
     if comm.Get_rank() == 0:
         assert error_sq < 1e-13
 
 
-@pytest.mark.parametrize('polynomial_order, lb, ub', [(1, -3., -1.)])
+@pytest.mark.parametrize("polynomial_order, lb, ub", [(1, -3.0, -1.0)])
 def test_l2projection_bounded_3D(polynomial_order, lb, ub):
-    xmin, ymin, zmin = 0., 0., 0.
-    xmax, ymax, zmax = 1., 1., 1.
+    xmin, ymin, zmin = 0.0, 0.0, 0.0
+    xmax, ymax, zmax = 1.0, 1.0, 1.0
     nx = 10
 
     interpolate_expression = Ball(0.15, [0.5, 0.5, 0.5], degree=3, lb=lb, ub=ub)
@@ -87,7 +103,7 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
 
     V = FunctionSpace(mesh, "DG", polynomial_order)
 
-    x = RegularBox(Point(0., 0., 0.), Point(1., 1., 1.)).generate([100, 100, 100])
+    x = RegularBox(Point(0.0, 0.0, 0.0), Point(1.0, 1.0, 1.0)).generate([100, 100, 100])
     s = assign_particle_values(x, interpolate_expression)
 
     # Just make a complicated particle, possibly with scalars and vectors mixed
@@ -100,6 +116,7 @@ def test_l2projection_bounded_3D(polynomial_order, lb, ub):
     # Assert if it stays within bounds
     assert np.all(vh.vector().get_local() < ub + 1e-12)
     assert np.all(vh.vector().get_local() > lb - 1e-12)
+
 
 # TODO: Vector Function L2
 # TODO: PDE constrained projection
