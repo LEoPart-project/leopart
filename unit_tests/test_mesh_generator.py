@@ -50,7 +50,7 @@ def test_mesh_generator_3d():
 
     for i in range(10000):
         s, t, u, v = w._random_bary(4)
-        assert (s >= 0 and s <= 1)
-        assert (t >= 0 and t <= 1)
-        assert (u >= 0 and u <= 1)
-        assert (v >= 0 and v <= 1)
+        assert s >= 0 and s <= 1
+        assert t >= 0 and t <= 1
+        assert u >= 0 and u <= 1
+        assert v >= 0 and v <= 1

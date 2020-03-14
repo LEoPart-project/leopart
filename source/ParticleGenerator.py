@@ -116,9 +116,10 @@ class RandomGenerator(object):
 
 class RandomRectangle(RandomGenerator):
     """
-    Overloads the RendomGenerator class for generating random particle locations
+    Overloads the RandomGenerator class for generating random particle locations
     within a rectangular object.
     """
+
     def __init__(self, ll, ur):
         """
         Initialize Random Rectangle object.
@@ -140,9 +141,10 @@ class RandomRectangle(RandomGenerator):
 
 class RandomCircle(RandomGenerator):
     """
-    Overloads the RendomGenerator class for generating random particle locations
+    Overloads the RandomGenerator class for generating random particle locations
     within a rectangular object.
     """
+
     def __init__(self, center, radius):
         """
         Initialize RandomCircle class
@@ -166,7 +168,7 @@ class RandomCircle(RandomGenerator):
 
 class RandomBox(RandomGenerator):
     """
-    Overloads the RendomGenerator class for generating random particle locations
+    Overloads the RandomGenerator class for generating random particle locations
     within a box-shaped object.
     """
 
@@ -193,7 +195,7 @@ class RandomBox(RandomGenerator):
 
 class RandomSphere(RandomGenerator):
     """
-    Overloads the RendomGenerator class for generating random particle locations
+    Overloads the RandomGenerator class for generating random particle locations
     within a sphere.
     """
 
@@ -378,6 +380,7 @@ class RandomCell(object):
     Generate random particle locations within a dolfin.cell (as yet, only simplicial
     meshes supported).
     """
+
     def __init__(self, mesh):
         """
         Initialize RandomCell generator
@@ -391,7 +394,7 @@ class RandomCell(object):
 
     def _random_bary(self, n):
         """Generate random barycentric coordinates between n points."""
-        if (n == 3):
+        if n == 3:
             x = np.random.random()
             y = np.random.random()
             if (x + y) > 1.0:

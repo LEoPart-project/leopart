@@ -94,21 +94,42 @@ class FormsPDEMap:
 
         Parameters
         ----------
-        psih0
-        uh
-        dt
-        theta_map
-        theta_L
-        dpsi0
-        dpsi00
-        h
-        neumann_idx
-        zeta
+        psih0: dolfin.Function
+            dolfin Function storing the solution from the previous step
+        uh: Constant, Expression, dolfin.Function
+            Advective velocity
+        dt: Constant
+            Time step value
+        theta_map: Constant
+            Theta value for time stepping in PDE-projection according to
+            theta-method
+            **NOTE** theta only affects solution for Lagrange multiplier
+            space polynomial order >= 1
+        theta_L: Constant, optional
+            Theta value for reconstructing intermediate field from
+            the previous solution and old increments. Defaults to Constan(1.)
+        dpsi0: dolfin.Function, optional
+            Increment function from last time step.
+            Defaults to Constant(0)
+        dpsi00: dolfin.Function
+            Increment function from second last time step.
+            Defaults to Constant(0)
+        h: Constant, dolfin.Function, optional
+            Expression or Function for non-homogenous Neumann BC.
+            Defaults to Constant(0.)
+        neumann_idx: int, optional
+            Integer to use for marking Neumann boundaries.
+            Defaults to value 99
+        zeta: Constant, optional
+            Penalty parameter for limiting over/undershoot.
+            Defaults to 0
 
         Returns
         -------
-
+        dict
+            Dictionary with forms
         """
+
         (psi, lamb, psibar) = self.__trial_functions()
         (w, tau, wbar) = self.__test_functions()
 
@@ -162,19 +183,34 @@ class FormsPDEMap:
 
         Parameters
         ----------
-        v0
-        Ubar0
-        dt
-        theta_map
-        theta_L
-        duh0
-        duh00
-        h
-        neumann_idx
-
+        v0: dolfin.Function
+            dolfin.Function storing solution from previous step
+        Ubar0: dolfin.Function
+            Advective velocity at facets
+        dt: Constant
+            Time step
+        theta_map: Constant, optional
+            Theta value for time stepping in PDE-projection according to
+            theta-method. Defaults to Constant(1.)
+            **NOTE** theta only affects solution for Lagrange multiplier
+            space polynomial order >= 1
+        theta_L: Constant, optional
+            Theta value for reconstructing intermediate field from
+            the previous solution and old increments. Defaults to Constant(1.)
+        duh0: dolfin.Function, optional
+            Increment function from last time step
+        duh00: dolfin.Function, optional
+            Increment function from second last time step
+        h: Constant, dolfin.Function, optional
+            Expression or Function for non-homogenous Neumann BC.
+            Defaults to Constant(0.)
+        neumann_idx: int, optional
+            Integer to use for marking Neumann boundaries.
+            Defaults to value 99
         Returns
         -------
-
+        dict
+            Dictionary with forms
         """
 
         # Define trial test functions
@@ -241,26 +277,7 @@ class FormsPDEMap:
         assumes however that the mass matrix can be obtained from the mesh
         (and not from particles)
 
-        TODO: depcrecate?
-        Parameters
-        ----------
-        v0
-        v_int
-        Ubar0
-        dt
-        theta_map
-        theta_L
-        duh0
-        duh00
-        h
-        neumann_idx
-
-        Returns
-        -------
-
-        """
-        """
-        No particles in mass matrix
+        **NOTE** Documentation upcoming.
         """
 
         # Define trial test functions
@@ -331,23 +348,43 @@ class FormsPDEMap:
 
         Parameters
         ----------
-        rho
-        rho0
-        rho00
-        rhobar
-        v0
-        Ubar0
-        dt
-        theta_map
-        theta_L
-        duh0
-        duh00
-        h
-        neumann_idx
+        rho: dolfin.Function
+            Current density field
+        rho0: dolfin.Function
+            Density field at previous time step.
+        rho00: dolfin.Function
+            Density field at second last time step
+        rhobar: dolfin.Function
+            Density field at facets
+        v0: dolfin.Function
+            Specific momentum at old time level
+        Ubar0: dolfin.Function
+            Advective field at old time level
+        dt: Constant
+            Time step
+        theta_map: Constant
+            Theta value for time stepping in PDE-projection according to
+            theta-method
+            **NOTE** theta only affects solution for Lagrange multiplier
+            space polynomial order >= 1
+        theta_L: Constant, optional
+            Theta value for reconstructing intermediate field from
+            the previous solution and old increments.
+        duh0: dolfin.Function, optional
+            Increment from previous time step.
+        duh00: dolfin.Function, optional
+            Increment from second last time step
+        h: Constant, dolfin.Function, optional
+            Expression or Function for non-homogenous Neumann BC.
+            Defaults to Constant(0.
+        neumann_idx: int, optional
+            Integer to use for marking Neumann boundaries.
+            Defaults to value 99
 
         Returns
         -------
-
+        dict
+            Dict with forms
         """
         (v, lamb, vbar) = self.__trial_functions()
         (w, tau, wbar) = self.__test_functions()

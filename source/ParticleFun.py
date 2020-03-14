@@ -25,13 +25,29 @@ __all__ = [
     "AddDelete",
 ]
 
-from .cpp import particle_wrapper as compiled_module
+from leopart.cpp import particle_wrapper as compiled_module
 
 comm = pyMPI.COMM_WORLD
 
 
 class particles(compiled_module.particles):
+    """
+    Python interface to cpp::particles.h
+    """
+
     def __init__(self, xp, particle_properties, mesh):
+        """
+        Initialize particles.
+
+        Parameters
+        ----------
+        xp: np.ndarray
+            Particle coordinates
+        particle_properties: list
+            List of np.ndarrays with particle properties.
+        mesh: dolfin.Mesh
+            The mesh on which the particles will be generated.
+        """
 
         gdim = mesh.geometry().dim()
 
@@ -56,12 +72,62 @@ class particles(compiled_module.particles):
         return
 
     def interpolate(self, *args):
+        """
+        Interpolate field to particles. Example usage for updating the first property
+        of particles. Note that first slot is always reserved for particle coordinates!
+
+        .. code-block:: python
+
+            p.interpolate(psi_h , 1)
+
+        Parameters
+        ----------
+        psi_h: dolfin.Function
+            Function which is used to interpolate
+        idx: int
+            Integer value indicating which particle property should be updated.
+
+        """
         a = list(args)
         if not isinstance(a[0], cpp.function.Function):
             a[0] = a[0]._cpp_object
         super().interpolate(*tuple(a))
 
     def increment(self, *args):
+        """
+        Increment particle at particle slot by an incrementatl change
+        in the field, much like the FLIP approach proposed by Brackbill
+
+        The code to update a property psi_p at the first slot with a
+        weighted increment from the current time step and an increment
+        from the previous time step, can for example be implemented as:
+
+        .. code-block:: python
+
+            #  Particle
+            p=particles(xp,[psi_p , dpsi_p_dt], msh)
+
+            #  Incremental update with  theta =0.5, step=2
+            p.increment(psih_new , psih_old ,[1, 2], theta , step
+
+        Parameters
+        ----------
+        psih_new: dolfin.Function
+            Function at new timestep
+        psih_old: dolfin.Function
+            Function at old time step
+        slots: list
+            Which particle slots to use? list[0] is always the quantity
+            that will be updated
+        theta: float, optional
+            Use weighted update from current increment and previous increment/
+            theta = 1: only use current increment
+            theta = 0.5: average of previous increment and current increment
+        step: int
+            Which step are you at? The theta=0.5 increment only works from step >=2
+
+        """
+
         a = list(args)
         if not isinstance(a[0], cpp.function.Function):
             a[0] = a[0]._cpp_object
@@ -73,12 +139,38 @@ class particles(compiled_module.particles):
         return self.eval(*args)
 
     def return_property(self, mesh, index):
+        """
+        Return particle property by index.
+
+        **FIXME**: mesh input argument seems redundant.
+
+        Parameters
+        ----------
+        mesh: dolfin.Mesh
+            Mesh
+        index: int
+            Integer index indicating which particle property should be returned.
+
+        Returns
+        -------
+        np.array
+            Numpy array which stores the particle property.
+        """
+
         pproperty = np.asarray(self.get_property(index))
         if self.ptemplate[index] > 1:
             pproperty = pproperty.reshape((-1, self.ptemplate[index]))
         return pproperty
 
     def number_of_particles(self):
+        """
+        Get total number of particles
+
+        Returns
+        -------
+        int:
+            Global number of particles
+        """
         xp_root = comm.gather(self.positions(), root=0)
         if comm.rank == 0:
             xp_root = np.float16(np.vstack(xp_root))

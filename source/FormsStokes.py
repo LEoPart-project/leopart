@@ -39,11 +39,13 @@ class FormsStokes:
     It defines the forms in correspondence with following
     algebraic form:
 
-    |  A   B   C   D  | | Uh    |
-    |  B^T F   0   H  | | Ph    |    |Q|
-    |                 | |       | =  | |
-    |  C^T 0   K   L  | | Uhbar |    |S|
-    |  D^T H^T L^T P  | | Phbar |
+    ::
+
+        |  A   B   C   D  | | Uh    |
+        |  B^T F   0   H  | | Ph    |    |Q|
+        |                 | |       | =  | |
+        |  C^T 0   K   L  | | Uhbar |    |S|
+        |  D^T H^T L^T P  | | Phbar |
 
     With part above blank line indicating the contributions
     from local momentum- and local mass conservation statement
