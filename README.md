@@ -1,4 +1,7 @@
 ## LEoPart -- FEniCS functionality for scattered particle advection and projection
+[![CircleCI](https://circleci.com/bb/jakob_maljaars/leopart/tree/master.svg?style=svg)](https://circleci.com/bb/jakob_maljaars/leopart/tree/master)
+[![Documentation Status](https://readthedocs.org/projects/leopart/badge/?version=latest)](https://leopart.readthedocs.io/en/latest/?badge=latest)
+
 LEoPart integrates particle functionality into the open-source finite element library [FEniCS](www.fenicsproject.org). LEoPart is so much as to say **L**agrangian-**E**ulerian **o**n **Part**icles,
 and might remind you of the animal with particles imprinted on its skin.
 
@@ -8,20 +11,49 @@ if you just need to trace large numbers of particles on a fixed or moving mesh p
 
 As a bonus, this library shows how **static condensation** principles can be implemented in a rather efficient way in FEniCS.
 
-For a detailed mathematical background of LEoPart reference is made to a series of papers. We would be grateful if you
+For a detailed mathematical/implementation background of LEoPart reference is made to a series of papers. We would be grateful if you
 cite one of these references when using LEoPart:
 
-[2] Maljaars et al., Conservative, high-order particle-mesh scheme with applications to
-advection-dominated flows, [CMAME (2019)](https://doi.org/10.1016/j.cma.2019.01.028), preprint available at [arXiv](https://arxiv.org/abs/1806.09916)
+```
+@article{maljaars2020,
+  title={LEoPart: a particle library for FEniCS},
+  author={Maljaars, Jakob M and Richardson, Chris N and Sime, Nathan},
+  journal={arXiv preprint arXiv:1912.13375},
+  year={2019}
+}
 
-[1] Maljaars et al., A hybridized discontinuous Galerkin framework for high-order particle–mesh
-operator splitting of the incompressible Navier–Stokes equations, [Journal of Computational Physics 358 (2018) 150-172](https://doi.org/10.1016/j.jcp.2017.12.036)
+@article{Maljaars2019,
+  author = {Maljaars, Jakob M. and Labeur, Robert Jan and Trask, Nathaniel and Sulsky, Deborah},
+  doi = {10.1016/J.CMA.2019.01.028},
+  issn = {0045-7825},
+  journal = {Comput. Methods Appl. Mech. Eng.},
+  month = {jan},
+  pages = {443--465},
+  publisher = {North-Holland},
+  title = {{Conservative, high-order particle-mesh scheme with applications to advection-dominated flows}},
+  volume = {348},
+  year = {2019}
+}
+
+@article{Maljaars2017,
+  author = {Maljaars, Jakob M. and Labeur, Robert Jan and M{\"{o}}ller, Matthias},
+  doi = {10.1016/j.jcp.2017.12.036},
+  issn = {10902716},
+  journal = {J. Comput. Phys.},
+  month = {apr},
+  pages = {150--172},
+  publisher = {Elsevier Inc.},
+  title = {{A hybridized discontinuous Galerkin framework for high-order particle--mesh operator splitting of the incompressible Navier--Stokes equations}},
+  volume = {358},
+  year = {2018}
+}
+```
 
 ---
 
 ## Dependencies
-Requires FEniCS 2018.1.0
-<www.fenicsproject.org>
+Requires FEniCS 2018.1.0 or FEniCS 2019.1.0
+www.fenicsproject.org
 
 Python 3
 
@@ -35,20 +67,13 @@ equations are included in the ./tests directory.
 ---
 
 ## Documentation
-Coming soon.
+Check out the (beta) documentation at https://leopart.readthedocs.io/en/latest
 
 ---
 
 ## Old version
 **This repo serves as a better, cleaner and faster replacement of the purely Python based library,
-which is now hosted at**
-<https://bitbucket.org/jakob_maljaars/leopart_python>
-
-## Automated testing
-Circle CI is used to perform automated
-testing. Test status is:
-
-[![CircleCI](https://circleci.com/bb/jakob_maljaars/leopart/tree/master.svg?style=svg)](https://circleci.com/bb/jakob_maljaars/leopart/tree/master)
+which is now hosted at** https://bitbucket.org/jakob_maljaars/leopart_python
 
 
 ## Installation and executing the code
