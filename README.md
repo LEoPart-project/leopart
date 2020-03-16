@@ -1,5 +1,5 @@
 ## LEoPart -- FEniCS functionality for scattered particle advection and projection
-[![CircleCI](https://circleci.com/bb/jakob_maljaars/leopart/tree/master.svg?style=svg)](https://circleci.com/bb/jakob_maljaars/leopart/tree/master)
+[![CircleCI](https://circleci.com/bb/jakob_maljaars/leopart/tree/master.svg?style=shield)](https://circleci.com/bb/jakob_maljaars/leopart/tree/master)
 [![Documentation Status](https://readthedocs.org/projects/leopart/badge/?version=latest)](https://leopart.readthedocs.io/en/latest/?badge=latest)
 
 LEoPart integrates particle functionality into the open-source finite element library [FEniCS](www.fenicsproject.org). LEoPart is so much as to say **L**agrangian-**E**ulerian **o**n **Part**icles,
