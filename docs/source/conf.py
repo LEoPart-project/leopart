@@ -50,7 +50,7 @@ release = u"0.0.0"
 pygments_style = "sphinx"
 
 # Mock imports
-autodoc_mock_imports = ["leopart"]
+autodoc_mock_imports = ["leopart", "dolfin", "mpi4py"]
 
 # -- Options for HTML output -------------------------------------------------
 

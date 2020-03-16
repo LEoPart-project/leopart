@@ -31,17 +31,17 @@ class FormsPDEMap:
 
     Attributes
     ----------
-    W: FunctionSpace
+    W: dolfin.FunctionSpace
         Function space for the local unknown
-    T: FunctionSpace
+    T: dolfin.FunctionSpace
         FunctionSpace for the Lagrange multiplier space
-    Wbar: FunctionSpace
+    Wbar: dolfin.FunctionSpace
         Function space for the control variable
-    n: FacetNormal
+    n: dolfin.FacetNormal
         Symbolic facet normal for mesh
-    beta_map: Constant
+    beta_map: dolfin.Constant
         Penalty/Regularizatio term to establish coupling between local unknown and control
-    ds: Measure
+    ds: dolfin.Measure
         ds Measure of mesh
     gdim: int
         Geometric dimension of mesh
@@ -53,17 +53,17 @@ class FormsPDEMap:
 
         Parameters
         ----------
-        mesh: Mesh
+        mesh: dolfin.Mesh
             Dolfin Mesh
         FuncSpace_dict: dict
             Dictionary containing the function space definitions. Following keys are required:
                 - FuncSpace_local: function space for local variable
                 - FuncSpace_lambda: function space for Lagrange multiplier
                 - FuncSpace_bar: function space for control variable
-        beta_map: Constant, optional
+        beta_map: dolfin.Constant, optional
             Penalty/Regularizatio term to establish coupling between local unknown and control.
             Defaults to Constant(1e-6)
-        ds: Measure, optional
+        ds: dolfin.Measure, optional
             ds Measure of mesh
         """
 
