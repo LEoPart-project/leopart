@@ -1341,7 +1341,7 @@ void advect_rk4::do_step(double dt)
 
   const Mesh* mesh = _P->mesh();
   const std::size_t gdim = mesh->geometry().dim();
-  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
+//  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
   std::size_t num_substeps = 4;
 
   for (std::size_t step = 0; step < num_substeps; step++)
@@ -1353,13 +1353,13 @@ void advect_rk4::do_step(double dt)
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
-      if (step == 0)
-      { // Restrict once per cell, once per timestep
-        std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
-      }
+//      if (step == 0)
+//      { // Restrict once per cell, once per timestep
+//        std::vector<double> coeffs;
+//        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
+//        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
+//                                           coeffs.begin(), coeffs.end());
+//      }
 
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
@@ -1370,8 +1370,13 @@ void advect_rk4::do_step(double dt)
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
+//        Eigen::Map<Eigen::VectorXd> exp_coeffs(
+//            coeffs_storage[ci->index()].data(), _space_dimension);
+
+        std::vector<double> coeffs;
+        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
