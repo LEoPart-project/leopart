@@ -65,21 +65,21 @@ PYBIND11_MODULE(particle_wrapper, m)
 
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<dolfin::Function&(int, double)>, const std::string>())
+                    std::function<const dolfin::Function&(int, double)>, const std::string>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const std::string,
+           std::function<const dolfin::Function&(int, double)>, const std::string,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_particles::do_step)
@@ -87,21 +87,21 @@ PYBIND11_MODULE(particle_wrapper, m)
 
   py::class_<dolfin::advect_rk2>(m, "advect_rk2")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<dolfin::Function&(int, double)>, const std::string>())
+                    std::function<const dolfin::Function&(int, double)>, const std::string>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const std::string,
+           std::function<const dolfin::Function&(int, double)>, const std::string,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk2::do_step)
@@ -109,21 +109,21 @@ PYBIND11_MODULE(particle_wrapper, m)
 
   py::class_<dolfin::advect_rk3>(m, "advect_rk3")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<dolfin::Function&(int, double)>, const std::string>())
+                    std::function<const dolfin::Function&(int, double)>, const std::string>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const std::string,
+           std::function<const dolfin::Function&(int, double)>, const std::string,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk3::do_step)
@@ -131,21 +131,21 @@ PYBIND11_MODULE(particle_wrapper, m)
 
   py::class_<dolfin::advect_rk4>(m, "advect_rk4")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<dolfin::Function&(int, double)>, const std::string>())
+                    std::function<const dolfin::Function&(int, double)>, const std::string>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const std::string,
+           std::function<const dolfin::Function&(int, double)>, const std::string,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def(py::init<
            dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
+           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk4::do_step)

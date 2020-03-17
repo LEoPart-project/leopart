@@ -18,7 +18,7 @@ using namespace dolfin;
 
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U,
-                                   std::function<Function&(int, double)> uhi, const std::string type1)
+                                   std::function<const Function&(int, double)> uhi, const std::string type1)
     : _P(&P), uh(uhi), _element(U.element())
 {
   // Following types are distinguished:
@@ -45,7 +45,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
 //-----------------------------------------------------------------------------
 // Using delegate constructors here
 advect_particles::advect_particles(
-    particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles::advect_particles(P, U, uhi, type1)
 {
@@ -103,7 +103,7 @@ advect_particles::advect_particles(
   }
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                  const MeshFunction<std::size_t>& mesh_func)
     : _P(&P), uh(uhi), _element(U.element())
 {
@@ -127,7 +127,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
     _value_size_loc *= _element->value_dimension(i);
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                                    const MeshFunction<std::size_t>& mesh_func,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : _P(&P), uh(uhi), _element(U.element())
@@ -170,7 +170,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
     _value_size_loc *= _element->value_dimension(i);
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                                    const MeshFunction<std::size_t>& mesh_func,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
@@ -347,7 +347,7 @@ void advect_particles::do_step(double dt)
   // Needed for local reloc
   std::vector<std::array<std::size_t, 3>> reloc;
 
-  Function& uh_step = uh(0, dt);
+  const Function& uh_step = uh(0, dt);
 
   for (CellIterator ci(*mesh); !ci.end(); ++ci)
   {
@@ -1025,7 +1025,7 @@ advect_particles::~advect_particles() {}
 //
 //-----------------------------------------------------------------------------
 //
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const std::string type1)
     : advect_particles(P, U, uhi, type1)
 {
@@ -1034,7 +1034,7 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(i
 }
 //-----------------------------------------------------------------------------
 advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, type1, pbc_limits)
 {
@@ -1042,7 +1042,7 @@ advect_rk2::advect_rk2(
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func)
     : advect_particles(P, U, uhi, mesh_func)
 
@@ -1051,7 +1051,7 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
@@ -1061,7 +1061,7 @@ advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
@@ -1086,7 +1086,7 @@ void advect_rk2::do_step(double dt)
 
   for (std::size_t step = 0; step < num_substeps; step++)
   {
-    Function& uh_step = uh(step, dt);
+    const Function& uh_step = uh(step, dt);
 
     // Needed for local reloc
     std::vector<std::array<std::size_t, 3>> reloc;
@@ -1143,7 +1143,7 @@ advect_rk2::~advect_rk2() {}
 //
 //-----------------------------------------------------------------------------
 //
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const std::string type1)
     : advect_particles(P, U, uhi, type1)
 {
@@ -1152,7 +1152,7 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(i
 }
 //-----------------------------------------------------------------------------
 advect_rk3::advect_rk3(
-    particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, type1, pbc_limits)
 {
@@ -1160,7 +1160,7 @@ advect_rk3::advect_rk3(
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func)
     : advect_particles(P, U, uhi, mesh_func)
 
@@ -1169,7 +1169,7 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
@@ -1179,7 +1179,7 @@ advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
@@ -1206,7 +1206,7 @@ void advect_rk3::do_step(double dt)
     // Needed for local reloc
     std::vector<std::array<std::size_t, 3>> reloc;
 
-    Function& uh_step = uh(step, dt);
+    const Function& uh_step = uh(step, dt);
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
@@ -1268,7 +1268,7 @@ advect_rk3::~advect_rk3() {}
 //
 //-----------------------------------------------------------------------------
 //
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const std::string type1)
     : advect_particles(P, U, uhi, type1)
 {
@@ -1277,7 +1277,7 @@ advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(i
 }
 //-----------------------------------------------------------------------------
 advect_rk4::advect_rk4(
-    particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi, const std::string type1,
+    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, type1, pbc_limits)
 {
@@ -1285,7 +1285,7 @@ advect_rk4::advect_rk4(
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func)
     : advect_particles(P, U, uhi, mesh_func)
 
@@ -1294,7 +1294,7 @@ advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
@@ -1304,7 +1304,7 @@ advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(i
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<Function&(int, double)> uhi,
+advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
                        const MeshFunction<std::size_t>& mesh_func,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                        Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
@@ -1331,7 +1331,7 @@ void advect_rk4::do_step(double dt)
     // Needed for local reloc
     std::vector<std::array<std::size_t, 3>> reloc;
 
-    Function& uh_step = uh(step, dt);
+    const Function& uh_step = uh(step, dt);
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
