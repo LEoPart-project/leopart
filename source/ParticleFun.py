@@ -69,7 +69,6 @@ class particles(compiled_module.particles):
 
         compiled_module.particles.__init__(self, p_array, particle_template, mesh)
         self.ptemplate = particle_template
-        return
 
     def interpolate(self, *args):
         """
@@ -210,45 +209,185 @@ class particles(compiled_module.particles):
 
 
 class advect_particles(compiled_module.advect_particles):
+    """
+    Particle advection with Euler method
+    """
+
     def __init__(self, *args):
+        """
+        Initialize class
+
+        Parameters
+        ----------
+        p: particles
+            Particles instance
+        V: dolfin.FunctionSpace
+            FunctionSpace for the particle advection
+            # TODO: can be derived from Function
+        v: dolfin.Function
+            Dolfin Function that will be used for the
+            advection
+        bc: string
+            Boundary type. Any of "closed", "open" or "periodic"
+        lims: np.array, optional
+            Optional array for specifying the connected boundary parts
+            in case of periodic bc's
+        """
+
         a = list(args)
         a[1] = a[1]._cpp_object
         a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
+
+    def do_step(self, *args):
+        """
+        Advect the particles over a timestep
+
+        Parameters
+        ----------
+        dt: float
+            Timestep
+        """
+        super().do_step(*args)
 
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class advect_rk2(compiled_module.advect_rk2):
+    """
+    Particle advection with RK2 method
+    """
+
     def __init__(self, *args):
+        """
+        Initialize class
+
+        Parameters
+        ----------
+        p: particles
+            Particles instance
+        V: dolfin.FunctionSpace
+            FunctionSpace for the particle advection
+            # TODO: can be derived from Function
+        v: dolfin.Function
+            Dolfin Function that will be used for the
+            advection
+        bc: string
+            Boundary type. Any of "closed", "open" or "periodic"
+        lims: np.array, optional
+            Optional array for specifying the connected boundary parts
+            in case of periodic bc's
+        """
+
         a = list(args)
         a[1] = a[1]._cpp_object
         a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
+
+    def do_step(self, *args):
+        """
+        Advect the particles over a timestep
+
+        Parameters
+        ----------
+        dt: float
+            Timestep
+        """
+        super().do_step(*args)
 
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class advect_rk3(compiled_module.advect_rk3):
+    """
+    RK3 advection
+    """
+
     def __init__(self, *args):
+        """
+        Initialize class
+
+        Parameters
+        ----------
+        p: particles
+            Particles instance
+        V: dolfin.FunctionSpace
+            FunctionSpace for the particle advection
+            # TODO: can be derived from Function
+        v: dolfin.Function
+            Dolfin Function that will be used for the
+            advection
+        bc: string
+            Boundary type. Any of "closed", "open" or "periodic"
+        lims: np.array, optional
+            Optional array for specifying the connected boundary parts
+            in case of periodic bc's
+        """
+
         a = list(args)
         a[1] = a[1]._cpp_object
         a[2] = a[2]._cpp_object
         super().__init__(*tuple(a))
+
+    def do_step(self, *args):
+        """
+        Advect the particles over a timestep
+
+        Parameters
+        ----------
+        dt: float
+            Timestep
+        """
+        super().do_step(*args)
 
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class l2projection(compiled_module.l2projection):
+    """
+    Class for handling the l2 projection from particle
+    properties onto a FE function space.
+    """
+
     def __init__(self, *args):
+        """
+        Initialize class
+
+        Parameters
+        ----------
+        p: particles
+            Particles object
+        V: dolfin.FunctionSpace
+            FunctionSpace that will be used for the
+            projection
+        property_idx: int
+            Which particle property to project?
+        """
         a = list(args)
         a[1] = a[1]._cpp_object
         super().__init__(*tuple(a))
 
     def project(self, *args):
+        """
+        Project particle properties onto FE function space
+
+        Parameters
+        ----------
+        vh: dolfin.Function
+            dolfin.Function that matches the specified
+            FunctionSpace
+        lb: float, optional
+            Lowerbound which will activate a box-constrained
+            projection. Should come in pairs with the upperbound
+            ub.
+        ub: float, optional
+            Upperbound, for box-constrained projection.
+            Should come in pairs with lowerbound lb
+        """
+
         a = list(args)
         if not isinstance(a[0], cpp.function.Function):
             a[0] = a[0]._cpp_object
