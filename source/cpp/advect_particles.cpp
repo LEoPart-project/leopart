@@ -1093,24 +1093,17 @@ void advect_rk2::do_step(double dt)
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
-      if (step == 0)
-      { // Restrict once per cell, once per timestep
-        std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
-      }
-
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
         Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                    _element);
 
-        // Compute value at point using expansion coeffs and basis matrix, first
-        // convert to Eigen matrix
+        // Compute value at point using expansion coeffs and basis matrix
+        std::vector<double> coeffs;
+        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
@@ -1217,14 +1210,6 @@ void advect_rk3::do_step(double dt)
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
-      if (step == 0)
-      { // Restrict once per cell, once per timestep
-        std::vector<double> coeffs;
-        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-                                           coeffs.begin(), coeffs.end());
-      }
-
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
@@ -1234,8 +1219,10 @@ void advect_rk3::do_step(double dt)
 
         // Compute value at point using expansion coeffs and basis matrix, first
         // convert to Eigen matrix
+        std::vector<double> coeffs;
+        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs_storage[ci->index()].data(), _space_dimension);
+            coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
@@ -1261,11 +1248,6 @@ void advect_rk3::do_step(double dt)
           up *= weights[step];
           up += _P->property(ci->index(), i, up0_idx);
         }
-
-        // Reset position to old
-        if (step == 1)
-          _P->set_property(ci->index(), i, 0,
-                           _P->property(ci->index(), i, xp0_idx));
 
         // Do substep
         do_substep(dt * dti[step], up, ci->index(), i, step, num_substeps,
@@ -1353,14 +1335,6 @@ void advect_rk4::do_step(double dt)
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
-//      if (step == 0)
-//      { // Restrict once per cell, once per timestep
-//        std::vector<double> coeffs;
-//        Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-//        coeffs_storage[ci->index()].insert(coeffs_storage[ci->index()].end(),
-//                                           coeffs.begin(), coeffs.end());
-//      }
-
       // Loop over particles
       for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
@@ -1368,11 +1342,7 @@ void advect_rk4::do_step(double dt)
         Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
                                    _element);
 
-        // Compute value at point using expansion coeffs and basis matrix, first
-        // convert to Eigen matrix
-//        Eigen::Map<Eigen::VectorXd> exp_coeffs(
-//            coeffs_storage[ci->index()].data(), _space_dimension);
-
+        // Compute value at point using expansion coeffs and basis matrix
         std::vector<double> coeffs;
         Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
         Eigen::Map<Eigen::VectorXd> exp_coeffs(
@@ -1402,11 +1372,6 @@ void advect_rk4::do_step(double dt)
           up *= weights[step];
           up += _P->property(ci->index(), i, up0_idx);
         }
-
-//        // Reset position to old
-//        if (step == 1)
-//          _P->set_property(ci->index(), i, 0,
-//                           _P->property(ci->index(), i, xp0_idx));
 
         // Do substep
         do_substep(dt * dti[step], up, ci->index(), i, step, num_substeps,
