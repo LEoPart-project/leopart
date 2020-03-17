@@ -86,6 +86,8 @@ public:
   // Destructor
   ~advect_particles();
 
+  virtual void init_weights() {}
+
 protected:
   particles* _P;
 
@@ -142,45 +144,10 @@ protected:
                   const std::size_t up0_idx,
                   std::vector<std::array<std::size_t, 3>>& reloc);
 
-};
-
-class advect_rk2 : public advect_particles
-{
-public:
-  // Constructors
-  advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-             const std::string type1);
-
-  // Document
-  advect_rk2(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
-
-  // Document
-  advect_rk2(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk2(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
-
-  // Step forward in time dt
-  void do_step(double dt);
-
-  // Destructor
-  ~advect_rk2();
-
-private:
+  // Multi-stage scheme data
   std::size_t xp0_idx, up0_idx;
+
+  private:
 
   void update_particle_template()
   {
@@ -195,6 +162,17 @@ private:
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
     }
   }
+
+
+};
+
+class advect_rk2 : public advect_particles
+{
+public:
+  using advect_particles::advect_particles;
+
+  // Step forward in time dt
+  void do_step(double dt);
 
   void init_weights()
   {
@@ -206,54 +184,10 @@ private:
 class advect_rk3 : public advect_particles
 {
 public:
-  // Constructors
-  advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-             const std::string type1);
-
-  // Document
-  advect_rk3(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
-
-  // Document
-  advect_rk3(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk3(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
+  using advect_particles::advect_particles;
 
   // Step forward in time dt
   void do_step(double dt);
-
-  // Destructor
-  ~advect_rk3();
-
-private:
-  std::size_t xp0_idx, up0_idx;
-
-  void update_particle_template()
-  {
-    const std::size_t gdim = _P->mesh()->geometry().dim();
-    xp0_idx = _P->expand_template(gdim);
-    up0_idx = _P->expand_template(gdim);
-
-    // Copy position to xp0 property
-    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
-    {
-      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
-        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
-    }
-  }
 
   void init_weights()
   {
@@ -265,54 +199,12 @@ private:
 class advect_rk4 : public advect_particles
 {
 public:
-  // Constructors
-  advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-             const std::string type1);
-
-  // Document
-  advect_rk4(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
-
-  // Document
-  advect_rk4(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk4(
-      particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
+  using advect_particles::advect_particles;
 
   // Step forward in time dt
   void do_step(double dt);
 
-  // Destructor
-  ~advect_rk4();
-
-private:
-  std::size_t xp0_idx, up0_idx;
-
-  void update_particle_template()
-  {
-    const std::size_t gdim = _P->mesh()->geometry().dim();
-    xp0_idx = _P->expand_template(gdim);
-    up0_idx = _P->expand_template(gdim);
-
-    // Copy position to xp0 property
-    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
-    {
-      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
-        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
-    }
-  }
+protected:
 
   void init_weights()
   {

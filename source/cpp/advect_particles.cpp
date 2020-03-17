@@ -41,6 +41,9 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
+
+  update_particle_template();
+  init_weights();
 }
 //-----------------------------------------------------------------------------
 // Using delegate constructors here
@@ -101,6 +104,9 @@ advect_particles::advect_particles(
                  "could not set pbc_lims",
                  "Did you provide limits for a non-periodic BC?");
   }
+
+  update_particle_template();
+  init_weights();
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
@@ -125,6 +131,9 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
+
+  update_particle_template();
+  init_weights();
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
@@ -168,6 +177,9 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   _value_size_loc = 1;
   for (std::size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
+
+  update_particle_template();
+  init_weights();
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
@@ -337,6 +349,8 @@ void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
 {
+  init_weights();
+
   const Mesh* mesh = _P->mesh();
   const MPI_Comm mpi_comm = mesh->mpi_comm();
   const std::size_t gdim = mesh->geometry().dim();
@@ -1024,59 +1038,13 @@ advect_particles::~advect_particles() {}
 //      RUNGE KUTTA 2
 //
 //-----------------------------------------------------------------------------
-//
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const std::string type1)
-    : advect_particles(P, U, uhi, type1)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(
-    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, type1, pbc_limits)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func)
-    : advect_particles(P, U, uhi, mesh_func)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk2::advect_rk2(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
 void advect_rk2::do_step(double dt)
 {
   if (dt <= 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
+
+  init_weights();
 
   const Mesh* mesh = _P->mesh();
   std::size_t gdim = mesh->geometry().dim();
@@ -1135,66 +1103,17 @@ void advect_rk2::do_step(double dt)
   }
 }
 //-----------------------------------------------------------------------------
-advect_rk2::~advect_rk2() {}
-//
-//-----------------------------------------------------------------------------
 //
 //      RUNGE KUTTA 3
 //
-//-----------------------------------------------------------------------------
-//
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const std::string type1)
-    : advect_particles(P, U, uhi, type1)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(
-    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, type1, pbc_limits)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func)
-    : advect_particles(P, U, uhi, mesh_func)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk3::advect_rk3(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
 //-----------------------------------------------------------------------------
 void advect_rk3::do_step(double dt)
 {
   if (dt < 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
+
+  init_weights();
 
   const Mesh* mesh = _P->mesh();
   const std::size_t gdim = mesh->geometry().dim();
@@ -1260,66 +1179,18 @@ void advect_rk3::do_step(double dt)
   }
 }
 //-----------------------------------------------------------------------------
-advect_rk3::~advect_rk3() {}
-//
-//-----------------------------------------------------------------------------
 //
 //      RUNGE KUTTA 4
 //
 //-----------------------------------------------------------------------------
-//
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const std::string type1)
-    : advect_particles(P, U, uhi, type1)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(
-    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
-    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, type1, pbc_limits)
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func)
-    : advect_particles(P, U, uhi, mesh_func)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
-//-----------------------------------------------------------------------------
-advect_rk4::advect_rk4(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                       const MeshFunction<std::size_t>& mesh_func,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
-    : advect_particles(P, U, uhi, mesh_func, pbc_limits, bounded_limits)
-
-{
-  update_particle_template();
-  init_weights();
-}
 //-----------------------------------------------------------------------------
 void advect_rk4::do_step(double dt)
 {
   if (dt < 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
+
+  init_weights();
 
   const Mesh* mesh = _P->mesh();
   const std::size_t gdim = mesh->geometry().dim();
@@ -1383,5 +1254,3 @@ void advect_rk4::do_step(double dt)
     _P->relocate(reloc);
   }
 }
-//-----------------------------------------------------------------------------
-advect_rk4::~advect_rk4() {}
