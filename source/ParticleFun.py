@@ -372,12 +372,14 @@ class l2projection(compiled_module.l2projection):
 
     def project(self, *args):
         """
-        Project particle properties onto FE function space
+        Project particle property onto discontinuous
+        FE function space
 
         Parameters
         ----------
         vh: dolfin.Function
-            dolfin.Function that matches the specified
+            dolfin.Function into which particle properties
+            are projected. Must match the specified
             FunctionSpace
         lb: float, optional
             Lowerbound which will activate a box-constrained
@@ -393,12 +395,52 @@ class l2projection(compiled_module.l2projection):
             a[0] = a[0]._cpp_object
         super().project(*tuple(a))
 
+    def project_cg(self, *args):
+        """
+        Project particle property onto continuous
+        FE function space
+
+        **NOTE**: this method is a bit a bonus and
+        certainly could be improved
+
+        Parameters
+        ----------
+        A: dolfin.Form
+            bilinear form for the rhs
+        f: dolfin.Form
+            linear form for the rhs
+        u: dolfin.Function
+            dolfin.Function on which particle properties
+            are projected.
+        """
+        super.project_cg(self, *args)
+
     def __call__(self, *args):
         return self.eval(*args)
 
 
 class StokesStaticCondensation(compiled_module.StokesStaticCondensation):
+    """
+    Class for solving the HDG Stokes problem.
+    Class interfaces the cpp StokesStaticCondensation class
+    """
+
+    def __init__(self, *args):
+        """
+        Parameters
+        ----------
+        args
+        """
+        super().__init__(*args)
+
     def solve_problem(self, *args):
+        """
+        Solve the Stokes problem
+
+        Parameters
+        ----------
+        args
+        """
         a = list(args)
         for i, arg in enumerate(a):
             # Check because number of functions is either 2 or 3
@@ -412,7 +454,22 @@ class StokesStaticCondensation(compiled_module.StokesStaticCondensation):
 
 
 class PDEStaticCondensation(compiled_module.PDEStaticCondensation):
+    """
+    Class for projecting the particle properties onto a discontinuous
+    mesh function via a PDE-constrained projection in order to ensure
+    conservation properties.
+
+    Class interfaces PDEStaticCondensation
+    """
+
     def solve_problem(self, *args):
+        """
+        Solve the PDE-constrained projection
+
+        Parameters
+        ----------
+        args
+        """
         a = list(args)
         for i, arg in enumerate(a):
             # Check because number of functions is either 2 or 3
@@ -426,7 +483,18 @@ class PDEStaticCondensation(compiled_module.PDEStaticCondensation):
 
 
 class AddDelete(compiled_module.AddDelete):
+    """
+    Class for adding/deleting particles
+    """
+
     def __init__(self, *args):
+        """
+        Initialize class
+
+        Parameters
+        ----------
+        args
+        """
         a = list(args)
         for i, func in enumerate(a[3]):
             a[3][i] = func._cpp_object
