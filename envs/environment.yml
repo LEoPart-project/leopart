@@ -1,0 +1,17 @@
+# Make a leopart environment:
+#
+#   $ conda env create -f environment.yml
+
+name: leopart
+
+channels:
+  - defaults
+
+dependencies:
+  - pip=18.1=py37_0
+  - python=3.7.1=h0371630_3
+  - setuptools=40.6.2=py37_0
+  - matplotlib
+  - scipy
+  - mpi4py
+  - conda-forge::fenics=2019.1.0

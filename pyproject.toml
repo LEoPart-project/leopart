@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 100
+exclude = '''
+
+(
+  /(
+      \.eggs
+    | \.git
+    | docs/source/conf.py
+    | buck-out
+    | build
+    | dist
+    | libs
+  )/
+)
+'''

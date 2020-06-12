@@ -1,0 +1,7 @@
+pytest
+pytest-cov
+black
+flake8
+meshio
+sphinx
+sphinx_rtd_theme
