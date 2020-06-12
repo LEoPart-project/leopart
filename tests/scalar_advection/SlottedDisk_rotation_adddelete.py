@@ -12,21 +12,40 @@
     Note: conservation properties are lost with this approach.
 """
 
-from dolfin import (UserExpression, Expression, Point, VectorFunctionSpace, Mesh, Constant,
-                    FunctionSpace, assemble, dx, refine, Function, XDMFFile, Timer)
+from dolfin import (
+    UserExpression,
+    Expression,
+    Point,
+    VectorFunctionSpace,
+    Mesh,
+    Constant,
+    FunctionSpace,
+    assemble,
+    dx,
+    refine,
+    Function,
+    XDMFFile,
+    Timer,
+)
 from mpi4py import MPI as pyMPI
 import numpy as np
 
 # Load from package
-from leopart import (particles, advect_rk3, l2projection, RandomCircle, AddDelete,
-                     assign_particle_values)
+from leopart import (
+    particles,
+    advect_rk3,
+    l2projection,
+    RandomCircle,
+    AddDelete,
+    assign_particle_values,
+)
 
 comm = pyMPI.COMM_WORLD
 
 
 # TODO: consider placing in InitialConditions
 class SlottedDisk(UserExpression):
-    def __init__(self, radius, center, width, depth, lb=0., ub=1., **kwargs):
+    def __init__(self, radius, center, width, depth, lb=0.0, ub=1.0, **kwargs):
         self.r = radius
         self.width = width
         self.depth = depth
@@ -39,8 +58,9 @@ class SlottedDisk(UserExpression):
         xc = self.center[0]
         yc = self.center[1]
 
-        if(((x[0] - xc)**2 + (x[1] - yc)**2 <= self.r**2) and not
-           ((xc - self.width) <= x[0] <= (xc + self.width) and x[1] >= yc + self.depth)):
+        if ((x[0] - xc) ** 2 + (x[1] - yc) ** 2 <= self.r ** 2) and not (
+            (xc - self.width) <= x[0] <= (xc + self.width) and x[1] >= yc + self.depth
+        ):
             value[0] = self.ub
         else:
             value[0] = self.lb
@@ -50,13 +70,13 @@ class SlottedDisk(UserExpression):
 
 
 # Domain properties
-x0, y0 = 0., 0.
-xc, yc = -0.15, 0.
-r = .5
+x0, y0 = 0.0, 0.0
+xc, yc = -0.15, 0.0
+r = 0.5
 rdisk = 0.2
 rwidth = 0.05
-lb = -1.
-ub = 3.
+lb = -1.0
+ub = 3.0
 
 # Mesh/particle resolution
 nx = 64
@@ -69,33 +89,34 @@ k = 1
 Uh = np.pi
 
 # Timestepping
-Tend = 2.
+Tend = 2.0
 dt = Constant(0.02)
-num_steps = np.rint(Tend/float(dt))
+num_steps = np.rint(Tend / float(dt))
 
 # Output directory
 store_step = 1
-outdir = './../../results/SlottedDisk_Rotation_AddDelete/'
+outdir = "./../../results/SlottedDisk_Rotation_AddDelete/"
 
 # Mesh
-mesh = Mesh('./../../meshes/circle_0.xml')
+mesh = Mesh("./../../meshes/circle_0.xml")
 mesh = refine(mesh)
 mesh = refine(mesh)
 mesh = refine(mesh)
 
-outfile = XDMFFile(mesh.mpi_comm(), outdir+"psi_h.xdmf")
+outfile = XDMFFile(mesh.mpi_comm(), outdir + "psi_h.xdmf")
 
 # Set slotted disk
-psi0_expr = SlottedDisk(radius=rdisk, center=[xc, yc], width=rwidth, depth=0.,
-                        degree=3, lb=lb, ub=ub)
+psi0_expr = SlottedDisk(
+    radius=rdisk, center=[xc, yc], width=rwidth, depth=0.0, degree=3, lb=lb, ub=ub
+)
 
 # Function space and velocity field
-W = FunctionSpace(mesh, 'DG', k)
+W = FunctionSpace(mesh, "DG", k)
 psi_h = Function(W)
 
-V = VectorFunctionSpace(mesh, 'DG', 3)
+V = VectorFunctionSpace(mesh, "DG", 3)
 uh = Function(V)
-uh.assign(Expression(('-Uh*x[1]', 'Uh*x[0]'), Uh=Uh, degree=3))
+uh.assign(Expression(("-Uh*x[1]", "Uh*x[0]"), Uh=Uh, degree=3))
 
 # Generate particles
 x = RandomCircle(Point(x0, y0), r).generate([pres, pres])
@@ -103,7 +124,7 @@ s = assign_particle_values(x, psi0_expr)
 
 p = particles(x, [s], mesh)
 # Initialize advection class, use RK3 scheme
-ap = advect_rk3(p, V, uh, 'closed')
+ap = advect_rk3(p, V, uh, "closed")
 # Init projection
 lstsq_psi = l2projection(p, W, 1)
 
@@ -112,8 +133,8 @@ lstsq_psi.project(psi_h.cpp_object(), lb, ub)
 AD = AddDelete(p, 10, 20, [psi_h], [1], [lb, ub])
 
 step = 0
-t = 0.
-area_0 = assemble(psi_h*dx)
+t = 0.0
+area_0 = assemble(psi_h * dx)
 timer = Timer()
 timer.start()
 
@@ -123,7 +144,7 @@ while step < num_steps:
     t += float(dt)
 
     if comm.Get_rank() == 0:
-        print("Step "+str(step))
+        print("Step " + str(step))
 
     AD.do_sweep()
     ap.do_step(float(dt))
@@ -136,9 +157,9 @@ while step < num_steps:
 
 timer.stop()
 
-area_end = assemble(psi_h*dx)
+area_end = assemble(psi_h * dx)
 if comm.Get_rank() == 0:
-    print('Num cells '+str(mesh.num_entities_global(2)))
-    print('Num particles '+str(len(x)))
-    print('Elapsed time '+str(timer.elapsed()[0]))
-    print('Area error '+str(abs(area_end-area_0)))
+    print("Num cells " + str(mesh.num_entities_global(2)))
+    print("Num particles " + str(len(x)))
+    print("Elapsed time " + str(timer.elapsed()[0]))
+    print("Area error " + str(abs(area_end - area_0)))

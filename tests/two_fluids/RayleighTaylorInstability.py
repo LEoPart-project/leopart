@@ -4,24 +4,56 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-from petsc4py import PETSc
 import os
 import numpy as np
-from dolfin import (Cell, UserExpression, RectangleMesh, parameters, Constant, Point, CellType,
-                    Expression, VectorFunctionSpace, interpolate, ALE, MeshFunction,
-                    CompiledSubDomain, Measure, FiniteElement, FunctionSpace, Function,
-                    VectorElement, DirichletBC, MixedElement, MPI, XDMFFile, info,
-                    assemble, FunctionAssigner, Timer, dot, list_timings, TimingClear, TimingType,
-                    as_backend_type)
-from leopart import (particles, RandomRectangle, AddDelete, FormsPDEMap, PDEStaticCondensation,
-                     FormsStokes,
-                     StokesStaticCondensation, advect_rk3)
+from dolfin import (
+    Cell,
+    UserExpression,
+    RectangleMesh,
+    parameters,
+    Constant,
+    Point,
+    CellType,
+    Expression,
+    VectorFunctionSpace,
+    interpolate,
+    ALE,
+    MeshFunction,
+    CompiledSubDomain,
+    Measure,
+    FiniteElement,
+    FunctionSpace,
+    Function,
+    VectorElement,
+    DirichletBC,
+    MixedElement,
+    MPI,
+    XDMFFile,
+    info,
+    assemble,
+    FunctionAssigner,
+    Timer,
+    dot,
+    list_timings,
+    TimingClear,
+    TimingType,
+)
+from leopart import (
+    particles,
+    RandomRectangle,
+    AddDelete,
+    FormsPDEMap,
+    PDEStaticCondensation,
+    FormsStokes,
+    StokesStaticCondensation,
+    advect_rk3,
+)
 from mpi4py import MPI as pyMPI
 
-'''
+"""
     Rayleigh-Taylor instability benchmark problem in geodynamics as documented in
     https://doi.org/10.1029/97JB01353
-'''
+"""
 
 comm = pyMPI.COMM_WORLD
 
@@ -35,43 +67,36 @@ xmin, xmax = 0.0, float(lmbda)
 ymin, ymax = 0.0, 1.0
 
 # Number of cells
-nx, ny = 20, 20
+nx, ny = 40, 40
 
 
 # Initial composition field
 class StepFunction(UserExpression):
-
     def eval_cell(self, values, x, cell):
         c = Cell(mesh, cell.index)
-        if c.midpoint()[1] > db + 0.02*np.cos(np.pi*x[0]/float(lmbda)):
+        if c.midpoint()[1] > db + 0.02 * np.cos(np.pi * x[0] / float(lmbda)):
             values[0] = 1.0
         else:
             values[0] = 0.0
 
 
-parameters["ghost_mode"] = "shared_facet"
 mesh = RectangleMesh.create(
-    comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
-    [nx, ny], CellType.Type.triangle, "left/right")
-parameters["ghost_mode"] = "none"
-
-ptcl_mesh = RectangleMesh.create(
-    comm, [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
-    [nx, ny], CellType.Type.triangle, "left/right")
-
-from vtkplotter.dolfin import plot
+    comm,
+    [Point(0.0, 0.0), Point(float(lmbda), 1.0)],
+    [nx, ny],
+    CellType.Type.triangle,
+    "left/right",
+)
 
 # Shift the mesh to line up with the initial step function condition
 scale = db * (1.0 - db)
-shift = Expression(("0.0", "x[1]*(H - x[1])/S*A*cos(pi/L*x[0])"),
-                   A=0.02, L=lmbda, H=1.0, S=scale, degree=4)
+shift = Expression(
+    ("0.0", "x[1]*(H - x[1])/S*A*cos(pi/L*x[0])"), A=0.02, L=lmbda, H=1.0, S=scale, degree=4
+)
 
 V = VectorFunctionSpace(mesh, "CG", 1)
 displacement = interpolate(shift, V)
 ALE.move(mesh, displacement)
-V = VectorFunctionSpace(ptcl_mesh, "CG", 1)
-displacement = interpolate(shift, V)
-ALE.move(ptcl_mesh, displacement)
 
 # Entrainment functional measures
 de = 1
@@ -86,11 +111,11 @@ s = np.zeros((len(x), 1), dtype=np.float_)
 
 # Interpolate initial function onto particles, index slot 1
 property_idx = 1
-ptcls = particles(x, [s], ptcl_mesh)
+ptcls = particles(x, [s], mesh)
 
 # Define the variational (projection problem)
 k = 1
-W_e = FiniteElement("DG", mesh.ufl_cell(), 0)
+W_e = FiniteElement("DG", mesh.ufl_cell(), k)
 T_e = FiniteElement("DG", mesh.ufl_cell(), 0)
 Wbar_e = FiniteElement("DGT", mesh.ufl_cell(), k)
 
@@ -116,7 +141,7 @@ T_e_2 = VectorElement("DG", mesh.ufl_cell(), 0)
 Wbar_e_2 = VectorElement("DGT", mesh.ufl_cell(), k)
 Wbar_e_2_H12 = VectorElement("CG", mesh.ufl_cell(), k)["facet"]
 
-Q_E = FiniteElement("DG", mesh.ufl_cell(), k-1)
+Q_E = FiniteElement("DG", mesh.ufl_cell(), k - 1)
 Qbar_E = FiniteElement("DGT", mesh.ufl_cell(), k)
 
 W_2 = FunctionSpace(mesh, W_e_2)
@@ -127,20 +152,28 @@ t = Constant(0.0)
 dt = Constant(1e-2)
 
 # Initialise advection forms
-FuncSpace_adv = {'FuncSpace_local': Wh, 'FuncSpace_lambda': Th, 'FuncSpace_bar': Wbarh}
-forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(gamma0, u_vec,
-                                                                dt, Constant(1.0),
-                                                                theta_L=Constant(1.0),
-                                                                zeta=Constant(25.0))
-phi_bcs = [DirichletBC(Wbarh, Constant(0.0), "near(x[1], 0.0)", "geometric"),
-           DirichletBC(Wbarh, Constant(1.0), "near(x[1], 1.0)", "geometric")]
-pde_projection = PDEStaticCondensation(mesh, ptcls,
-                                       forms_pde['N_a'], forms_pde['G_a'], forms_pde['L_a'],
-                                       forms_pde['H_a'],
-                                       forms_pde['B_a'],
-                                       forms_pde['Q_a'], forms_pde['R_a'], forms_pde['S_a'],
-                                       phi_bcs,
-                                       property_idx)
+FuncSpace_adv = {"FuncSpace_local": Wh, "FuncSpace_lambda": Th, "FuncSpace_bar": Wbarh}
+forms_pde = FormsPDEMap(mesh, FuncSpace_adv).forms_theta_linear(
+    gamma0, u_vec, dt, Constant(1.0), theta_L=Constant(1.0), zeta=Constant(25.0)
+)
+phi_bcs = [
+    DirichletBC(Wbarh, Constant(0.0), "near(x[1], 0.0)", "geometric"),
+    DirichletBC(Wbarh, Constant(1.0), "near(x[1], 1.0)", "geometric"),
+]
+pde_projection = PDEStaticCondensation(
+    mesh,
+    ptcls,
+    forms_pde["N_a"],
+    forms_pde["G_a"],
+    forms_pde["L_a"],
+    forms_pde["H_a"],
+    forms_pde["B_a"],
+    forms_pde["Q_a"],
+    forms_pde["R_a"],
+    forms_pde["S_a"],
+    phi_bcs,
+    property_idx,
+)
 
 # Function spaces for Stokes
 mixedL = FunctionSpace(mesh, MixedElement([W_e_2, Q_E]))
@@ -150,35 +183,33 @@ U0, Uh = Function(mixedL), Function(mixedL)
 Uhbar = Function(mixedG)
 
 # BCs
-bcs = [DirichletBC(mixedG.sub(0), Constant((0, 0)), "near(x[1], 0.0) or near(x[1], 1.0)"),
-       DirichletBC(mixedG.sub(0).sub(0), Constant(0),
-                   CompiledSubDomain("near(x[0], 0.0) or near(x[0], lmbda)", lmbda=lmbda))]
+bcs = [
+    DirichletBC(mixedG.sub(0), Constant((0, 0)), "near(x[1], 0.0) or near(x[1], 1.0)"),
+    DirichletBC(
+        mixedG.sub(0).sub(0),
+        Constant(0),
+        CompiledSubDomain("near(x[0], 0.0) or near(x[0], lmbda)", lmbda=lmbda),
+    ),
+]
 
 # Forms Stokes
-alpha = Constant(6*k*k)
+alpha = Constant(6 * k * k)
 Rb = Constant(1.0)
 eta_top = Constant(1.0)
 eta_bottom = Constant(0.01)
 eta = eta_bottom + phi * (eta_top - eta_bottom)
-forms_stokes_formulator = FormsStokes(mesh, mixedL, mixedG, alpha)
-forms_stokes = forms_stokes_formulator \
-    .forms_steady(eta, Rb * phi * Constant((0, -1)))
+forms_stokes = FormsStokes(mesh, mixedL, mixedG, alpha).forms_steady(
+    eta, Rb * phi * Constant((0, -1))
+)
 
-ssc = StokesStaticCondensation(mesh,
-                               forms_stokes['A_S'], forms_stokes['G_S'],
-                               forms_stokes['B_S'],
-                               forms_stokes['Q_S'], forms_stokes['S_S'])
-
-from dolfin import FacetNormal, inner, grad, sym, TrialFunctions, TestFunctions, CellDiameter
-ubar, pbar = TrialFunctions(forms_stokes_formulator.mixedG)
-wbar, qbar = TestFunctions(forms_stokes_formulator.mixedG)
-n = FacetNormal(mesh)
-he = CellDiameter(mesh)
-nu = eta
-A_p = forms_stokes_formulator.facet_integral(alpha/he * 2 * nu*dot(ubar, wbar)) \
-      - forms_stokes_formulator.facet_integral(dot(pbar*n, wbar)) \
-      - forms_stokes_formulator.facet_integral(dot(ubar, n)*qbar)
-A_p += forms_stokes_formulator.facet_integral((nu)**-1 * pbar * qbar)
+ssc = StokesStaticCondensation(
+    mesh,
+    forms_stokes["A_S"],
+    forms_stokes["G_S"],
+    forms_stokes["B_S"],
+    forms_stokes["Q_S"],
+    forms_stokes["S_S"],
+)
 
 # Particle advector
 C_CFL = 0.5
@@ -190,8 +221,9 @@ ap = advect_rk3(ptcls, u_vec.function_space(), u_vec, "closed")
 particles_directory = "./particles/"
 points_list = list(Point(*pp) for pp in ptcls.positions())
 particles_values = ptcls.get_property(property_idx)
-XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % 0)) \
-    .write(points_list, particles_values)
+XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % 0)).write(
+    points_list, particles_values
+)
 
 n_particles = MPI.sum(comm, len(points_list))
 info("Solving with %d particles" % n_particles)
@@ -205,8 +237,14 @@ velocity_assigner = FunctionAssigner(u_vec.function_space(), mixedL.sub(0))
 gamma_assigner = FunctionAssigner(gamma0.function_space(), phi.function_space())
 
 # Functionals output filename
-data_filename = "data_nx%d_ny%d_Rb%f_CFL%f_k%d_nparticles%d.dat" \
-                % (nx, ny, float(Rb), C_CFL, k, n_particles)
+data_filename = "data_nx%d_ny%d_Rb%f_CFL%f_k%d_nparticles%d.dat" % (
+    nx,
+    ny,
+    float(Rb),
+    C_CFL,
+    k,
+    n_particles,
+)
 
 
 # Function to output an iterable of numbers to file
@@ -218,11 +256,12 @@ def output_functionals(fname, vals, append=True):
 
 # Compute and output functionals
 def output_data_step(append=False):
-    urms = (1.0/lmbda * assemble(dot(u_vec, u_vec) * dx))**0.5
+    urms = (1.0 / lmbda * assemble(dot(u_vec, u_vec) * dx)) ** 0.5
     conservation = abs(assemble(phi * dx) - conservation0)
     entrainment = assemble(1.0 / (lmbda * Constant(db)) * phi * dx(de))
-    output_functionals(data_filename, [float(t), float(dt), urms, conservation, entrainment],
-                       append=append)
+    output_functionals(
+        data_filename, [float(t), float(dt), urms, conservation, entrainment], append=append
+    )
 
 
 # Initial Stokes solve
@@ -239,22 +278,7 @@ del time
 velocity_assigner.assign(u_vec, Uh.sub(0))
 output_data_step(append=False)
 
-ksp = PETSc.KSP().create(mesh.mpi_comm())
-
-opts = PETSc.Options()
-# opts["ksp_type"] = "preonly"
-# opts["pc_type"] = "lu"
-# opts["pc_factor_mat_solver_type"] = "mumps"
-opts["ksp_type"] = "minres"
-opts["pc_type"] = "jacobi"
-opts["ksp_rtol"] = 1e-12
-# opts["pc_factor_mat_solver_type"] = "mumps"
-opts["ksp_monitor"] = None
-ksp.setFromOptions()
-
-from dolfin import PETScMatrix
-P = PETScMatrix(mesh.mpi_comm())
-for j in range(500000):
+for j in range(50000):
     max_u_vec = u_vec.vector().norm("linf")
     dt.assign(C_CFL * hmin / max_u_vec)
 
@@ -273,8 +297,9 @@ for j in range(500000):
     del time
 
     time = Timer("ZZZ PDE project solve")
-    pde_projection.solve_problem(psibar_h.cpp_object(), phi.cpp_object(),
-                                 lambda_h.cpp_object(), 'mumps', 'default')
+    pde_projection.solve_problem(
+        psibar_h.cpp_object(), phi.cpp_object(), lambda_h.cpp_object(), "mumps", "default"
+    )
     del time
 
     gamma_assigner.assign(gamma0, phi)
@@ -286,16 +311,7 @@ for j in range(500000):
     time = Timer("ZZZ Stokes solve")
     for bc in bcs:
         ssc.apply_boundary(bc)
-
-    # ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
-    assemble(A_p, tensor=P)
-    for bc in bcs:
-        bc.apply(P)
-    ksp.setOperators(as_backend_type(ssc.get_global_lhs_matrix()).mat(),
-                     P.mat())
-    ksp.solve(as_backend_type(ssc.get_global_rhs_vector()).vec(), Uhbar.vector().vec())
-    Uhbar.vector().update_ghost_values()
-    ssc.backsubstitute(Uhbar.cpp_object(), Uh.cpp_object())
+    ssc.solve_problem(Uhbar.cpp_object(), Uh.cpp_object(), "mumps", "default")
     del time
 
     velocity_assigner.assign(u_vec, Uh.sub(0))
@@ -304,8 +320,9 @@ for j in range(500000):
     # Output particles and composition field
     points_list = list(Point(*pp) for pp in ptcls.positions())
     particles_values = ptcls.get_property(property_idx)
-    XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % (j+1))) \
-        .write(points_list, particles_values)
+    XDMFFile(os.path.join(particles_directory, "step%.4d.xdmf" % (j + 1))).write(
+        points_list, particles_values
+    )
     XDMFFile("composition.xdmf").write_checkpoint(phi, "composition", float(t), append=True)
 
 list_timings(TimingClear.clear, [TimingType.wall])

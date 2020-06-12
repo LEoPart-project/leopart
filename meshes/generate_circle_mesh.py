@@ -20,7 +20,7 @@ for i, lcar in enumerate(lcar_list):
     points, cells, _, _, _ = pygmsh.generate_mesh(geom)
 
     # Prune topology and save 2D
-    cells = {'triangle': cells['triangle']}
+    cells = {"triangle": cells["triangle"]}
     points = points[:, :2]
 
-    meshio.write_points_cells("circle_"+str(i)+".xml", points, cells)
+    meshio.write_points_cells("circle_" + str(i) + ".xml", points, cells)

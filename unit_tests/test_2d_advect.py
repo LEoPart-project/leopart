@@ -8,12 +8,19 @@
 Unit tests for advection of single particle
 """
 
-import itertools
-from dolfin import (SubDomain, UnitSquareMesh, RectangleMesh,
-                    Point, Constant, Expression, VectorFunctionSpace, Function,
-                    MeshFunction, near)
-from leopart import (particles, advect_particles, advect_rk2,
-                     advect_rk3, RandomRectangle)
+from dolfin import (
+    SubDomain,
+    UnitSquareMesh,
+    RectangleMesh,
+    Point,
+    Constant,
+    Expression,
+    VectorFunctionSpace,
+    Function,
+    MeshFunction,
+    near,
+)
+from leopart import particles, advect_particles, advect_rk2, advect_rk3, RandomRectangle
 from mpi4py import MPI as pyMPI
 import numpy as np
 import pytest
@@ -47,20 +54,19 @@ class UnitSquareTop(SubDomain):
 
 
 def compute_convergence(iterator, errorlist):
-    assert len(iterator) == len(errorlist), \
-           'Iterator list and error list not of same length'
+    assert len(iterator) == len(errorlist), "Iterator list and error list not of same length"
     alpha_list = []
-    for i in range(len(iterator)-1):
-        conv_rate = np.log(errorlist[i+1]/errorlist[i])/np.log(iterator[i+1]/iterator[i])
+    for i in range(len(iterator) - 1):
+        conv_rate = np.log(errorlist[i + 1] / errorlist[i]) / np.log(iterator[i + 1] / iterator[i])
         alpha_list.append(conv_rate)
     return alpha_list
 
 
 # Test accuracy of particle advection for euler, rk2 and rk3
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_advect_particle(advection_scheme):
     if comm.rank == 0:
-        print('Run advect_particle')
+        print("Run advect_particle")
 
     # Rotate one particle, and compute the error
     mesh = UnitSquareMesh(10, 10)
@@ -70,7 +76,7 @@ def test_advect_particle(advection_scheme):
     dt_list = [0.08, 0.04, 0.02, 0.01, 0.005]
 
     # Velocity field
-    vexpr = Expression(('-pi*(x[1] - 0.5)', 'pi*(x[0]-0.5)'), degree=3)
+    vexpr = Expression(("-pi*(x[1] - 0.5)", "pi*(x[0]-0.5)"), degree=3)
     V = VectorFunctionSpace(mesh, "CG", 1)
     v = Function(V)
     v.assign(vexpr)
@@ -79,18 +85,18 @@ def test_advect_particle(advection_scheme):
 
     for dt in dt_list:
         p = particles(x, [x, x], mesh)
-        if advection_scheme == 'euler':
-            ap = advect_particles(p, V, v, 'closed')
-        elif advection_scheme == 'rk2':
-            ap = advect_rk2(p, V, v, 'closed')
-        elif advection_scheme == 'rk3':
-            ap = advect_rk3(p, V, v, 'closed')
+        if advection_scheme == "euler":
+            ap = advect_particles(p, V, v, "closed")
+        elif advection_scheme == "rk2":
+            ap = advect_rk2(p, V, v, "closed")
+        elif advection_scheme == "rk3":
+            ap = advect_rk3(p, V, v, "closed")
         else:
             assert False
 
         xp_0 = p.positions()
-        t = 0.
-        while t < 2.-1e-12:
+        t = 0.0
+        while t < 2.0 - 1e-12:
             ap.do_step(dt)
             t += dt
 
@@ -99,34 +105,40 @@ def test_advect_particle(advection_scheme):
 
     if not all(eps == 0 for eps in error_list):
         rate = compute_convergence(dt_list, error_list)
-        if advection_scheme == 'euler':
+        if advection_scheme == "euler":
             # First order for euler
             assert any(i > 0.9 for i in rate)
-        elif advection_scheme == 'rk2':
+        elif advection_scheme == "rk2":
             # Second order for rk2
             assert any(i > 1.95 for i in rate)
-        elif advection_scheme == 'rk3':
+        elif advection_scheme == "rk3":
             # Third order for rk3
             assert any(i > 2.9 for i in rate)
 
 
 # Test with all boundaries periodic
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_advect_periodic(advection_scheme):
     # FIXME: this unit test is sensitive to the ordering of the particle
     # array, i.e. xp0_root and xpE_root may contain exactly the same entries
     # but only in a different order. This will return an error right now
 
-    xmin, xmax = 0., 1.
-    ymin, ymax = 0., 1.
+    xmin, xmax = 0.0, 1.0
+    ymin, ymax = 0.0, 1.0
     pres = 3
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
-    lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
-                     [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
+    lims = np.array(
+        [
+            [xmin, xmin, ymin, ymax],
+            [xmax, xmax, ymin, ymax],
+            [xmin, xmax, ymin, ymin],
+            [xmin, xmax, ymax, ymax],
+        ]
+    )
 
-    vexpr = Constant((1., 1.))
+    vexpr = Constant((1.0, 1.0))
     V = VectorFunctionSpace(mesh, "CG", 1)
 
     x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([pres, pres])
@@ -136,20 +148,20 @@ def test_advect_periodic(advection_scheme):
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [x*0, x**2], mesh)
+    p = particles(x, [x * 0, x ** 2], mesh)
 
-    if advection_scheme == 'euler':
-        ap = advect_particles(p, V, v, 'periodic', lims.flatten())
-    elif advection_scheme == 'rk2':
-        ap = advect_rk2(p, V, v, 'periodic', lims.flatten())
-    elif advection_scheme == 'rk3':
-        ap = advect_rk3(p, V, v, 'periodic', lims.flatten())
+    if advection_scheme == "euler":
+        ap = advect_particles(p, V, v, "periodic", lims.flatten())
+    elif advection_scheme == "rk2":
+        ap = advect_rk2(p, V, v, "periodic", lims.flatten())
+    elif advection_scheme == "rk3":
+        ap = advect_rk3(p, V, v, "periodic", lims.flatten())
     else:
         assert False
 
     xp0 = p.positions()
-    t = 0.
-    while t < 1.-1e-12:
+    t = 0.0
+    while t < 1.0 - 1e-12:
         ap.do_step(dt)
         t += dt
     xpE = p.positions()
@@ -170,25 +182,31 @@ def test_advect_periodic(advection_scheme):
 
         error = np.linalg.norm(xp0_root - xpE_root)
         assert error < 1e-10
-        assert num_particles - pres**2 == 0
+        assert num_particles - pres ** 2 == 0
 
 
 # Same as previous, but other constructor
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_advect_periodic_facet_marker(advection_scheme):
-    xmin, xmax = 0., 1.
-    ymin, ymax = 0., 1.
+    xmin, xmax = 0.0, 1.0
+    ymin, ymax = 0.0, 1.0
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
-    facet_marker = MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    facet_marker = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
     facet_marker.set_all(0)
     boundaries = Boundaries()
     boundaries.mark(facet_marker, 3)
 
-    lims = np.array([[xmin, xmin, ymin, ymax], [xmax, xmax, ymin, ymax],
-                     [xmin, xmax, ymin, ymin], [xmin, xmax, ymax, ymax]])
+    lims = np.array(
+        [
+            [xmin, xmin, ymin, ymax],
+            [xmax, xmax, ymin, ymax],
+            [xmin, xmax, ymin, ymin],
+            [xmin, xmax, ymax, ymax],
+        ]
+    )
 
-    vexpr = Constant((1., 1.))
+    vexpr = Constant((1.0, 1.0))
     V = VectorFunctionSpace(mesh, "CG", 1)
 
     x = RandomRectangle(Point(0.05, 0.05), Point(0.15, 0.15)).generate([3, 3])
@@ -198,20 +216,20 @@ def test_advect_periodic_facet_marker(advection_scheme):
     v = Function(V)
     v.assign(vexpr)
 
-    p = particles(x, [x*0, x**2], mesh)
+    p = particles(x, [x * 0, x ** 2], mesh)
 
-    if advection_scheme == 'euler':
+    if advection_scheme == "euler":
         ap = advect_particles(p, V, v, facet_marker, lims.flatten())
-    elif advection_scheme == 'rk2':
+    elif advection_scheme == "rk2":
         ap = advect_rk2(p, V, v, facet_marker, lims.flatten())
-    elif advection_scheme == 'rk3':
+    elif advection_scheme == "rk3":
         ap = advect_rk3(p, V, v, facet_marker, lims.flatten())
     else:
         assert False
 
     xp0 = p.positions()
-    t = 0.
-    while t < 1.-1e-12:
+    t = 0.0
+    while t < 1.0 - 1e-12:
         ap.do_step(dt)
         t += dt
     xpE = p.positions()
@@ -227,11 +245,11 @@ def test_advect_periodic_facet_marker(advection_scheme):
         assert error < 1e-10
 
 
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_closed_boundary(advection_scheme):
     # FIXME: rk3 scheme does not bounces off the wall properly
-    xmin, xmax = 0., 1.
-    ymin, ymax = 0., 1.
+    xmin, xmax = 0.0, 1.0
+    ymin, ymax = 0.0, 1.0
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
@@ -239,7 +257,7 @@ def test_closed_boundary(advection_scheme):
     x = np.array([[0.975, 0.475]])
 
     # Given velocity field:
-    vexpr = Constant((1., 0.))
+    vexpr = Constant((1.0, 0.0))
     # Given time do_step:
     dt = 0.05
     # Then bounced position is
@@ -258,7 +276,7 @@ def test_closed_boundary(advection_scheme):
     bound_bottom = UnitSquareBottom()
 
     # Mark all facets
-    facet_marker = MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    facet_marker = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
     facet_marker.set_all(0)
 
     # Mark as closed
@@ -269,11 +287,11 @@ def test_closed_boundary(advection_scheme):
     bound_top.mark(facet_marker, 2)
     bound_bottom.mark(facet_marker, 2)
 
-    if advection_scheme == 'euler':
+    if advection_scheme == "euler":
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme == 'rk2':
+    elif advection_scheme == "rk2":
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme == 'rk3':
+    elif advection_scheme == "rk3":
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False
@@ -287,23 +305,23 @@ def test_closed_boundary(advection_scheme):
     if comm.rank == 0:
         xpE_root = np.float64(np.vstack(xpE_root))
         error = np.linalg.norm(x_bounced - xpE_root)
-        assert(error < 1e-10)
+        assert error < 1e-10
 
 
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_open_boundary(advection_scheme):
-    xmin, xmax = 0., 1.
-    ymin, ymax = 0., 1.
+    xmin, xmax = 0.0, 1.0
+    ymin, ymax = 0.0, 1.0
     pres = 3
 
     mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), 10, 10)
 
     # Particle
-    x = RandomRectangle(Point(0.955, 0.45), Point(1., 0.55)).generate([pres, pres])
+    x = RandomRectangle(Point(0.955, 0.45), Point(1.0, 0.55)).generate([pres, pres])
     x = comm.bcast(x, root=0)
 
     # Given velocity field:
-    vexpr = Constant((1., 1.))
+    vexpr = Constant((1.0, 1.0))
     # Given time do_step:
     dt = 0.05
 
@@ -320,7 +338,7 @@ def test_open_boundary(advection_scheme):
     bound_bottom = UnitSquareBottom()
 
     # Mark all facets
-    facet_marker = MeshFunction('size_t', mesh, mesh.topology().dim() - 1)
+    facet_marker = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
     facet_marker.set_all(0)
 
     # Mark as open
@@ -331,11 +349,11 @@ def test_open_boundary(advection_scheme):
     bound_top.mark(facet_marker, 1)
     bound_bottom.mark(facet_marker, 1)
 
-    if advection_scheme == 'euler':
+    if advection_scheme == "euler":
         ap = advect_particles(p, V, v, facet_marker)
-    elif advection_scheme == 'rk2':
+    elif advection_scheme == "rk2":
         ap = advect_rk2(p, V, v, facet_marker)
-    elif advection_scheme == 'rk3':
+    elif advection_scheme == "rk3":
         ap = advect_rk3(p, V, v, facet_marker)
     else:
         assert False
@@ -349,10 +367,6 @@ def test_open_boundary(advection_scheme):
         assert(num_particles == 0)
 
 
-# @pytest.mark.parametrize('xlims', itertools.product([-np.pi, 0.0],
-#                                                    [1.0, np.pi]))
-# @pytest.mark.parametrize('ylims', itertools.product([-np.pi, 0.0],
-#                                                    [1.0, np.pi]))
 @pytest.mark.parametrize('xlims', [[0.0, 1.0]])
 @pytest.mark.parametrize('ylims', [[0.0, 1.0]])
 @pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
@@ -408,5 +422,3 @@ def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
         error = np.abs(xpn - analytical_position)
 
         assert np.all(np.abs(error) < 1e-12)
-
-
