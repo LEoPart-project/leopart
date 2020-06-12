@@ -412,12 +412,10 @@ def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
         xpn = np.array(p.get_property(0)).reshape((-1, 2))
         x0 = np.array(p.get_property(1)).reshape((-1, 2))
 
-        # print(xpn)
-
         analytical_position = x0 + t*v_arr
 
-        analytical_position[:,0] = np.maximum(np.minimum(xmax, analytical_position[:,0]), xmin)
-        analytical_position[:,1] = np.maximum(np.minimum(ymax, analytical_position[:,1]), ymin)
+        analytical_position[:, 0] = np.maximum(np.minimum(xmax, analytical_position[:, 0]), xmin)
+        analytical_position[:, 1] = np.maximum(np.minimum(ymax, analytical_position[:, 1]), ymin)
 
         error = np.abs(xpn - analytical_position)
 
