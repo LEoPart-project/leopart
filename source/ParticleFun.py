@@ -214,11 +214,11 @@ def _parse_advect_particles_args(args):
     args[1] = args[1]._cpp_object
     if isinstance(args[2], dolfin.Function):
         uh_cpp = args[2]._cpp_object
+
         def _default_velocity_return(step, dt):
             return uh_cpp
         args[2] = _default_velocity_return
     return args
-
 
 
 class advect_particles(compiled_module.advect_particles):
