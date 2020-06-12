@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 import numpy as np
+import dolfin
 import dolfin.cpp as cpp
 from mpi4py import MPI as pyMPI
 import pickle
@@ -109,11 +110,21 @@ class particles(compiled_module.particles):
         return
 
 
+def _parse_advect_particles_args(args):
+    args = list(args)
+    args[1] = args[1]._cpp_object
+    if isinstance(args[2], dolfin.Function):
+        uh_cpp = args[2]._cpp_object
+        def _default_velocity_return(step, dt):
+            return uh_cpp
+        args[2] = _default_velocity_return
+    return args
+
+
+
 class advect_particles(compiled_module.advect_particles):
     def __init__(self, *args):
-        a = list(args)
-        a[1] = a[1]._cpp_object
-        # a[2] = a[2]._cpp_object
+        a = _parse_advect_particles_args(args)
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
@@ -122,9 +133,7 @@ class advect_particles(compiled_module.advect_particles):
 
 class advect_rk2(compiled_module.advect_rk2):
     def __init__(self, *args):
-        a = list(args)
-        a[1] = a[1]._cpp_object
-        # a[2] = a[2]._cpp_object
+        a = _parse_advect_particles_args(args)
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
@@ -133,9 +142,7 @@ class advect_rk2(compiled_module.advect_rk2):
 
 class advect_rk3(compiled_module.advect_rk3):
     def __init__(self, *args):
-        a = list(args)
-        a[1] = a[1]._cpp_object
-        # a[2] = a[2]._cpp_object
+        a = _parse_advect_particles_args(args)
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
@@ -144,9 +151,7 @@ class advect_rk3(compiled_module.advect_rk3):
 
 class advect_rk4(compiled_module.advect_rk4):
     def __init__(self, *args):
-        a = list(args)
-        a[1] = a[1]._cpp_object
-        # a[2] = a[2]._cpp_object
+        a = _parse_advect_particles_args(args)
         super().__init__(*tuple(a))
 
     def __call__(self, *args):
