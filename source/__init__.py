@@ -11,6 +11,7 @@ from .ParticleFun import (
     advect_particles,
     advect_rk2,
     advect_rk3,
+    advect_rk4,
     l2projection,
     StokesStaticCondensation,
     PDEStaticCondensation,

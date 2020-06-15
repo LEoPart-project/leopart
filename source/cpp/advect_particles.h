@@ -29,7 +29,8 @@ enum class facet_t : std::uint8_t
   internal,
   closed,
   open,
-  periodic
+  periodic,
+  bounded
 };
 
 // Facet info on each facet of mesh
@@ -45,23 +46,36 @@ class advect_particles
 
 public:
   // Constructors
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+  advect_particles(particles& P, FunctionSpace& U,
+                   std::function<const Function&(int, double)> uhi,
                    const std::string type1);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
+      particles& P, FunctionSpace& U,
+      std::function<const Function&(int, double)> uhi,
+      const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
-  advect_particles(particles& P, FunctionSpace& U, Function& uhi,
+  advect_particles(particles& P, FunctionSpace& U,
+                   std::function<const Function&(int, double)> uhi,
                    const MeshFunction<std::size_t>& mesh_func);
 
   // Document
   advect_particles(
-      particles& P, FunctionSpace& U, Function& uhi,
+      particles& P, FunctionSpace& U,
+      std::function<const Function&(int, double)> uhi,
       const MeshFunction<std::size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
+
+  // Document
+  advect_particles(
+      particles& P, FunctionSpace& U,
+      std::function<const Function&(int, double)> uhi,
+      const MeshFunction<std::size_t>& mesh_func,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
 
   // Step forward in time dt
   void do_step(double dt);
@@ -71,6 +85,8 @@ public:
 
   // Destructor
   ~advect_particles();
+
+  virtual void init_weights() {}
 
 protected:
   particles* _P;
@@ -82,6 +98,10 @@ protected:
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
   bool pbc_active = false;
 
+  // Limits for bounded facets
+  std::vector<std::vector<double>> bounded_domain_lims; // Coordinates of limits
+  bool bounded_domain_active = false;
+
   // Timestepping scheme related
   std::vector<double> dti;
   std::vector<double> weights;
@@ -89,10 +109,10 @@ protected:
   std::size_t _space_dimension, _value_size_loc;
 
   // Facet information
-  // (normal, midpoint, type(internal, open, closed, periodic))
+  // (normal, midpoint, type(internal, open, closed, periodic, bounded))
   std::vector<facet_info> facets_info;
 
-  Function* uh;
+  std::function<const Function&(int, double)> uh;
   std::shared_ptr<const FiniteElement> _element;
 
   // Must receive a point xp
@@ -109,8 +129,11 @@ protected:
                        std::size_t fidx);
   void apply_periodic_bc(double dt, Point& up, std::size_t cidx,
                          std::size_t pidx, std::size_t fidx);
+  void apply_bounded_domain_bc(double dt, Point& up, std::size_t cidx,
+                               std::size_t pidx, std::size_t fidx);
 
   void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
+  void bounded_domain_violation(std::size_t cidx, std::size_t pidx);
 
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes
@@ -121,38 +144,10 @@ protected:
                   const std::size_t up0_idx,
                   std::vector<std::array<std::size_t, 3>>& reloc);
 
-};
-
-class advect_rk2 : public advect_particles
-{
-public:
-  // Constructors
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-             const std::string type1);
-
-  // Document
-  advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk2(particles& P, FunctionSpace& U, Function& uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
-
-  // Document
-  advect_rk2(
-      particles& P, FunctionSpace& U, Function& uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Step forward in time dt
-  void do_step(double dt);
-
-  // Destructor
-  ~advect_rk2();
-
-private:
+  // Multi-stage scheme data
   std::size_t xp0_idx, up0_idx;
+
+  private:
 
   void update_particle_template()
   {
@@ -167,6 +162,17 @@ private:
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
     }
   }
+
+
+};
+
+class advect_rk2 : public advect_particles
+{
+public:
+  using advect_particles::advect_particles;
+
+  // Step forward in time dt
+  void do_step(double dt);
 
   void init_weights()
   {
@@ -178,52 +184,32 @@ private:
 class advect_rk3 : public advect_particles
 {
 public:
-  // Constructors
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-             const std::string type1);
-
-  // Document
-  advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi, const std::string type1,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
-
-  // Document
-  advect_rk3(particles& P, FunctionSpace& U, Function& uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
-
-  // Document
-  advect_rk3(
-      particles& P, FunctionSpace& U, Function& uhi,
-      const MeshFunction<std::size_t>& mesh_func,
-      Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
+  using advect_particles::advect_particles;
 
   // Step forward in time dt
   void do_step(double dt);
-
-  // Destructor
-  ~advect_rk3();
-
-private:
-  std::size_t xp0_idx, up0_idx;
-
-  void update_particle_template()
-  {
-    const std::size_t gdim = _P->mesh()->geometry().dim();
-    xp0_idx = _P->expand_template(gdim);
-    up0_idx = _P->expand_template(gdim);
-
-    // Copy position to xp0 property
-    for (unsigned int cidx = 0; cidx < _P->mesh()->num_cells(); ++cidx)
-    {
-      for (unsigned int pidx = 0; pidx < _P->num_cell_particles(cidx); ++pidx)
-        _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
-    }
-  }
 
   void init_weights()
   {
     dti = {0.5, 0.75, 1.0};
     weights = {2. / 9., 3. / 9., 4. / 9.};
+  }
+};
+
+class advect_rk4 : public advect_particles
+{
+public:
+  using advect_particles::advect_particles;
+
+  // Step forward in time dt
+  void do_step(double dt);
+
+protected:
+
+  void init_weights()
+  {
+    dti = {0.5, 0.5, 1.0, 1.0};
+    weights = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
   }
 };
 } // namespace dolfin

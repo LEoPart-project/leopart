@@ -29,17 +29,17 @@
 
 using namespace dolfin;
 
-PDEStaticCondensation::PDEStaticCondensation(const Mesh& mesh, particles& P,
-                                             const Form& N, const Form& G,
-                                             const Form& L, const Form& H,
-                                             const Form& B, const Form& Q,
-                                             const Form& R, const Form& S,
+PDEStaticCondensation::PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P,
+                                             std::shared_ptr<const Form> N, std::shared_ptr<const Form> G,
+                                             std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
+                                             std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+                                             std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
                                              const std::size_t idx_pproperty)
-    : mesh(&mesh), _P(&P), N(&N), G(&G), L(&L), H(&H), B(&B), Q(&Q), R(&R),
-      S(&S), mpi_comm(mesh.mpi_comm()), invKS_list(mesh.num_cells()),
-      LHe_list(mesh.num_cells()), Ge_list(mesh.num_cells()),
-      Be_list(mesh.num_cells()), Re_list(mesh.num_cells()),
-      QRe_list(mesh.num_cells()), _idx_pproperty(idx_pproperty)
+    : mesh(mesh), _P(&P), N(N), G(G), L(L), H(H), B(B), Q(Q), R(R),
+      S(S), mpi_comm(mesh->mpi_comm()), invKS_list(mesh->num_cells()),
+      LHe_list(mesh->num_cells()), Ge_list(mesh->num_cells()),
+      Be_list(mesh->num_cells()), Re_list(mesh->num_cells()),
+      QRe_list(mesh->num_cells()), _idx_pproperty(idx_pproperty)
 {
   FormUtils::test_rank(*(this->N), 2);
   FormUtils::test_rank(*(this->G), 2);
@@ -82,8 +82,8 @@ PDEStaticCondensation::PDEStaticCondensation(const Mesh& mesh, particles& P,
 }
 //-----------------------------------------------------------------------------
 PDEStaticCondensation::PDEStaticCondensation(
-    const Mesh& mesh, particles& P, const Form& N, const Form& G, const Form& L,
-    const Form& H, const Form& B, const Form& Q, const Form& R, const Form& S,
+    std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N, std::shared_ptr<const Form> G, std::shared_ptr<const Form> L,
+    std::shared_ptr<const Form> H, std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
     std::vector<std::shared_ptr<const DirichletBC>> bcs,
     const std::size_t idx_pproperty)
     : PDEStaticCondensation::PDEStaticCondensation(mesh, P, N, G, L, H, B, Q, R,

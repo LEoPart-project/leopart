@@ -35,16 +35,16 @@ class PDEStaticCondensation
   //
 public:
   // Constructor
-  PDEStaticCondensation(const Mesh& mesh, particles& P, const Form& N,
-                        const Form& G, const Form& L, const Form& H,
-                        const Form& B, const Form& Q, const Form& R,
-                        const Form& S, const std::size_t idx_pproperty);
+  PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N,
+                        std::shared_ptr<const Form> G, std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
+                        std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R,
+                        std::shared_ptr<const Form> S, const std::size_t idx_pproperty);
 
   // Constructor including Dirichlet BC's
-  PDEStaticCondensation(const Mesh& mesh, particles& P, const Form& N,
-                        const Form& G, const Form& L, const Form& H,
-                        const Form& B, const Form& Q, const Form& R,
-                        const Form& S,
+  PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N,
+                        std::shared_ptr<const Form> G, std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
+                        std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R,
+                        std::shared_ptr<const Form> S,
                         std::vector<std::shared_ptr<const DirichletBC>> bcs,
                         const std::size_t idx_pproperty);
 
@@ -76,9 +76,9 @@ private:
   */
 
   // Private Attributes
-  const Mesh* mesh;
+  std::shared_ptr<const Mesh> mesh;
   particles* _P;
-  const Form *N, *G, *L, *H, *B, *Q, *R, *S;
+  std::shared_ptr<const Form> N, G, L, H, B, Q, R, S;
 
   const MPI_Comm mpi_comm;
   Matrix A_g;
@@ -107,7 +107,7 @@ private:
   std::vector<std::shared_ptr<const DirichletBC>> bcs;
 
   // FIXME needed for momentum based l2 map
-  Function* rhoh;
+  std::shared_ptr<Function> rhoh;
 };
 } // namespace dolfin
 #endif // PDESTATICCONDENSATION_H

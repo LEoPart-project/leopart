@@ -25,19 +25,19 @@ namespace dolfin
 {
 public:
   // Constructors with assumed symmetry
-  StokesStaticCondensation(const Mesh& mesh, const Form& A, const Form& G,
-                           const Form& B, const Form& Q, const Form& S);
-  StokesStaticCondensation(const Mesh& mesh, const Form& A, const Form& G,
-                           const Form& B, const Form& Q, const Form& S,
+  StokesStaticCondensation(std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                           std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> S);
+  StokesStaticCondensation(std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                           std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> S,
                            std::vector<std::shared_ptr<const DirichletBC>> bcs);
   // Constructors assuming full [2x2] block specification
-  StokesStaticCondensation(const Mesh& mesh, const Form& A, const Form& G,
-                           const Form& GT, const Form& B, const Form& Q,
-                           const Form& S);
+  StokesStaticCondensation(std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                           std::shared_ptr<const Form> GT, std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+                           std::shared_ptr<const Form> S);
 
-  StokesStaticCondensation(const Mesh& mesh, const Form& A, const Form& G,
-                           const Form& GT, const Form& B, const Form& Q,
-                           const Form& S,
+  StokesStaticCondensation(std::shared_ptr<const Mesh> mesh, std::shared_ptr<const Form> A, std::shared_ptr<const Form> G,
+                           std::shared_ptr<const Form> GT, std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+                           std::shared_ptr<const Form> S,
                            std::vector<std::shared_ptr<const DirichletBC>> bcs);
 
   // Destructor
@@ -54,19 +54,23 @@ public:
                      const std::string solver = "none",
                      const std::string preconditioner = "default");
 
+  Matrix& get_global_lhs_matrix() { return A_g; }
+  Vector& get_global_rhs_vector() { return f_g; }
+
+  void backsubstitute(const Function& Uglobal, Function& Ulocal);
+
 private:
   // Private Methods
-  void backsubtitute(const Function& Uglobal, Function& Ulocal);
   void test_rank(const Form& a, const std::size_t rank);
 
   // Private Attributes
-  const Mesh* mesh;
-  const Form* A;
-  const Form* B;
-  const Form* G;
-  const Form* Q;
-  const Form* S;
-  const Form* GT;
+  std::shared_ptr<const Mesh> mesh;
+  std::shared_ptr<const Form> A;
+  std::shared_ptr<const Form> B;
+  std::shared_ptr<const Form> G;
+  std::shared_ptr<const Form> Q;
+  std::shared_ptr<const Form> S;
+  std::shared_ptr<const Form> GT;
 
   bool assume_symmetric;
 

@@ -90,7 +90,7 @@ void l2projection::project(Function& u)
     {
       // Underdetermined system, use Jacobi (slower, but more robust)
       std::cout << "Underdetermined system in cell " << i
-                << ". Using Jacobie solve" << std::endl;
+                << ". Using Jacobi solve" << std::endl;
       u_i = (q.transpose())
                 .jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
                 .solve(f);
@@ -99,6 +99,8 @@ void l2projection::project(Function& u)
     // Insert in vector
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
+
+  u.vector()->apply("insert");
 }
 //-----------------------------------------------------------------------------
 void l2projection::project(Function& u, const double lb, const double ub)
@@ -150,6 +152,8 @@ void l2projection::project(Function& u, const double lb, const double ub)
     quadprogpp::solve_quadprog(AtA, Atf, CE, ce0, CI, ci0, u_i);
     u.vector()->set_local(u_i.data(), u_i.size(), celldofs.data());
   }
+
+  u.vector()->apply("insert");
 }
 //-----------------------------------------------------------------------------
 void l2projection::project_cg(const Form& A, const Form& f, Function& u)
