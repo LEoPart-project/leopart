@@ -24,7 +24,7 @@ import numpy as np
 
 
 class FormsPDEMap:
-    """"
+    """
     Class for defining the forms related to the PDE-constrained projection
 
     **Attributes:**

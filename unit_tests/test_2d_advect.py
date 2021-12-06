@@ -364,12 +364,12 @@ def test_open_boundary(advection_scheme):
 
     # Check if all particles left domain
     if comm.rank == 0:
-        assert(num_particles == 0)
+        assert num_particles == 0
 
 
-@pytest.mark.parametrize('xlims', [[0.0, 1.0]])
-@pytest.mark.parametrize('ylims', [[0.0, 1.0]])
-@pytest.mark.parametrize('advection_scheme', ['euler', 'rk2', 'rk3'])
+@pytest.mark.parametrize("xlims", [[0.0, 1.0]])
+@pytest.mark.parametrize("ylims", [[0.0, 1.0]])
+@pytest.mark.parametrize("advection_scheme", ["euler", "rk2", "rk3"])
 def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
     xmin, xmax = xlims
     ymin, ymax = ylims
@@ -392,18 +392,18 @@ def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
 
     p = particles(x, [x], mesh)
 
-    if advection_scheme == 'euler':
-        ap = advect_particles(p, V, v, 'bounded', lims.flatten())
-    elif advection_scheme == 'rk2':
-        ap = advect_rk2(p, V, v, 'bounded', lims.flatten())
-    elif advection_scheme == 'rk3':
-        ap = advect_rk3(p, V, v, 'bounded', lims.flatten())
+    if advection_scheme == "euler":
+        ap = advect_particles(p, V, v, "bounded", lims.flatten())
+    elif advection_scheme == "rk2":
+        ap = advect_rk2(p, V, v, "bounded", lims.flatten())
+    elif advection_scheme == "rk3":
+        ap = advect_rk3(p, V, v, "bounded", lims.flatten())
     else:
         assert False
 
     original_num_particles = p.number_of_particles()
-    t = 0.
-    while t < 3.0-1e-12:
+    t = 0.0
+    while t < 3.0 - 1e-12:
         ap.do_step(dt)
         t += dt
 
@@ -412,7 +412,7 @@ def test_bounded_domain_boundary(xlims, ylims, advection_scheme):
         xpn = np.array(p.get_property(0)).reshape((-1, 2))
         x0 = np.array(p.get_property(1)).reshape((-1, 2))
 
-        analytical_position = x0 + t*v_arr
+        analytical_position = x0 + t * v_arr
 
         analytical_position[:, 0] = np.maximum(np.minimum(xmax, analytical_position[:, 0]), xmin)
         analytical_position[:, 1] = np.maximum(np.minimum(ymax, analytical_position[:, 1]), ymin)

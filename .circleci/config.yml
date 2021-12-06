@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Install dependencies
-          command: sudo pip3 install flake8 pytest --upgrade
+          command: sudo pip3 install black pytest --upgrade
       - run:
           name: Install latest ufl and fiat
           command: |
@@ -15,15 +15,9 @@ jobs:
             pip install git+https://bitbucket.org/fenics-project/ufl.git --user
             pip install git+https://bitbucket.org/fenics-project/dijitso.git --user
       - run:
-          name: Flake8 on source
-          command:
-            python3 -m flake8 source/
-      - run:
-          name: Flake8 on tests
+          name: Check python formatting
           command: |
-            python3 -m flake8 unit_tests/test*
-            python3 -m flake8 tests/scalar_advection/
-            python3 -m flake8 tests/single_phase_ns/
+            black --check .
       - run:
           name: Installing DolfinParticles
           command: |
