@@ -12,7 +12,7 @@ __all__ = ["BinaryBlock", "GaussianPulse", "SlottedDisk", "SineHump", "CosineHil
 
 class BinaryBlock(UserExpression):
     """
-    Overloaded Expression initializing a binary valued block based
+    Overloaded Expression initializing a binary valued block, based
     on a given geometry dictionary with keys xmin/max, and ymin/max.
     """
 
@@ -102,7 +102,27 @@ class GaussianPulse(UserExpression):
 
 
 class SlottedDisk(UserExpression):
+    """Overloaded Expression to initialize a slotted disk."""
+
     def __init__(self, radius, center, width, depth, lb=0.0, ub=1.0, **kwargs):
+        """
+        Initialize slotted disk.
+
+        Parameters
+        ----------
+        radius : float
+            Radius of disk
+        center : list
+            List with x,y coordinate of disk center.
+        width : float
+            Width of slot.
+        depth : float
+            Depth of slot
+        lb : float, optional
+            value outside slotted disk, by default 0.0
+        ub : float, optional
+            value inside slotted disk, by default 1.0
+        """
         self.r = radius
         self.width = width
         self.depth = depth

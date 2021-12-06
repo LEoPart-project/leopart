@@ -7,14 +7,14 @@ Welcome to LEoPart's documentation!
 ===================================
 
 LEoPart is a particle add-on for the FEniCS finite element library. Along with installation
-instructions and a tutorial to helpy you getting started, this page provides the documentation
-for the Python API of LEoPart!
+instructions and a tutorial to help you getting started, this page provides the documentation
+for the Python API of LEoPart.
 
 .. image:: _static/ob17g.gif
 
 Detailed background information can be found in one of the following papers:
 
-:: 
+::
 
    @article{maljaars2020,
      title={LEoPart: a particle library for FEniCS},

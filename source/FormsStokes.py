@@ -88,8 +88,8 @@ class FormsStokes:
         ufl_forms = self.ufl_forms(nu, f)
 
         # Change upper left block and local rhs contribution
-        (w, q, wbar, qbar) = self.test_functions()
-        (u, p, ubar, pbar) = self.trial_functions()
+        w = self.test_functions()[0]
+        u = self.trial_functions()[0]
 
         A = dot(u, w) / dt * dx
         Q = dot(ustar, w) / dt * dx
@@ -114,8 +114,8 @@ class FormsStokes:
 
         ufl_forms = self.ufl_forms(mu, rho * f)
 
-        (w, q, wbar, qbar) = self.test_functions()
-        (u, p, ubar, pbar) = self.trial_functions()
+        w = self.test_functions()[0]
+        u = self.trial_functions()[0]
 
         A = rho * dot(u, w) / dt * dx
         Q = rho * dot(ustar, w) / dt * dx

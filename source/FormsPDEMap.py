@@ -365,8 +365,9 @@ class FormsPDEMap:
         theta_map: Constant
             Theta value for time stepping in PDE-projection according to
             theta-method
-            **NOTE** theta only affects solution for Lagrange multiplier
-            space polynomial order >= 1
+        .. note::
+            Value of theta only affects solution for Lagrange multiplier
+            for polynomial order of the Lagrange multiplier space >= 1
         theta_L: Constant, optional
             Theta value for reconstructing intermediate field from
             the previous solution and old increments.

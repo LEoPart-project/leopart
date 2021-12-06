@@ -138,11 +138,9 @@ class particles(compiled_module.particles):
     def __call__(self, *args):
         return self.eval(*args)
 
-    def return_property(self, mesh, index):
+    def return_property(self, index):
         """
         Return particle property by index.
-
-        **FIXME**: mesh input argument seems redundant.
 
         Parameters
         ----------
@@ -201,7 +199,7 @@ class particles(compiled_module.particles):
                     pass
 
         for (property_idx, fname) in zip(property_list, fname_list):
-            property_root = comm.gather(self.return_property(mesh, property_idx).T, root=0)
+            property_root = comm.gather(self.return_property(property_idx).T, root=0)
             if comm.Get_rank() == 0:
                 with open(fname, mode) as f:
                     property_root = np.float16(np.hstack(property_root).T)
@@ -321,6 +319,10 @@ class advect_rk3(compiled_module.advect_rk3):
 
 
 class advect_rk4(compiled_module.advect_rk4):
+    """
+    RK4 advection
+    """
+
     def __init__(self, *args):
         """
         Initialize class
@@ -413,8 +415,8 @@ class l2projection(compiled_module.l2projection):
         Project particle property onto continuous
         FE function space
 
-        **NOTE**: this method is a bit a bonus and
-        certainly could be improved
+        This method is somewhat experimental, and
+        definitely could be improved.
 
         Parameters
         ----------

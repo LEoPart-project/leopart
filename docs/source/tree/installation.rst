@@ -18,7 +18,7 @@ A :code:`conda` environment is provided containing all the dependencies. To get 
     conda create -f envs/environment.yml
     conda activate leopart
 
-Nexct, Compile the :code:`cpp` source code by running::
+Next, compile the :code:`cpp` source code by running::
 
     cd source/cpp
     cmake . && make
