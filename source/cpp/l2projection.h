@@ -7,21 +7,19 @@
 #ifndef L2PROJECTION_H
 #define L2PROJECTION_H
 
-#include <vector>
 #include <memory>
-
+#include <vector>
 
 namespace dolfin
 {
-  class Function;
-  class FunctionSpace;
-  class particles;
+class Function;
+class FunctionSpace;
+class particles;
 
-
-  class l2projection
+class l2projection
 {
 public:
-  l2projection(particles& P, FunctionSpace& V, const std::size_t idx);
+  l2projection(particles& P, FunctionSpace& V, const size_t idx);
   ~l2projection();
 
   // l^2 map
@@ -38,11 +36,11 @@ protected:
 
   std::shared_ptr<const FiniteElement> _element;
   std::shared_ptr<const GenericDofMap> _dofmap;
-  std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
+  size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
 
   // Workaround to access tuple elements
   // FIXME: what happens if we make this a constant?
-  std::size_t _idx_pproperty;
+  size_t _idx_pproperty;
 };
 } // namespace dolfin
 #endif // L2PROJECTION_H

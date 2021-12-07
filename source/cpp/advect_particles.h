@@ -60,20 +60,20 @@ public:
   // Document
   advect_particles(particles& P, FunctionSpace& U,
                    std::function<const Function&(int, double)> uhi,
-                   const MeshFunction<std::size_t>& mesh_func);
+                   const MeshFunction<size_t>& mesh_func);
 
   // Document
   advect_particles(
       particles& P, FunctionSpace& U,
       std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
+      const MeshFunction<size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
   advect_particles(
       particles& P, FunctionSpace& U,
       std::function<const Function&(int, double)> uhi,
-      const MeshFunction<std::size_t>& mesh_func,
+      const MeshFunction<size_t>& mesh_func,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
 
@@ -92,7 +92,7 @@ protected:
   particles* _P;
 
   void set_bfacets(const std::string btype);
-  void set_bfacets(const MeshFunction<std::size_t>& mesh_func);
+  void set_bfacets(const MeshFunction<size_t>& mesh_func);
 
   // Limits for periodic facets
   std::vector<std::vector<double>> pbc_lims; // Coordinates of limits
@@ -106,7 +106,7 @@ protected:
   std::vector<double> dti;
   std::vector<double> weights;
 
-  std::size_t _space_dimension, _value_size_loc;
+  size_t _space_dimension, _value_size_loc;
 
   // Facet information
   // (normal, midpoint, type(internal, open, closed, periodic, bounded))
@@ -116,42 +116,42 @@ protected:
   std::shared_ptr<const FiniteElement> _element;
 
   // Must receive a point xp
-  std::tuple<std::size_t, double>
-  time2intersect(std::size_t cidx, double dt, const Point xp, const Point up);
+  std::tuple<size_t, double>
+  time2intersect(size_t cidx, double dt, const Point xp, const Point up);
 
   // Consider placing in particle class
-  // void push_particle(const double dt, const Point& up, const std::size_t
-  // cidx, const std::size_t pidx);
+  // void push_particle(const double dt, const Point& up, const size_t
+  // cidx, const size_t pidx);
 
   // Methods for applying bc's
-  void apply_open_bc(std::size_t cidx, std::size_t pidx);
-  void apply_closed_bc(double dt, Point& up, std::size_t cidx, std::size_t pidx,
-                       std::size_t fidx);
-  void apply_periodic_bc(double dt, Point& up, std::size_t cidx,
-                         std::size_t pidx, std::size_t fidx);
-  void apply_bounded_domain_bc(double dt, Point& up, std::size_t cidx,
-                               std::size_t pidx, std::size_t fidx);
+  void apply_open_bc(size_t cidx, size_t pidx);
+  void apply_closed_bc(double dt, Point& up, size_t cidx, size_t pidx,
+                       size_t fidx);
+  void apply_periodic_bc(double dt, Point& up, size_t cidx,
+                         size_t pidx, size_t fidx);
+  void apply_bounded_domain_bc(double dt, Point& up, size_t cidx,
+                               size_t pidx, size_t fidx);
 
-  void pbc_limits_violation(std::size_t cidx, std::size_t pidx);
-  void bounded_domain_violation(std::size_t cidx, std::size_t pidx);
+  void pbc_limits_violation(size_t cidx, size_t pidx);
+  void bounded_domain_violation(size_t cidx, size_t pidx);
 
   // TODO: Make pure virtual function for do_step?
   // Method for substepping in multistep schemes
 
-  void do_substep(double dt, Point& up, const std::size_t cidx,
-                  std::size_t pidx, const std::size_t step,
-                  const std::size_t num_steps, const std::size_t xp0_idx,
-                  const std::size_t up0_idx,
-                  std::vector<std::array<std::size_t, 3>>& reloc);
+  void do_substep(double dt, Point& up, const size_t cidx,
+                  size_t pidx, const size_t step,
+                  const size_t num_steps, const size_t xp0_idx,
+                  const size_t up0_idx,
+                  std::vector<std::array<size_t, 3>>& reloc);
 
   // Multi-stage scheme data
-  std::size_t xp0_idx, up0_idx;
+  size_t xp0_idx, up0_idx;
 
   private:
 
   void update_particle_template()
   {
-    const std::size_t gdim = _P->mesh()->geometry().dim();
+    const size_t gdim = _P->mesh()->geometry().dim();
     xp0_idx = _P->expand_template(gdim);
     up0_idx = _P->expand_template(gdim);
 

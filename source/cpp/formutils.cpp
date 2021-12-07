@@ -16,14 +16,14 @@
 using namespace dolfin;
 
 //-----------------------------------------------------------------------------
-void FormUtils::test_rank(const Form& a, const std::size_t rank)
+void FormUtils::test_rank(const Form& a, size_t rank)
 {
   if (a.rank() != rank)
     dolfin_error("PDEStaticCondensation::test_rank", "get correct rank",
                  "Proper forms specified?");
 }
 //-----------------------------------------------------------------------------
-std::pair<std::size_t, std::size_t>
+std::pair<size_t, size_t>
 FormUtils::local_tensor_size(const Form& a, const Cell& cell)
 {
   if (a.rank() == 0)
@@ -39,8 +39,8 @@ FormUtils::local_tensor_size(const Form& a, const Cell& cell)
 //-----------------------------------------------------------------------------
 void FormUtils::local_assembler(
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& A_e,
-    const Form& a, const Cell& cell, const std::size_t nrows,
-    const std::size_t ncols)
+    const Form& a, const Cell& cell, size_t nrows,
+    size_t ncols)
 {
   // Method largely based on dolfin::assemble_local method in dolfin repo
   A_e.resize(nrows, ncols);
@@ -49,10 +49,10 @@ void FormUtils::local_assembler(
   std::vector<double> coordinate_dofs;
 
   // Extract cell_domains etc from the form
-  const MeshFunction<std::size_t>* cell_domains = a.cell_domains().get();
-  const MeshFunction<std::size_t>* exterior_facet_domains
+  const MeshFunction<size_t>* cell_domains = a.cell_domains().get();
+  const MeshFunction<size_t>* exterior_facet_domains
       = a.exterior_facet_domains().get();
-  const MeshFunction<std::size_t>* interior_facet_domains
+  const MeshFunction<size_t>* interior_facet_domains
       = a.interior_facet_domains().get();
 
   // Update to the local cell and assemble
@@ -70,7 +70,7 @@ void FormUtils::apply_boundary_symmetric(
         cdof_rows,
     Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>>
         cdof_cols,
-    const std::vector<DirichletBC::Map>& boundary_values, const bool active_bcs)
+    const std::vector<DirichletBC::Map>& boundary_values, bool active_bcs)
 {
   if (active_bcs)
   {
@@ -78,7 +78,7 @@ void FormUtils::apply_boundary_symmetric(
     // Loop over columns/rows
     for (int i = 0; i < cdof_cols.size(); ++i)
     {
-      const std::size_t ii = cdof_cols[i];
+      const size_t ii = cdof_cols[i];
       DirichletBC::Map::const_iterator bc_value = boundary_values[0].find(ii);
       if (bc_value != boundary_values[0].end())
       {

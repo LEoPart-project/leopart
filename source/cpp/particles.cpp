@@ -58,7 +58,7 @@ particles::particles(
       // Initialize particle with position
       particle pnew = {xp};
 
-      for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+      for (size_t j = 1; j < _ptemplate.size(); ++j)
       {
         Point property(_ptemplate[j], p_array.row(i).data() + offset[j]);
         pnew.push_back(property);
@@ -80,14 +80,12 @@ int particles::add_particle(int c)
   return _cell2part[c].size() - 1;
 }
 //-----------------------------------------------------------------------------
-void particles::interpolate(const Function& phih,
-                            const std::size_t property_idx)
+void particles::interpolate(const Function& phih, const size_t property_idx)
 {
-  std::size_t space_dimension, value_size_loc;
-  space_dimension = phih.function_space()->element()->space_dimension();
-  value_size_loc = 1;
-  for (std::size_t i = 0; i < phih.function_space()->element()->value_rank();
-       i++)
+  const size_t space_dimension
+      = phih.function_space()->element()->space_dimension();
+  size_t value_size_loc = 1;
+  for (size_t i = 0; i < phih.function_space()->element()->value_rank(); i++)
     value_size_loc *= phih.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idx])
@@ -98,7 +96,7 @@ void particles::interpolate(const Function& phih,
   {
     std::vector<double> coeffs;
     Utils::return_expansion_coeffs(coeffs, *cell, &phih);
-    for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
+    for (size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
       Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
       Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
@@ -115,7 +113,7 @@ void particles::interpolate(const Function& phih,
 }
 
 void particles::increment(const Function& phih_new, const Function& phih_old,
-                          const std::size_t property_idx)
+                          const size_t property_idx)
 {
   if (!phih_new.in(*(phih_old.function_space())))
   {
@@ -123,12 +121,12 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
                  "Expected Functions to be in the same FunctionSpace");
   }
 
-  std::size_t space_dimension, value_size_loc;
-  space_dimension = phih_new.function_space()->element()->space_dimension();
+  const size_t space_dimension
+      = phih_new.function_space()->element()->space_dimension();
+  size_t value_size_loc = 1;
 
-  value_size_loc = 1;
-  for (std::size_t i = 0;
-       i < phih_new.function_space()->element()->value_rank(); i++)
+  for (size_t i = 0; i < phih_new.function_space()->element()->value_rank();
+       i++)
     value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idx])
@@ -142,10 +140,10 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
     Utils::return_expansion_coeffs(coeffs_old, *cell, &phih_old);
 
     // Just average to get the coefficients
-    for (std::size_t i = 0; i < coeffs_new.size(); i++)
+    for (size_t i = 0; i < coeffs_new.size(); i++)
       coeffs.push_back(coeffs_new[i] - coeffs_old[i]);
 
-    for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
+    for (size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
       Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
       Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
@@ -163,9 +161,8 @@ void particles::increment(const Function& phih_new, const Function& phih_old,
 
 void particles::increment(
     const Function& phih_new, const Function& phih_old,
-    Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>
-        property_idcs,
-    const double theta, const std::size_t step)
+    Eigen::Ref<const Eigen::Array<size_t, Eigen::Dynamic, 1>> property_idcs,
+    const double theta, const size_t step)
 {
   if (!phih_new.in(*(phih_old.function_space())))
   {
@@ -186,12 +183,12 @@ void particles::increment(
     dolfin_error("particles.cpp::increment", "Set property array",
                  "Found none ore incorrect size at particle slot");
 
-  std::size_t space_dimension, value_size_loc;
-  space_dimension = phih_new.function_space()->element()->space_dimension();
+  const size_t space_dimension
+      = phih_new.function_space()->element()->space_dimension();
+  size_t value_size_loc = 1;
 
-  value_size_loc = 1;
-  for (std::size_t i = 0;
-       i < phih_new.function_space()->element()->value_rank(); i++)
+  for (size_t i = 0; i < phih_new.function_space()->element()->value_rank();
+       i++)
     value_size_loc *= phih_new.function_space()->element()->value_dimension(i);
 
   if (value_size_loc != _ptemplate[property_idcs[0]])
@@ -205,10 +202,10 @@ void particles::increment(
     Utils::return_expansion_coeffs(coeffs_old, *cell, &phih_old);
 
     // Just average to get the coefficients
-    for (std::size_t i = 0; i < coeffs_new.size(); i++)
+    for (size_t i = 0; i < coeffs_new.size(); i++)
       coeffs.push_back(coeffs_new[i] - coeffs_old[i]);
 
-    for (std::size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
+    for (size_t pidx = 0; pidx < num_cell_particles(cell->index()); pidx++)
     {
       Eigen::MatrixXd basis_mat(value_size_loc, space_dimension);
       Utils::return_basis_matrix(basis_mat.data(), x(cell->index(), pidx),
@@ -240,7 +237,7 @@ particles::positions()
 {
   // Could just use get_property(0)
 
-  std::size_t n_particles = 0;
+  size_t n_particles = 0;
   for (const auto& c2p : _cell2part)
     n_particles += c2p.size();
 
@@ -248,12 +245,12 @@ particles::positions()
       n_particles, _Ndim);
 
   // Iterate over cells and particles in each cell
-  std::size_t row = 0;
+  size_t row = 0;
   for (const auto& c2p : _cell2part)
   {
     for (const auto& p : c2p)
     {
-      for (std::size_t k = 0; k < _Ndim; ++k)
+      for (size_t k = 0; k < _Ndim; ++k)
         xp(row, k) = p[0][k];
       ++row;
     }
@@ -263,16 +260,16 @@ particles::positions()
   return xp;
 }
 
-std::vector<double> particles::get_property(const std::size_t idx)
+std::vector<double> particles::get_property(const size_t idx)
 {
 
   // Test if idx is valid
   if (idx > _ptemplate.size())
     dolfin_error("particles::get_property", "return index",
                  "Requested index exceeds particle template");
-  const std::size_t property_dim = _ptemplate[idx];
+  const size_t property_dim = _ptemplate[idx];
 
-  std::size_t n_particles = 0;
+  size_t n_particles = 0;
   for (const auto& c2p : _cell2part)
     n_particles += c2p.size();
 
@@ -284,7 +281,7 @@ std::vector<double> particles::get_property(const std::size_t idx)
   {
     for (const auto& p : c2p)
     {
-      for (std::size_t k = 0; k < property_dim; k++)
+      for (size_t k = 0; k < property_dim; k++)
         property_vector.push_back(p[idx][k]);
     }
   }
@@ -292,13 +289,13 @@ std::vector<double> particles::get_property(const std::size_t idx)
 }
 
 void particles::push_particle(const double dt, const Point& up,
-                              const std::size_t cidx, const std::size_t pidx)
+                              const size_t cidx, const size_t pidx)
 {
   _cell2part[cidx][pidx][0] += up * dt;
 }
 
-void particles::particle_communicator_collect(const std::size_t cidx,
-                                              const std::size_t pidx)
+void particles::particle_communicator_collect(const size_t cidx,
+                                              const size_t pidx)
 {
   // Assertion to check if comm_snd has size of num_procs
   dolfin_assert(_comm_snd.size() == MPI::size(_mpi_comm));
@@ -317,7 +314,7 @@ void particles::particle_communicator_collect(const std::size_t cidx,
 void particles::particle_communicator_push()
 {
   // Assertion if sender has correct size
-  const std::size_t num_processes = MPI::size(_mpi_comm);
+  const size_t num_processes = MPI::size(_mpi_comm);
   dolfin_assert(_comm_snd.size() == num_processes);
 
   std::vector<std::vector<double>> comm_snd_vec(num_processes);
@@ -325,7 +322,7 @@ void particles::particle_communicator_push()
 
   // Prepare for communication
   // Convert each vector of Points to std::vector<double>
-  for (std::size_t p = 0; p < num_processes; p++)
+  for (size_t p = 0; p < num_processes; p++)
   {
     for (particle part : _comm_snd[p])
     {
@@ -341,7 +338,7 @@ void particles::particle_communicator_push()
 
   // TODO: thoroughly test this unpacking -> sending -> composing loop
 
-  std::size_t pos_iter = 0;
+  size_t pos_iter = 0;
   while (pos_iter < comm_rcv_vec.size())
   {
     // This is always the particle position
@@ -352,7 +349,7 @@ void particles::particle_communicator_push()
     {
       pos_iter += _Ndim; // Add geometric dimension to iterator
       particle pnew = {xp};
-      for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+      for (size_t j = 1; j < _ptemplate.size(); ++j)
       {
         Point property(_ptemplate[j], &comm_rcv_vec[pos_iter]);
         pnew.push_back(property);
@@ -372,15 +369,16 @@ void particles::particle_communicator_push()
   }
 }
 
+/**
+ * @brief Function for relocating particles on moving mesh.
+ */
 void particles::relocate()
 {
-  // Method to relocate particles on moving mesh
-
   // Update bounding boxes
   _mesh->bounding_box_tree()->build(*(_mesh));
 
   // Init relocate local
-  std::vector<std::array<std::size_t, 3>> reloc;
+  std::vector<std::array<size_t, 3>> reloc;
 
   // Loop over particles
   for (CellIterator ci(*(_mesh)); !ci.end(); ++ci)
@@ -394,14 +392,13 @@ void particles::relocate()
       if (!ci->contains(xp))
       {
         // Do entity collision
-        std::size_t cell_id
+        size_t cell_id
             = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
 
         reloc.push_back({ci->index(), i, cell_id});
       }
     }
   }
-
   relocate(reloc);
 }
 
@@ -409,7 +406,7 @@ std::vector<double> particles::unpack_particle(const particle part)
 {
   // Unpack particle into std::vector<double>
   std::vector<double> part_unpacked;
-  for (std::size_t i = 0; i < _ptemplate.size(); i++)
+  for (size_t i = 0; i < _ptemplate.size(); i++)
     part_unpacked.insert(part_unpacked.end(), part[i].coordinates(),
                          part[i].coordinates() + _ptemplate[i]);
   return part_unpacked;
@@ -418,9 +415,8 @@ std::vector<double> particles::unpack_particle(const particle part)
 void particles::get_particle_contributions(
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
     Eigen::Matrix<double, Eigen::Dynamic, 1>& f, const Cell& dolfin_cell,
-    std::shared_ptr<const FiniteElement> element,
-    const std::size_t space_dimension, const std::size_t value_size_loc,
-    const std::size_t property_idx)
+    std::shared_ptr<const FiniteElement> element, size_t space_dimension,
+    size_t value_size_loc, size_t property_idx)
 {
   // TODO: some checks if element type matches property index
   if (value_size_loc != _ptemplate[property_idx])
@@ -428,8 +424,8 @@ void particles::get_particle_contributions(
                  "Local value size mismatches particle template property");
 
   // Get cell index and num particles
-  std::size_t cidx = dolfin_cell.index();
-  std::size_t Npc = num_cell_particles(cidx);
+  const size_t cidx = dolfin_cell.index();
+  const size_t Npc = num_cell_particles(cidx);
 
   // Get and set cell data
   std::vector<double> vertex_coordinates;
@@ -445,9 +441,9 @@ void particles::get_particle_contributions(
   {
     Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
         basis_matrix(space_dimension, value_size_loc);
-    for (std::size_t pidx = 0; pidx < Npc; pidx++)
+    for (size_t pidx = 0; pidx < Npc; pidx++)
     {
-      std::size_t lb = pidx * value_size_loc;
+      size_t lb = pidx * value_size_loc;
 
       element->evaluate_basis_all(
           basis_matrix.data(), x(cidx, pidx).coordinates(),
@@ -457,34 +453,31 @@ void particles::get_particle_contributions(
       q.block(0, lb, space_dimension, value_size_loc) = basis_matrix;
 
       // Place in vector
-      for (std::size_t m = 0; m < value_size_loc; ++m)
+      for (size_t m = 0; m < value_size_loc; ++m)
         f(m + lb) = _cell2part[cidx][pidx][property_idx][m];
     }
   }
   else if (_empty_cell_property_values[property_idx])
   {
     // We have a default value assigned for empty cells
-    const double default_value =
-        (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
-
-//    std::cout << "Found empty cell, filling with default value "
-//              << default_value << std::endl;
+    const double default_value
+        = (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
 
     // Works with DG spaces only, assuming the (0, 0) entry is the
     // DoF associated with the constant basis function
     q.setIdentity(space_dimension, space_dimension);
     f.resize(space_dimension, 1);
-    f(0,0) = default_value;
+    f(0, 0) = default_value;
   }
   else
   {
     // TODO: make function recognize FunctionSpace.ufl_element().family()!
 
     // Encountered empty cell
-    for (std::size_t it = 0; it < vertex_coordinates.size(); it += _Ndim)
+    for (size_t it = 0; it < vertex_coordinates.size(); it += _Ndim)
     {
       std::cout << "Coordinates vertex " << it << std::endl;
-      for (std::size_t jt = 0; jt < _Ndim; ++jt)
+      for (size_t jt = 0; jt < _Ndim; ++jt)
       {
         std::cout << vertex_coordinates[it + jt] << std::endl;
       }
@@ -495,16 +488,16 @@ void particles::get_particle_contributions(
   }
 }
 
-void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
+void particles::relocate(std::vector<std::array<size_t, 3>>& reloc)
 {
-  const std::size_t mpi_size = MPI::size(_mpi_comm);
+  const size_t mpi_size = MPI::size(_mpi_comm);
 
   // Relocate local and global
   for (const auto& r : reloc)
   {
-    const std::size_t& cidx = r[0];
-    const std::size_t& pidx = r[1];
-    const std::size_t& cidx_recv = r[2];
+    const size_t& cidx = r[0];
+    const size_t& pidx = r[1];
+    const size_t& cidx_recv = r[2];
 
     if (cidx_recv == std::numeric_limits<unsigned int>::max())
     {
@@ -522,8 +515,8 @@ void particles::relocate(std::vector<std::array<std::size_t, 3>>& reloc)
   std::sort(reloc.rbegin(), reloc.rend());
   for (const auto& r : reloc)
   {
-    const std::size_t& cidx = r[0];
-    const std::size_t& pidx = r[1];
+    const size_t& cidx = r[0];
+    const size_t& pidx = r[1];
     delete_particle(cidx, pidx);
   }
 

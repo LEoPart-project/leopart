@@ -30,7 +30,7 @@
 using namespace dolfin;
 
 l2projection::l2projection(particles& P, FunctionSpace& V,
-                           const std::size_t idx)
+                           const size_t idx)
     : _P(&P), _element(V.element()), _dofmap(V.dofmap()), _idx_pproperty(idx)
 {
   // Put an assertion here: we need to have a DG function space at the moment
@@ -43,7 +43,7 @@ l2projection::l2projection(particles& P, FunctionSpace& V,
     _num_dof_locs = _space_dimension / _num_subspaces;
 
   _value_size_loc = 1;
-  for (std::size_t i = 0; i < _element->value_rank(); i++)
+  for (size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
 
   // Check if matches with stored particle template
@@ -66,7 +66,7 @@ void l2projection::project(Function& u)
   // TODO: new and compact formulation. WORK IN PROGRESS!
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
-    std::size_t i = cell->index();
+    const size_t i = cell->index();
     // Get dofs local to cell
     Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);
@@ -122,7 +122,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
   CI.setZero();
   ci0.resize(_space_dimension * _value_size_loc * 2);
   ci0.setZero();
-  for (std::size_t i = 0; i < _space_dimension; i++)
+  for (size_t i = 0; i < _space_dimension; i++)
   {
     CI(i, i) = 1.;
     CI(i, i + _space_dimension) = -1;
@@ -132,7 +132,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
 
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
-    std::size_t i = cell->index();
+    size_t i = cell->index();
     // Get dofs local to cell
     Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);
@@ -145,7 +145,7 @@ void l2projection::project(Function& u, const double lb, const double ub)
     _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
                                    _value_size_loc, _idx_pproperty);
 
-    // Then solve bounded lstsq projection
+    // Solve bounded least squares projection
     Eigen::MatrixXd AtA = q * (q.transpose());
     Eigen::VectorXd Atf = -q * f;
     Eigen::VectorXd u_i;
@@ -173,7 +173,7 @@ void l2projection::project_cg(const Form& A, const Form& f, Function& u)
 
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
-    std::size_t i = cell->index();
+    const size_t i = cell->index();
     // Get dofs local to cell
     Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>> celldofs
         = _dofmap->cell_dofs(i);

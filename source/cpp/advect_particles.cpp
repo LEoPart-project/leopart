@@ -39,7 +39,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
   // Set some other useful info
   _space_dimension = _element->space_dimension();
   _value_size_loc = 1;
-  for (std::size_t i = 0; i < _element->value_rank(); i++)
+  for (size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
 
   update_particle_template();
@@ -52,7 +52,7 @@ advect_particles::advect_particles(
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles::advect_particles(P, U, uhi, type1)
 {
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t gdim = _P->mesh()->geometry().dim();
 
   // Then the only thing to do: check if type1 was "periodic"
   if (type1 == "periodic")
@@ -66,11 +66,11 @@ advect_particles::advect_particles(
                    "Incorrect shape of pbc_limits provided?");
     }
 
-    std::size_t num_rows = pbc_limits.size() / (gdim * 2);
-    for (std::size_t i = 0; i < num_rows; i++)
+    size_t num_rows = pbc_limits.size() / (gdim * 2);
+    for (size_t i = 0; i < num_rows; i++)
     {
       std::vector<double> pbc_helper(gdim * 2);
-      for (std::size_t j = 0; j < gdim * 2; j++)
+      for (size_t j = 0; j < gdim * 2; j++)
         pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
 
       pbc_lims.push_back(pbc_helper);
@@ -87,8 +87,8 @@ advect_particles::advect_particles(
                    "Incorrect shape of pbc_limits provided?");
     }
 
-    std::size_t num_rows = pbc_limits.size() / gdim;
-    for (std::size_t i = 0; i < num_rows; i++)
+    size_t num_rows = pbc_limits.size() / gdim;
+    for (size_t i = 0; i < num_rows; i++)
     {
       std::vector<double> bounded_domain_lims_helper(2);
       bounded_domain_lims_helper[0] = pbc_limits[2*i];
@@ -110,7 +110,7 @@ advect_particles::advect_particles(
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                 const MeshFunction<std::size_t>& mesh_func)
+                 const MeshFunction<size_t>& mesh_func)
     : _P(&P), uh(uhi), _element(U.element())
 {
   // Confirm that mesh_func contains no periodic boundary values (3)
@@ -129,7 +129,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   // Set some other useful info
   _space_dimension = _element->space_dimension();
   _value_size_loc = 1;
-  for (std::size_t i = 0; i < _element->value_rank(); i++)
+  for (size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
 
   update_particle_template();
@@ -137,7 +137,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                                   const MeshFunction<std::size_t>& mesh_func,
+                                   const MeshFunction<size_t>& mesh_func,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : _P(&P), uh(uhi), _element(U.element())
 {
@@ -150,7 +150,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   set_bfacets(mesh_func);
 
   // Set periodic boundary info
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t gdim = _P->mesh()->geometry().dim();
 
   // Check if it has the right size, always has to come in pairs
   // TODO: do provided values make sense?
@@ -161,11 +161,11 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
                  "Incorrect shape of pbc_limits provided?");
   }
 
-  std::size_t num_rows = pbc_limits.size() / (gdim * 2);
-  for (std::size_t i = 0; i < num_rows; i++)
+  size_t num_rows = pbc_limits.size() / (gdim * 2);
+  for (size_t i = 0; i < num_rows; i++)
   {
     std::vector<double> pbc_helper(gdim * 2);
-    for (std::size_t j = 0; j < gdim * 2; j++)
+    for (size_t j = 0; j < gdim * 2; j++)
       pbc_helper[j] = pbc_limits[i * gdim * 2 + j];
 
     pbc_lims.push_back(pbc_helper);
@@ -175,7 +175,7 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   // Set some other useful info
   _space_dimension = _element->space_dimension();
   _value_size_loc = 1;
-  for (std::size_t i = 0; i < _element->value_rank(); i++)
+  for (size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
 
   update_particle_template();
@@ -183,12 +183,12 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
 }
 //-----------------------------------------------------------------------------
 advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                                   const MeshFunction<std::size_t>& mesh_func,
+                                   const MeshFunction<size_t>& mesh_func,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
                                    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
 {
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t gdim = _P->mesh()->geometry().dim();
   // Check if it has the right size. [xmin, xmax, ymin, ymax, zmin, zmax]
   if ((bounded_limits.size() % (2 * gdim)) != 0)
   {
@@ -197,8 +197,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
                  "Incorrect shape of bounded_limits provided?");
   }
 
-  std::size_t num_rows = bounded_limits.size() / gdim;
-  for (std::size_t i = 0; i < num_rows; i++)
+  size_t num_rows = bounded_limits.size() / gdim;
+  for (size_t i = 0; i < num_rows; i++)
   {
     std::vector<double> bounded_domain_lims_helper(2);
     bounded_domain_lims_helper[0] = bounded_limits[2*i];
@@ -216,8 +216,8 @@ void advect_particles::update_facets_info()
   // etc.
 
   const Mesh* mesh = _P->mesh();
-  std::size_t tdim = mesh->topology().dim();
-  const std::size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
+  size_t tdim = mesh->topology().dim();
+  const size_t num_cell_facets = mesh->type().num_entities(tdim - 1);
 
   // Information for each facet of the mesh
   facets_info.resize(mesh->num_entities(tdim - 1));
@@ -237,7 +237,7 @@ void advect_particles::update_facets_info()
       const unsigned int* cell_facets = ci->entities(tdim - 1);
 
       // Find which facet this is in the cell
-      const std::size_t local_index
+      const size_t local_index
           = std::find(cell_facets, cell_facets + num_cell_facets, fi->index())
             - cell_facets;
       assert(local_index < num_cell_facets);
@@ -278,7 +278,7 @@ void advect_particles::update_facets_info()
     }
 
     // Store info in facets_info array
-    const std::size_t index = fi->index();
+    const size_t index = fi->index();
     facets_info[index].midpoint = facet_mp;
     facets_info[index].normal = facet_n;
   } // End facet iterator
@@ -304,7 +304,7 @@ void advect_particles::set_bfacets(std::string btype)
   }
 
   const Mesh* mesh = _P->mesh();
-  const std::size_t tdim = mesh->topology().dim();
+  const size_t tdim = mesh->topology().dim();
   for (FacetIterator fi(*mesh); !fi.end(); ++fi)
   {
     if (fi->num_global_entities(tdim) == 1)
@@ -314,10 +314,10 @@ void advect_particles::set_bfacets(std::string btype)
   }
 }
 //-----------------------------------------------------------------------------
-void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
+void advect_particles::set_bfacets(const MeshFunction<size_t>& mesh_func)
 {
   const Mesh* mesh = _P->mesh();
-  const std::size_t tdim = mesh->topology().dim();
+  const size_t tdim = mesh->topology().dim();
 
   // Check if size matches number of facets in mesh
   assert(mesh_func.size() == mesh->num_facets());
@@ -353,13 +353,13 @@ void advect_particles::do_step(double dt)
 
   const Mesh* mesh = _P->mesh();
   const MPI_Comm mpi_comm = mesh->mpi_comm();
-  const std::size_t gdim = mesh->geometry().dim();
-  const std::size_t tdim = mesh->topology().dim();
+  const size_t gdim = mesh->geometry().dim();
+  const size_t tdim = mesh->topology().dim();
 
-  std::size_t num_processes = MPI::size(mpi_comm);
+  size_t num_processes = MPI::size(mpi_comm);
 
   // Needed for local reloc
-  std::vector<std::array<std::size_t, 3>> reloc;
+  std::vector<std::array<size_t, 3>> reloc;
 
   const Function& uh_step = uh(0, dt);
 
@@ -387,15 +387,15 @@ void advect_particles::do_step(double dt)
       // Convert velocity to point
       Point up(gdim, u_p.data());
 
-      std::size_t cidx_recv = ci->index();
+      size_t cidx_recv = ci->index();
       double dt_rem = dt;
 
       while (dt_rem > 1E-15)
       {
         // Returns facet which is intersected and the time it takes to do so
-        std::tuple<std::size_t, double> intersect_info
+        std::tuple<size_t, double> intersect_info
             = time2intersect(cidx_recv, dt_rem, _P->x(ci->index(), i), up);
-        const std::size_t target_facet = std::get<0>(intersect_info);
+        const size_t target_facet = std::get<0>(intersect_info);
         const double dt_int = std::get<1>(intersect_info);
 
         if (target_facet == std::numeric_limits<unsigned int>::max())
@@ -496,7 +496,7 @@ void advect_particles::do_step(double dt)
               else
               {
                 // Behavior in serial
-                std::size_t cell_id = _P->mesh()
+                size_t cell_id = _P->mesh()
                                           ->bounding_box_tree()
                                           ->compute_first_entity_collision(
                                               _P->x(ci->index(), i));
@@ -516,7 +516,7 @@ void advect_particles::do_step(double dt)
               else
               {
                 // Behavior in serial
-                std::size_t cell_id = _P->mesh()
+                size_t cell_id = _P->mesh()
                                           ->bounding_box_tree()
                                           ->compute_first_entity_collision(
                                               _P->x(ci->index(), i));
@@ -546,20 +546,20 @@ void advect_particles::do_step(double dt)
   _P->relocate(reloc);
 }
 //-----------------------------------------------------------------------------
-std::tuple<std::size_t, double>
-advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
+std::tuple<size_t, double>
+advect_particles::time2intersect(size_t cidx, double dt, const Point xp,
                                  const Point up)
 {
   // Time to facet intersection
   const Mesh* mesh = _P->mesh();
-  const std::size_t tdim = mesh->topology().dim();
+  const size_t tdim = mesh->topology().dim();
   double dt_int = std::numeric_limits<double>::max();
-  std::size_t target_facet = std::numeric_limits<unsigned int>::max();
+  size_t target_facet = std::numeric_limits<unsigned int>::max();
 
   Cell c(*mesh, cidx);
   for (unsigned int i = 0; i < c.num_entities(tdim - 1); ++i)
   {
-    std::size_t fidx = c.entities(tdim - 1)[i];
+    size_t fidx = c.entities(tdim - 1)[i];
     Facet f(*mesh, fidx);
 
     Point normal = facets_info[fidx].normal;
@@ -593,17 +593,17 @@ advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
     }
   }
   // Store and return intersect info in tuple
-  std::tuple<std::size_t, double> intersect_info(target_facet, dt_int);
+  std::tuple<size_t, double> intersect_info(target_facet, dt_int);
   return intersect_info;
 }
 //-----------------------------------------------------------------------------
-void advect_particles::apply_open_bc(std::size_t cidx, std::size_t pidx)
+void advect_particles::apply_open_bc(size_t cidx, size_t pidx)
 {
   _P->delete_particle(cidx, pidx);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::apply_closed_bc(double dt, Point& up, std::size_t cidx,
-                                       std::size_t pidx, std::size_t fidx)
+void advect_particles::apply_closed_bc(double dt, Point& up, size_t cidx,
+                                       size_t pidx, size_t fidx)
 {
   // First push particle
   _P->push_particle(dt, up, cidx, pidx);
@@ -612,18 +612,18 @@ void advect_particles::apply_closed_bc(double dt, Point& up, std::size_t cidx,
   up -= 2 * (up.dot(normal)) * normal;
 }
 //-----------------------------------------------------------------------------
-void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
-                                         std::size_t pidx, std::size_t fidx)
+void advect_particles::apply_periodic_bc(double dt, Point& up, size_t cidx,
+                                         size_t pidx, size_t fidx)
 {
-  const std::size_t gdim = _P->mesh()->geometry().dim();
+  const size_t gdim = _P->mesh()->geometry().dim();
   Point midpoint = facets_info[fidx].midpoint;
-  std::size_t row_match = std::numeric_limits<unsigned int>::max();
-  std::size_t row_friend;
-  std::size_t component;
+  size_t row_match = std::numeric_limits<unsigned int>::max();
+  size_t row_friend;
+  size_t component;
   bool hit = false;
-  for (std::size_t i = 0; i < pbc_lims.size(); i++)
+  for (size_t i = 0; i < pbc_lims.size(); i++)
   {
-    for (std::size_t j = 0; j < gdim; j++)
+    for (size_t j = 0; j < gdim; j++)
     {
       if (std::abs(midpoint[j] - pbc_lims[i][j * 2]) < 1E-10
           && std::abs(midpoint[j] - pbc_lims[i][j * 2 + 1]) < 1E-10)
@@ -631,7 +631,7 @@ void advect_particles::apply_periodic_bc(double dt, Point& up, std::size_t cidx,
         // Then we most likely found a match, but check if midpoint coordinates
         // are in between the limits for the other coordinate directions
         hit = true;
-        for (std::size_t k = 0; k < gdim; k++)
+        for (size_t k = 0; k < gdim; k++)
         {
           if (k == j)
             continue;
@@ -677,7 +677,7 @@ break_me:
                   - pbc_lims[row_match][component * 2];
 
   // Corners can be tricky, therefore include this test
-  for (std::size_t i = 0; i < gdim; i++)
+  for (size_t i = 0; i < gdim; i++)
   {
     if (i == component)
       continue; // Skip this
@@ -694,7 +694,7 @@ break_me:
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
+void advect_particles::pbc_limits_violation(size_t cidx, size_t pidx)
 {
   // This method guarantees that particles can cross internal bc -> periodic bc
   // in one time step without being deleted.
@@ -702,13 +702,13 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
   // FIXME: can give troubles when domain decomposition results in one cell in
   // domain corner Check if periodic bcs are violated somewhere, if so, modify
   // particle position
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t gdim = _P->mesh()->geometry().dim();
 
   Point x = _P->x(cidx, pidx);
 
-  for (std::size_t i = 0; i < pbc_lims.size() / 2; i++)
+  for (size_t i = 0; i < pbc_lims.size() / 2; i++)
   {
-    for (std::size_t j = 0; j < gdim; j++)
+    for (size_t j = 0; j < gdim; j++)
     {
       if (std::abs(pbc_lims[2 * i][2 * j] - pbc_lims[2 * i][2 * j + 1]) < 1E-13)
       {
@@ -720,7 +720,7 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
           // Check whether the other bounds are violated, to handle corners
           // FIXME: cannot handle cases where domain of friend in one direction
           // is different from match, reason: looping over periodic bc pairs
-          for (std::size_t k = 0; k < gdim; k++)
+          for (size_t k = 0; k < gdim; k++)
           {
             if (k == j)
               continue;
@@ -741,7 +741,7 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
                    - std::min(pbc_lims[2 * i][2 * j],
                               pbc_lims[2 * i + 1][2 * j]));
           // Check wheter the other bounds are violated, to handle corners
-          for (std::size_t k = 0; k < gdim; k++)
+          for (size_t k = 0; k < gdim; k++)
           {
             if (k == j)
               continue;
@@ -762,14 +762,14 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
 }
 //-----------------------------------------------------------------------------
 void advect_particles::apply_bounded_domain_bc(
-    double dt, Point& up, std::size_t cidx,
-    std::size_t pidx, std::size_t fidx)
+    double dt, Point& up, size_t cidx,
+    size_t pidx, size_t fidx)
 {
   // First push particle
   _P->push_particle(dt, up, cidx, pidx);
 
   Point x = _P->x(cidx, pidx);
-  for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
+  for (size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
   {
     const double xmin = bounded_domain_lims[i][0];
     const double xmax = bounded_domain_lims[i][1];
@@ -780,12 +780,12 @@ void advect_particles::apply_bounded_domain_bc(
 }
 //-----------------------------------------------------------------------------
 void advect_particles::bounded_domain_violation(
-    std::size_t cidx, std::size_t pidx)
+    size_t cidx, size_t pidx)
 {
   // This method guarantees that particles can cross internal bc -> bounded bc
   // in one time step without being deleted.
   Point x = _P->x(cidx, pidx);
-  for (std::size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
+  for (size_t i = 0; i < _P->mesh()->geometry().dim(); ++i)
   {
     const double xmin = bounded_domain_lims[i][0];
     const double xmax = bounded_domain_lims[i][1];
@@ -796,19 +796,19 @@ void advect_particles::bounded_domain_violation(
 }
 //-----------------------------------------------------------------------------
 void advect_particles::do_substep(
-    double dt, Point& up, const std::size_t cidx, std::size_t pidx,
-    const std::size_t step, const std::size_t num_steps,
-    const std::size_t xp0_idx, const std::size_t up0_idx,
-    std::vector<std::array<std::size_t, 3>>& reloc)
+    double dt, Point& up, const size_t cidx, size_t pidx,
+    const size_t step, const size_t num_steps,
+    const size_t xp0_idx, const size_t up0_idx,
+    std::vector<std::array<size_t, 3>>& reloc)
 {
   double dt_rem = dt;
 
   const Mesh* mesh = _P->mesh();
-  const std::size_t mpi_size = MPI::size(mesh->mpi_comm());
-  const std::size_t gdim = mesh->geometry().dim();
-  const std::size_t tdim = mesh->topology().dim();
+  const size_t mpi_size = MPI::size(mesh->mpi_comm());
+  const size_t gdim = mesh->geometry().dim();
+  const size_t tdim = mesh->topology().dim();
 
-  std::size_t cidx_recv = std::numeric_limits<unsigned int>::max();
+  size_t cidx_recv = std::numeric_limits<unsigned int>::max();
 
   if (step == 0)
     cidx_recv = cidx;
@@ -855,9 +855,9 @@ void advect_particles::do_substep(
   while (dt_rem > 1E-15)
   {
     // Returns facet which is intersected and the time it takes to do so
-    std::tuple<std::size_t, double> intersect_info
+    std::tuple<size_t, double> intersect_info
         = time2intersect(cidx_recv, dt_rem, _P->x(cidx, pidx), up);
-    const std::size_t target_facet = std::get<0>(intersect_info);
+    const size_t target_facet = std::get<0>(intersect_info);
     const double dt_int = std::get<1>(intersect_info);
 
     if (target_facet == std::numeric_limits<unsigned int>::max())
@@ -983,7 +983,7 @@ void advect_particles::do_substep(
           {
             // Behavior in serial
             // TODO: call particle locate
-            std::size_t cell_id
+            size_t cell_id
                 = mesh->bounding_box_tree()->compute_first_entity_collision(
                     _P->x(cidx, pidx));
 
@@ -1007,7 +1007,7 @@ void advect_particles::do_substep(
           else
           {
             // Behavior in serial
-            std::size_t cell_id = _P->mesh()
+            size_t cell_id = _P->mesh()
                                       ->bounding_box_tree()
                                       ->compute_first_entity_collision(
                                           _P->x(cidx, pidx));
@@ -1047,21 +1047,21 @@ void advect_rk2::do_step(double dt)
   init_weights();
 
   const Mesh* mesh = _P->mesh();
-  std::size_t gdim = mesh->geometry().dim();
+  size_t gdim = mesh->geometry().dim();
 
   std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
-  std::size_t num_substeps = 2;
+  size_t num_substeps = 2;
 
-  for (std::size_t step = 0; step < num_substeps; step++)
+  for (size_t step = 0; step < num_substeps; step++)
   {
     const Function& uh_step = uh(step, dt);
 
     // Needed for local reloc
-    std::vector<std::array<std::size_t, 3>> reloc;
+    std::vector<std::array<size_t, 3>> reloc;
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      for (size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
         Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
@@ -1116,21 +1116,21 @@ void advect_rk3::do_step(double dt)
   init_weights();
 
   const Mesh* mesh = _P->mesh();
-  const std::size_t gdim = mesh->geometry().dim();
+  const size_t gdim = mesh->geometry().dim();
   std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
-  std::size_t num_substeps = 3;
+  size_t num_substeps = 3;
 
-  for (std::size_t step = 0; step < num_substeps; step++)
+  for (size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::array<std::size_t, 3>> reloc;
+    std::vector<std::array<size_t, 3>> reloc;
 
     const Function& uh_step = uh(step, dt);
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
       // Loop over particles
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      for (size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
         Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,
@@ -1193,21 +1193,21 @@ void advect_rk4::do_step(double dt)
   init_weights();
 
   const Mesh* mesh = _P->mesh();
-  const std::size_t gdim = mesh->geometry().dim();
+  const size_t gdim = mesh->geometry().dim();
 //  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
-  std::size_t num_substeps = 4;
+  size_t num_substeps = 4;
 
-  for (std::size_t step = 0; step < num_substeps; step++)
+  for (size_t step = 0; step < num_substeps; step++)
   {
     // Needed for local reloc
-    std::vector<std::array<std::size_t, 3>> reloc;
+    std::vector<std::array<size_t, 3>> reloc;
 
     const Function& uh_step = uh(step, dt);
 
     for (CellIterator ci(*mesh); !ci.end(); ++ci)
     {
       // Loop over particles
-      for (std::size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
+      for (size_t i = 0; i < _P->num_cell_particles(ci->index()); i++)
       {
         Eigen::MatrixXd basis_mat(_value_size_loc, _space_dimension);
         Utils::return_basis_matrix(basis_mat.data(), _P->x(ci->index(), i), *ci,

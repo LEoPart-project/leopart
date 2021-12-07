@@ -57,11 +57,11 @@ public:
 
   static void cell_bounding_box(std::vector<double>& x_min_max,
                                 const std::vector<double>& coordinates,
-                                const std::size_t gdim)
+                                const size_t gdim)
   {
     // Consider merging with make_bounding_boxes in particles class?!
     x_min_max.resize(2 * gdim);
-    for (std::size_t i = 0; i < gdim; ++i)
+    for (size_t i = 0; i < gdim; ++i)
     {
       for (auto it = coordinates.begin() + i; it < coordinates.end();
            it += gdim)

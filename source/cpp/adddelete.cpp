@@ -16,16 +16,16 @@
 
 using namespace dolfin;
 
-AddDelete::AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
+AddDelete::AddDelete(particles& P, size_t np_min, size_t np_max,
                      std::vector<std::shared_ptr<const Function>> FList)
     : _P(&P), _np_min(np_min), _np_max(np_max), _FList(FList)
 {
   // TODO: tests on input
 }
 //
-AddDelete::AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
+AddDelete::AddDelete(particles& P, size_t np_min, size_t np_max,
                      std::vector<std::shared_ptr<const Function>> FList,
-                     std::vector<std::size_t> pbound,
+                     std::vector<size_t> pbound,
                      std::vector<double> bounds)
     : AddDelete::AddDelete(P, np_min, np_max, FList)
 {
@@ -44,18 +44,18 @@ void AddDelete::do_sweep()
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
     // Get number of particles
-    std::size_t Npc = _P->num_cell_particles(cell->index());
+    size_t Npc = _P->num_cell_particles(cell->index());
 
     if (Npc >= _np_min && Npc <= _np_max)
       continue;
     if (Npc < _np_min)
     {
-      std::size_t np_def = _np_min - Npc;
+      size_t np_def = _np_min - Npc;
       insert_particles(np_def, *cell);
     }
     else if (Npc > _np_max)
     {
-      std::size_t np_surp = Npc - _np_max;
+      size_t np_surp = Npc - _np_max;
       delete_particles(np_surp, Npc, cell->index());
     }
   }
@@ -72,24 +72,24 @@ void AddDelete::do_sweep_weighted()
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
     // Get number of particles
-    std::size_t Npc = _P->num_cell_particles(cell->index());
+    size_t Npc = _P->num_cell_particles(cell->index());
 
     if (Npc >= _np_min && Npc <= _np_max)
       continue;
     if (Npc < _np_min)
     {
-      std::size_t np_def = _np_min - Npc;
+      size_t np_def = _np_min - Npc;
       insert_particles_weighted(np_def, *cell);
     }
     else if (Npc > _np_max)
     {
-      std::size_t np_surp = Npc - _np_max;
+      size_t np_surp = Npc - _np_max;
       delete_particles(np_surp, Npc, cell->index());
     }
   }
 }
 //
-void AddDelete::do_sweep_failsafe(const std::size_t np_min)
+void AddDelete::do_sweep_failsafe(const size_t np_min)
 {
   // Method to do a failsafe sweep after advection to make sure
   // that cell contains at least minimum required amount of particles
@@ -100,38 +100,38 @@ void AddDelete::do_sweep_failsafe(const std::size_t np_min)
   for (CellIterator cell(*(_P->mesh())); !cell.end(); ++cell)
   {
     // Get number of particles
-    std::size_t Npc = _P->num_cell_particles(cell->index());
+    size_t Npc = _P->num_cell_particles(cell->index());
 
     if (Npc >= np_min)
       continue;
     if (Npc < np_min)
     {
       std::cout << "Failsafe activated in cell " << cell->index() << std::endl;
-      std::size_t np_def = np_min - Npc;
+      size_t np_def = np_min - Npc;
       insert_particles_weighted(np_def, *cell);
     }
   }
 }
 //
-void AddDelete::insert_particles(const std::size_t Np_def,
+void AddDelete::insert_particles(const size_t Np_def,
                                  const Cell& dolfin_cell)
 {
   // Get vertex coords, returned as [x1, y1, z1, x2, y2, z2, ..., xn, yn, zn]
   std::vector<double> x_min_max, vertex_coordinates;
   dolfin_cell.get_vertex_coordinates(vertex_coordinates);
 
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t gdim = _P->mesh()->geometry().dim();
   // Get cell bounding box
   Utils::cell_bounding_box(x_min_max, vertex_coordinates, gdim);
 
   // Needed for point generation and placement
-  const std::size_t cidx = dolfin_cell.index();
+  const size_t cidx = dolfin_cell.index();
 
   seed(Np_def * cidx);
   ufc::cell ufc_cell;
   dolfin_cell.get_cell_data(ufc_cell);
 
-  for (std::size_t pgen = 0; pgen < Np_def; pgen++)
+  for (size_t pgen = 0; pgen < Np_def; pgen++)
   {
     // Initialize random positions
     Point xp_new;
@@ -142,7 +142,7 @@ void AddDelete::insert_particles(const std::size_t Np_def,
     _P->set_property(cidx, pidx, 0, xp_new);
 
     // Eval other properties and set
-    for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
+    for (size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
     {
       // +1 to skip position slot
       Eigen::VectorXd feval(_P->ptemplate(idx_func + 1));
@@ -160,17 +160,17 @@ void AddDelete::insert_particles(const std::size_t Np_def,
 
     // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+    for (size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
       _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //
-void AddDelete::insert_particles_weighted(const std::size_t Np_def,
+void AddDelete::insert_particles_weighted(const size_t Np_def,
                                           const Cell& dolfin_cell)
 {
   //
-  std::size_t cidx = dolfin_cell.index();
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t cidx = dolfin_cell.index();
+  size_t gdim = _P->mesh()->geometry().dim();
 
   // Needed for particle position initiation
   std::vector<double> x_min_max, vertex_coordinates;
@@ -184,7 +184,7 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
   // Needed for point generation and placement
   seed(Np_def * cidx);
 
-  for (std::size_t pgen = 0; pgen < Np_def; pgen++)
+  for (size_t pgen = 0; pgen < Np_def; pgen++)
   {
     // Initialize random positions
     Point xp_new;
@@ -208,12 +208,12 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
     if (distance_sum > 0.)
     {
       // Then loop over the particle template
-      for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
+      for (size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
       {
         Point point_value;
 
         // Again the idx_func+1 for skipping position
-        for (std::size_t p = 0; p < _P->num_cell_particles(cidx); ++p)
+        for (size_t p = 0; p < _P->num_cell_particles(cidx); ++p)
           point_value
               += distance[p] * _P->property(cidx, p, idx_func + 1);
 
@@ -233,7 +233,7 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
                 << std::endl;
 
       // Eval other properties and push
-      for (std::size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
+      for (size_t idx_func = 0; idx_func < _FList.size(); idx_func++)
       {
         Eigen::Map<Eigen::VectorXd> xp_array(xp_new.coordinates(), gdim);
         // +1 to skip position slot
@@ -252,25 +252,25 @@ void AddDelete::insert_particles_weighted(const std::size_t Np_def,
 
     // If necessary, fill remaining slots (initialized with positions,
     // this in fact is even needed to support the multi-stage rk scheme
-    for (std::size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
+    for (size_t idx = _FList.size() + 1; idx < _P->num_properties(); ++idx)
       _P->set_property(cidx, pidx, idx, xp_new);
   }
 }
 //
-void AddDelete::delete_particles(const std::size_t Np_surp,
-                                 const std::size_t Npc, const std::size_t cidx)
+void AddDelete::delete_particles(const size_t Np_surp,
+                                 const size_t Npc, const size_t cidx)
 {
   // Particles with minimum distances are removed
   double distance;
 
   std::vector<double> pdistance(2);
-  std::vector<std::pair<double, std::size_t>> pdistance_pair;
+  std::vector<std::pair<double, size_t>> pdistance_pair;
 
-  for (std::size_t pidx1 = 0; pidx1 < Npc; pidx1++)
+  for (size_t pidx1 = 0; pidx1 < Npc; pidx1++)
   {
     Point xp1 = _P->x(cidx, pidx1);
     std::fill(pdistance.begin(), pdistance.end(), 999.);
-    for (std::size_t pidx2 = 0; pidx2 < Npc; pidx2++)
+    for (size_t pidx2 = 0; pidx2 < Npc; pidx2++)
     {
       if (pidx2 != pidx1)
       {
@@ -292,14 +292,14 @@ void AddDelete::delete_particles(const std::size_t Np_surp,
   // Sort (ascending!)
   std::sort(pdistance_pair.begin(), pdistance_pair.end());
 
-  std::vector<std::size_t> remove_idcs;
-  for (std::size_t prmv = 0; prmv < Np_surp; ++prmv)
+  std::vector<size_t> remove_idcs;
+  for (size_t prmv = 0; prmv < Np_surp; ++prmv)
     remove_idcs.push_back(pdistance_pair[prmv].second);
 
   std::sort(remove_idcs.begin(), remove_idcs.end());
 
   // And finally remove
-  for (std::size_t prmv = 0; prmv < Np_surp; ++prmv)
+  for (size_t prmv = 0; prmv < Np_surp; ++prmv)
     _P->delete_particle(cidx, remove_idcs[prmv] - prmv);
 }
 
@@ -308,13 +308,13 @@ void AddDelete::initialize_random_position(Point& xp_new,
                                            const Cell& dolfin_cell)
 {
   bool hit = false;
-  std::size_t iter(0);
-  std::size_t gdim = _P->mesh()->geometry().dim();
+  size_t iter(0);
+  size_t gdim = _P->mesh()->geometry().dim();
 
   while (!hit)
   {
     std::vector<double> xp_vec;
-    for (std::size_t i = 0; i < gdim; i++)
+    for (size_t i = 0; i < gdim; i++)
     {
       double x = x_min_max[i] + (x_min_max[gdim + i] - x_min_max[i]) * rand();
       xp_vec.push_back(x);
@@ -334,13 +334,13 @@ void AddDelete::initialize_random_position(Point& xp_new,
   }
 }
 
-void AddDelete::check_bounded_update(Point& pfeval, const std::size_t idx_func)
+void AddDelete::check_bounded_update(Point& pfeval, const size_t idx_func)
 {
   // Bounded update (convenient for discontinuous field)
   auto it = std::find(_pbound.begin(), _pbound.end(), idx_func + 1);
   if (it != _pbound.end())
   {
-    std::size_t idx = std::distance(_pbound.begin(), it);
+    size_t idx = std::distance(_pbound.begin(), it);
     if (pfeval[0] > 0.5 * (_bounds[2 * idx] + _bounds[2 * idx + 1]))
       // Then upper value
       pfeval[0] = _bounds[2 * idx + 1];

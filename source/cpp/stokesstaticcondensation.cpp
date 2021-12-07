@@ -102,7 +102,7 @@ void StokesStaticCondensation::assemble_global_lhs()
   // For each cell: G_e.T.dot(A_e.inv).dot(G_e) - B_e
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
-    std::size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
+    size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
 
     std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), *cell);
     std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), *cell);
@@ -131,7 +131,7 @@ void StokesStaticCondensation::assemble_global_lhs()
     else
     {
       // No symmetry assumption
-      std::size_t nrowsGT, ncolsGT;
+      size_t nrowsGT, ncolsGT;
       std::tie(nrowsGT, ncolsGT)
           = FormUtils::local_tensor_size(*(this->GT), *cell);
 
@@ -169,7 +169,7 @@ void StokesStaticCondensation::assemble_global_rhs()
   // For each cell: G_e.T.dot(A_e.inv).dot(Q_e) - S_e
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
-    std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
+    size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), *cell);
 
@@ -219,7 +219,7 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
   if (active_bcs)
   {
     // Bin boundary conditions according to which form they apply to (if any)
-    for (std::size_t i = 0; i < bcs.size(); ++i)
+    for (size_t i = 0; i < bcs.size(); ++i)
     {
       bcs[i]->get_boundary_values(boundary_values[0]);
       if (MPI::size(mpi_comm) > 1 && bcs[i]->method() != "pointwise")
@@ -231,7 +231,7 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
   {
     // NOTE, You do not need nrowsS, ncolsS -- coincide with B,
     // check in constructor
-    std::size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
+    size_t nrowsA, ncolsA, nrowsB, ncolsB, nrowsG, ncolsG;
 
     std::tie(nrowsA, ncolsA) = FormUtils::local_tensor_size(*(this->A), *cell);
     std::tie(nrowsB, ncolsB) = FormUtils::local_tensor_size(*(this->B), *cell);
@@ -255,7 +255,7 @@ void StokesStaticCondensation::assemble_global_system(bool assemble_lhs)
       if (!assume_symmetric)
       {
         // No symmetry assumption
-        std::size_t nrowsGT, ncolsGT;
+        size_t nrowsGT, ncolsGT;
 
         std::tie(nrowsGT, ncolsGT)
             = FormUtils::local_tensor_size(*(this->GT), *cell);
@@ -339,7 +339,7 @@ void StokesStaticCondensation::solve_problem(Function& Uglobal,
   else
   {
     // Iterative solver
-    //    std::size_t num_it =
+    //    size_t num_it =
     solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
     // if(MPI::rank(mpi_comm) == 0) std::cout<<"Number of
     // iterations"<<num_it<<std::endl;
@@ -361,7 +361,7 @@ void StokesStaticCondensation::backsubstitute(const Function& Uglobal,
 {
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
-    std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
+    size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*(this->Q), *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*(this->S), *cell);
 
@@ -383,7 +383,7 @@ void StokesStaticCondensation::backsubstitute(const Function& Uglobal,
   Ulocal.vector()->apply("insert");
 }
 //-----------------------------------------------------------------------------
-void StokesStaticCondensation::test_rank(const Form& a, const std::size_t rank)
+void StokesStaticCondensation::test_rank(const Form& a, const size_t rank)
 {
   if (a.rank() != rank)
     dolfin_error("StokesStaticCondensation::test_rank", "get correct rank",

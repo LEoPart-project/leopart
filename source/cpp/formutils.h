@@ -24,18 +24,18 @@ class FormUtils
 
 public:
   // Test rank of form
-  static void test_rank(const Form& a, const std::size_t rank);
+  static void test_rank(const Form& a, size_t rank);
 
   // Get local tensor size
-  static std::pair<std::size_t, std::size_t>
+  static std::pair<size_t, size_t>
   local_tensor_size(const Form& a, const Cell& cell);
 
   // Local assembler
   static void
   local_assembler(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
                                 Eigen::RowMajor>& A_e,
-                  const Form& a, const Cell& cell, const std::size_t nrows,
-                  const std::size_t ncols);
+                  const Form& a, const Cell& cell, size_t nrows,
+                  size_t ncols);
 
   // Apply Dirichlet BC to element contributions, so as to maintain symmetry
   static void apply_boundary_symmetric(
@@ -47,7 +47,7 @@ public:
       Eigen::Map<const Eigen::Array<dolfin::la_index, Eigen::Dynamic, 1>>
           cdof_cols,
       const std::vector<DirichletBC::Map>& boundary_values,
-      const bool active_bcs);
+      bool active_bcs);
 };
 } // namespace dolfin
 #endif // FORMUTILS_H

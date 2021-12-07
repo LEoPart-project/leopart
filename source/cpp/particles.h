@@ -90,36 +90,36 @@ public:
   }
 
   // Interpolate function to particles
-  void interpolate(const Function& phih, const std::size_t property_idx);
+  void interpolate(const Function& phih, const size_t property_idx);
 
   // Increment
   void increment(const Function& phih_new, const Function& phih_old,
-                 const std::size_t property_idx);
+                 const size_t property_idx);
 
   // Increment using theta --> Consider replacing property_idcs
   void increment(const Function& phih_new, const Function& phih_old,
-                 Eigen::Ref<const Eigen::Array<std::size_t, Eigen::Dynamic, 1>>
+                 Eigen::Ref<const Eigen::Array<size_t, Eigen::Dynamic, 1>>
                      property_idcs,
-                 const double theta, const std::size_t step);
+                 const double theta, const size_t step);
 
   Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
   positions();
-  std::vector<double> get_property(const std::size_t idx);
+  std::vector<double> get_property(const size_t idx);
 
   void get_particle_contributions(
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& q,
       Eigen::Matrix<double, Eigen::Dynamic, 1>& f, const Cell& dolfin_cell,
       std::shared_ptr<const FiniteElement> element,
-      const std::size_t space_dimension, const std::size_t value_size_loc,
-      const std::size_t property_idx);
+      const size_t space_dimension, const size_t value_size_loc,
+      const size_t property_idx);
 
   // Push particle to new position
-  void push_particle(const double dt, const Point& up, const std::size_t cidx,
-                     const std::size_t pidx);
+  void push_particle(const double dt, const Point& up, const size_t cidx,
+                     const size_t pidx);
 
   // Particle collector, required in parallel
-  void particle_communicator_collect(const std::size_t cidx,
-                                     const std::size_t pidx);
+  void particle_communicator_collect(const size_t cidx,
+                                     const size_t pidx);
 
   // Particle pusher, required in parallel
   void particle_communicator_push();
@@ -130,13 +130,13 @@ public:
   // Relocate particles, with known relocation data. Each entry is {cidx, pidx,
   // cidx_recv} using numeric_limits::max for cidx_recv to send to another
   // process
-  void relocate(std::vector<std::array<std::size_t, 3>>& reloc);
+  void relocate(std::vector<std::array<size_t, 3>>& reloc);
 
   // If a cell has no particles, take the values from this cell function
   // as the default value in get_particle_contributions()
   void set_empty_cell_default_values(
     std::shared_ptr<dolfin::MeshFunction<double>> cell_function,
-    const std::size_t property_idx)
+    const size_t property_idx)
   {
     if (_empty_cell_property_values.size() < num_properties())
         _empty_cell_property_values.resize(num_properties());
@@ -151,12 +151,12 @@ private:
 
   // Attributes
   const Mesh* _mesh;
-  std::size_t _Ndim;
+  size_t _Ndim;
   std::vector<std::vector<particle>> _cell2part;
 
   // Particle properties
   std::vector<unsigned int> _ptemplate;
-  std::size_t _plen;
+  size_t _plen;
   std::vector<std::shared_ptr<dolfin::MeshFunction<double>>>
     _empty_cell_property_values;
 

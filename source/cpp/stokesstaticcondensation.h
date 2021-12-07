@@ -61,7 +61,7 @@ public:
 
 private:
   // Private Methods
-  void test_rank(const Form& a, const std::size_t rank);
+  void test_rank(const Form& a, const size_t rank);
 
   // Private Attributes
   std::shared_ptr<const Mesh> mesh;

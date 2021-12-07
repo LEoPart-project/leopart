@@ -38,7 +38,7 @@ public:
   PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N,
                         std::shared_ptr<const Form> G, std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
                         std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R,
-                        std::shared_ptr<const Form> S, const std::size_t idx_pproperty);
+                        std::shared_ptr<const Form> S, const size_t idx_pproperty);
 
   // Constructor including Dirichlet BC's
   PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N,
@@ -46,7 +46,7 @@ public:
                         std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R,
                         std::shared_ptr<const Form> S,
                         std::vector<std::shared_ptr<const DirichletBC>> bcs,
-                        const std::size_t idx_pproperty);
+                        const size_t idx_pproperty);
 
   ~PDEStaticCondensation();
 
@@ -56,11 +56,11 @@ public:
   void assemble_state_rhs();
 
   void solve_problem(Function& Uglobal, Function& Ulocal,
-                     const std::string solver = "none",
-                     const std::string preconditioner = "default");
+                     const std::string& solver = "none",
+                     const std::string& preconditioner = "default");
   void solve_problem(Function& Uglobal, Function& Ulocal, Function& Lambda,
-                     const std::string solver = "none",
-                     const std::string preconditioner = "default");
+                     const std::string& solver = "none",
+                     const std::string& preconditioner = "default");
   void apply_boundary(DirichletBC& DBC);
 
 private:
@@ -85,7 +85,7 @@ private:
   Vector f_g;
 
   std::shared_ptr<const FiniteElement> _element;
-  std::size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
+  size_t _num_subspaces, _space_dimension, _num_dof_locs, _value_size_loc;
 
   std::vector<
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
@@ -102,7 +102,7 @@ private:
   std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> Re_list, QRe_list;
 
   // TODO: set _idx_pproperty
-  const std::size_t _idx_pproperty;
+  const size_t _idx_pproperty;
 
   std::vector<std::shared_ptr<const DirichletBC>> bcs;
 

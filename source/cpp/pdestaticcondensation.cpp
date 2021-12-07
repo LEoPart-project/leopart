@@ -34,7 +34,7 @@ PDEStaticCondensation::PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, p
                                              std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
                                              std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
                                              std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
-                                             const std::size_t idx_pproperty)
+                                             const size_t idx_pproperty)
     : mesh(mesh), _P(&P), N(N), G(G), L(L), H(H), B(B), Q(Q), R(R),
       S(S), mpi_comm(mesh->mpi_comm()), invKS_list(mesh->num_cells()),
       LHe_list(mesh->num_cells()), Ge_list(mesh->num_cells()),
@@ -71,7 +71,7 @@ PDEStaticCondensation::PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, p
   }
 
   _value_size_loc = 1;
-  for (std::size_t i = 0; i < _element->value_rank(); i++)
+  for (size_t i = 0; i < _element->value_rank(); i++)
     _value_size_loc *= _element->value_dimension(i);
 
   if (_value_size_loc != _P->ptemplate(_idx_pproperty))
@@ -85,7 +85,7 @@ PDEStaticCondensation::PDEStaticCondensation(
     std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N, std::shared_ptr<const Form> G, std::shared_ptr<const Form> L,
     std::shared_ptr<const Form> H, std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
     std::vector<std::shared_ptr<const DirichletBC>> bcs,
-    const std::size_t idx_pproperty)
+    const size_t idx_pproperty)
     : PDEStaticCondensation::PDEStaticCondensation(mesh, P, N, G, L, H, B, Q, R,
                                                    S, idx_pproperty)
 {
@@ -107,7 +107,7 @@ void PDEStaticCondensation::assemble(const bool assemble_all,
   if (active_bcs)
   {
     // Bin boundary conditions according to which form they apply to (if any)
-    for (std::size_t i = 0; i < bcs.size(); ++i)
+    for (size_t i = 0; i < bcs.size(); ++i)
     {
       bcs[i]->get_boundary_values(boundary_values[0]);
       if (MPI::size(mpi_comm) > 1 && bcs[i]->method() != "pointwise")
@@ -117,7 +117,7 @@ void PDEStaticCondensation::assemble(const bool assemble_all,
 
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
-    std::size_t nrowsN, ncolsN, nrowsG, ncolsG, nrowsL, ncolsL, nrowsH, ncolsH,
+    size_t nrowsN, ncolsN, nrowsG, ncolsG, nrowsL, ncolsL, nrowsH, ncolsH,
         nrowsB, ncolsB;
 
     // Get local tensor info
@@ -242,7 +242,7 @@ void PDEStaticCondensation::assemble_state_rhs()
 {
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
-    std::size_t nrowsH, ncolsH;
+    size_t nrowsH, ncolsH;
     std::tie(nrowsH, ncolsH) = FormUtils::local_tensor_size(*H, *cell);
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> R_e;
@@ -252,8 +252,8 @@ void PDEStaticCondensation::assemble_state_rhs()
 }
 //-----------------------------------------------------------------------------
 void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
-                                          const std::string solver,
-                                          const std::string preconditioner)
+                                          const std::string& solver,
+                                          const std::string& preconditioner)
 {
 
   // TODO: Check if Uglobal, Ulocal are correct
@@ -265,7 +265,7 @@ void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
   else
   {
     // Iterative solver
-    std::size_t num_it
+    size_t num_it
         = solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
     if (MPI::rank(mpi_comm) == 0)
       std::cout << "Number of iterations" << num_it << std::endl;
@@ -277,8 +277,8 @@ void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
 // Return Lagrange multiplier also
 void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
                                           Function& Lambda,
-                                          const std::string solver,
-                                          const std::string preconditioner)
+                                          const std::string& solver,
+                                          const std::string& preconditioner)
 {
 
   // TODO: Check if Uglobal, Ulocal are correct
@@ -290,7 +290,7 @@ void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
   else
   {
     // Iterative solver
-    std::size_t num_it
+    size_t num_it
         = solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
     if (MPI::rank(mpi_comm) == 0)
       std::cout << "Number of iterations" << num_it << std::endl;
@@ -310,7 +310,7 @@ void PDEStaticCondensation::backsubtitute(const Function& Uglobal,
   for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
   {
     // Backsubstitute global solution Uglobal to get local solution Ulocal
-    std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
+    size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);
     auto cdof_rowsQ = Q->function_space(0)->dofmap()->cell_dofs(cell->index());
@@ -335,7 +335,7 @@ void PDEStaticCondensation::backsubtitute(const Function& Uglobal,
   {
     // Backsubstitute global solution Uglobal to get local solution Ulocal as
     // well as Lagrange multiplier Lambda
-    std::size_t nrowsQ, ncolsQ, nrowsR, ncolsR, nrowsS, ncolsS;
+    size_t nrowsQ, ncolsQ, nrowsR, ncolsR, nrowsS, ncolsS;
     std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
     std::tie(nrowsR, ncolsR) = FormUtils::local_tensor_size(*R, *cell);
     std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);

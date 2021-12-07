@@ -22,47 +22,47 @@ class particles;
 class AddDelete
 {
 public:
-  AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
+  AddDelete(particles& P, size_t np_min, size_t np_max,
             std::vector<std::shared_ptr<const Function>> FList);
-  AddDelete(particles& P, std::size_t np_min, std::size_t np_max,
+  AddDelete(particles& P, size_t np_min, size_t np_max,
             std::vector<std::shared_ptr<const Function>> FList,
-            std::vector<std::size_t> pbound, std::vector<double> bounds);
+            std::vector<size_t> pbound, std::vector<double> bounds);
   ~AddDelete();
 
   // Sweep to be done before advection
   void do_sweep();
   // Failsafe sweep (after advection) to make sure that cell
   // contains minimum number
-  void do_sweep_failsafe(const std::size_t np_min);
+  void do_sweep_failsafe(const size_t np_min);
 
   // To be deprecated?
   void do_sweep_weighted();
 
 private:
   // Private methods
-  void insert_particles(const std::size_t Np_def, const Cell& dolfin_cell);
-  void insert_particles_weighted(const std::size_t Np_def,
+  void insert_particles(const size_t Np_def, const Cell& dolfin_cell);
+  void insert_particles_weighted(const size_t Np_def,
                                  const Cell& dolfin_cell);
-  void delete_particles(const std::size_t Np_surp, const std::size_t Npc,
-                        const std::size_t cidx);
+  void delete_particles(const size_t Np_surp, const size_t Npc,
+                        const size_t cidx);
   void initialize_random_position(Point& xp_new,
                                   const std::vector<double>& x_min_max,
                                   const Cell& dolfin_cell);
 
   // TODO: Method needs careful checking
-  void check_bounded_update(Point& pfeval, const std::size_t idx_func);
+  void check_bounded_update(Point& pfeval, const size_t idx_func);
 
   // Access to particles
   particles* _P;
 
   // Min/Max number of particles
-  std::size_t _np_min, _np_max;
+  size_t _np_min, _np_max;
 
   // List of functions
   std::vector<std::shared_ptr<const Function>> _FList;
 
   //
-  std::vector<std::size_t> _pbound;
+  std::vector<size_t> _pbound;
   std::vector<double> _bounds;
 };
 } // namespace dolfin
