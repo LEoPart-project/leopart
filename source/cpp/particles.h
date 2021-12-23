@@ -57,8 +57,8 @@ public:
       for (unsigned int pidx = 0; pidx < num_cell_particles(cidx); ++pidx)
         _cell2part[cidx][pidx].push_back(p);
 
-  // Resize members for new number of properties
-  _empty_cell_property_values.resize(num_properties());
+    // Resize members for new number of properties
+    _empty_cell_property_values.resize(num_properties());
 
     return _ptemplate.size() - 1;
   }
@@ -71,6 +71,9 @@ public:
   // Pointer to the mesh
   const Mesh* mesh() const { return _mesh; }
 
+  // Get particle template
+  std::vector<unsigned int> ptemplate() const {return _ptemplate;}
+
   // Get size of property i
   unsigned int ptemplate(int i) const { return _ptemplate[i]; }
 
@@ -82,6 +85,11 @@ public:
 
   // Add particle to cell returning particle index
   int add_particle(int c);
+
+  particle get_particle(size_t cidx, size_t pidx)
+  {
+    return _cell2part[cidx][pidx];
+  }
 
   // Remove ith particle from cell c
   void delete_particle(int c, int i)
@@ -135,11 +143,11 @@ public:
   // If a cell has no particles, take the values from this cell function
   // as the default value in get_particle_contributions()
   void set_empty_cell_default_values(
-    std::shared_ptr<dolfin::MeshFunction<double>> cell_function,
-    const std::size_t property_idx)
+      std::shared_ptr<dolfin::MeshFunction<double>> cell_function,
+      const std::size_t property_idx)
   {
     if (_empty_cell_property_values.size() < num_properties())
-        _empty_cell_property_values.resize(num_properties());
+      _empty_cell_property_values.resize(num_properties());
 
     _empty_cell_property_values[property_idx] = cell_function;
   }
@@ -158,7 +166,7 @@ private:
   std::vector<unsigned int> _ptemplate;
   std::size_t _plen;
   std::vector<std::shared_ptr<dolfin::MeshFunction<double>>>
-    _empty_cell_property_values;
+      _empty_cell_property_values;
 
   // Needed for parallel
   const MPI_Comm _mpi_comm;
