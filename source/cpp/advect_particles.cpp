@@ -7,8 +7,8 @@
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/geometry/BoundingBoxTree.h>
-#include <dolfin/mesh/MeshFunction.h>
 #include <dolfin/mesh/Facet.h>
+#include <dolfin/mesh/MeshFunction.h>
 #include <dolfin/mesh/Vertex.h>
 
 #include "advect_particles.h"
@@ -17,8 +17,9 @@
 using namespace dolfin;
 
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U,
-                                   std::function<const Function&(int, double)> uhi, const std::string type1)
+advect_particles::advect_particles(
+    particles& P, FunctionSpace& U,
+    std::function<const Function&(int, double)> uhi, const std::string type1)
     : _P(&P), uh(uhi), _element(U.element())
 {
   // Following types are distinguished:
@@ -48,7 +49,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U,
 //-----------------------------------------------------------------------------
 // Using delegate constructors here
 advect_particles::advect_particles(
-    particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi, const std::string type1,
+    particles& P, FunctionSpace& U,
+    std::function<const Function&(int, double)> uhi, const std::string type1,
     Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : advect_particles::advect_particles(P, U, uhi, type1)
 {
@@ -91,8 +93,8 @@ advect_particles::advect_particles(
     for (std::size_t i = 0; i < num_rows; i++)
     {
       std::vector<double> bounded_domain_lims_helper(2);
-      bounded_domain_lims_helper[0] = pbc_limits[2*i];
-      bounded_domain_lims_helper[1] = pbc_limits[2*i + 1];
+      bounded_domain_lims_helper[0] = pbc_limits[2 * i];
+      bounded_domain_lims_helper[1] = pbc_limits[2 * i + 1];
 
       bounded_domain_lims.push_back(bounded_domain_lims_helper);
     }
@@ -109,13 +111,15 @@ advect_particles::advect_particles(
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                 const MeshFunction<std::size_t>& mesh_func)
+advect_particles::advect_particles(
+    particles& P, FunctionSpace& U,
+    std::function<const Function&(int, double)> uhi,
+    const MeshFunction<std::size_t>& mesh_func)
     : _P(&P), uh(uhi), _element(U.element())
 {
   // Confirm that mesh_func contains no periodic boundary values (3)
-  if (std::find(mesh_func.values(), mesh_func.values()+mesh_func.size(), 3)
-        != mesh_func.values()+mesh_func.size())
+  if (std::find(mesh_func.values(), mesh_func.values() + mesh_func.size(), 3)
+      != mesh_func.values() + mesh_func.size())
     dolfin_error("advect_particles.cpp::advect_particles",
                  "construct advect_particles class",
                  "Periodic boundary value encountered in facet MeshFunction");
@@ -136,9 +140,11 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                                   const MeshFunction<std::size_t>& mesh_func,
-                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
+advect_particles::advect_particles(
+    particles& P, FunctionSpace& U,
+    std::function<const Function&(int, double)> uhi,
+    const MeshFunction<std::size_t>& mesh_func,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits)
     : _P(&P), uh(uhi), _element(U.element())
 {
   // Confirm that mesh_func does contain periodic boundary values?
@@ -182,10 +188,12 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   init_weights();
 }
 //-----------------------------------------------------------------------------
-advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function<const Function&(int, double)> uhi,
-                                   const MeshFunction<std::size_t>& mesh_func,
-                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
-                                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
+advect_particles::advect_particles(
+    particles& P, FunctionSpace& U,
+    std::function<const Function&(int, double)> uhi,
+    const MeshFunction<std::size_t>& mesh_func,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits)
     : advect_particles(P, U, uhi, mesh_func, pbc_limits)
 {
   std::size_t gdim = _P->mesh()->geometry().dim();
@@ -201,8 +209,8 @@ advect_particles::advect_particles(particles& P, FunctionSpace& U, std::function
   for (std::size_t i = 0; i < num_rows; i++)
   {
     std::vector<double> bounded_domain_lims_helper(2);
-    bounded_domain_lims_helper[0] = bounded_limits[2*i];
-    bounded_domain_lims_helper[1] = bounded_limits[2*i + 1];
+    bounded_domain_lims_helper[0] = bounded_limits[2 * i];
+    bounded_domain_lims_helper[1] = bounded_limits[2 * i + 1];
 
     bounded_domain_lims.push_back(bounded_domain_lims_helper);
   }
@@ -349,6 +357,7 @@ void advect_particles::set_bfacets(const MeshFunction<std::size_t>& mesh_func)
 //-----------------------------------------------------------------------------
 void advect_particles::do_step(double dt)
 {
+  clear_escaped_particles();
   init_weights();
 
   const Mesh* mesh = _P->mesh();
@@ -466,6 +475,9 @@ void advect_particles::do_step(double dt)
             }
             else if (ftype == facet_t::open)
             {
+              // Copy particle to list of escaped particles
+              _escaped_particles.push_back(_P->get_particle(ci->index(), i));
+
               // Particle leaves the domain. Simply erase!
               // FIXME: additional check that particle indeed leaves domain
               // (u\cdotn > 0)
@@ -545,6 +557,22 @@ void advect_particles::do_step(double dt)
   // Relocate local and global
   _P->relocate(reloc);
 }
+
+void advect_particles::get_escaped_particles(double* buffer) const{
+  const std::vector<unsigned int> ptemplate = _P->ptemplate();
+  for (const particle& escaped_particle : _escaped_particles)
+  {
+    for (size_t property = 0; property < ptemplate.size(); ++property)
+    {
+      for (std::size_t k = 0; k < ptemplate[property]; k++)
+      {
+        *buffer = escaped_particle[property][k];
+        ++buffer;
+      }
+    }
+  }
+}
+
 //-----------------------------------------------------------------------------
 std::tuple<std::size_t, double>
 advect_particles::time2intersect(std::size_t cidx, double dt, const Point xp,
@@ -761,9 +789,10 @@ void advect_particles::pbc_limits_violation(std::size_t cidx, std::size_t pidx)
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::apply_bounded_domain_bc(
-    double dt, Point& up, std::size_t cidx,
-    std::size_t pidx, std::size_t fidx)
+void advect_particles::apply_bounded_domain_bc(double dt, Point& up,
+                                               std::size_t cidx,
+                                               std::size_t pidx,
+                                               std::size_t fidx)
 {
   // First push particle
   _P->push_particle(dt, up, cidx, pidx);
@@ -779,8 +808,8 @@ void advect_particles::apply_bounded_domain_bc(
   _P->set_property(cidx, pidx, 0, x);
 }
 //-----------------------------------------------------------------------------
-void advect_particles::bounded_domain_violation(
-    std::size_t cidx, std::size_t pidx)
+void advect_particles::bounded_domain_violation(std::size_t cidx,
+                                                std::size_t pidx)
 {
   // This method guarantees that particles can cross internal bc -> bounded bc
   // in one time step without being deleted.
@@ -934,6 +963,9 @@ void advect_particles::do_substep(
         }
         else if (ftype == facet_t::open)
         {
+          // Copy particle to list of escaped particles
+          _escaped_particles.push_back(_P->get_particle(cidx, pidx));
+
           // Particle leaves the domain. Relocate to another process (particle
           // will be discarded)
 
@@ -1007,10 +1039,10 @@ void advect_particles::do_substep(
           else
           {
             // Behavior in serial
-            std::size_t cell_id = _P->mesh()
-                                      ->bounding_box_tree()
-                                      ->compute_first_entity_collision(
-                                          _P->x(cidx, pidx));
+            std::size_t cell_id
+                = _P->mesh()
+                      ->bounding_box_tree()
+                      ->compute_first_entity_collision(_P->x(cidx, pidx));
             reloc.push_back({cidx, pidx, cell_id});
           }
           dt_rem = 0.0;
@@ -1043,7 +1075,7 @@ void advect_rk2::do_step(double dt)
   if (dt <= 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
-
+  clear_escaped_particles();
   init_weights();
 
   const Mesh* mesh = _P->mesh();
@@ -1070,8 +1102,7 @@ void advect_rk2::do_step(double dt)
         // Compute value at point using expansion coeffs and basis matrix
         std::vector<double> coeffs;
         Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs.data(), _space_dimension);
+        Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
@@ -1113,6 +1144,7 @@ void advect_rk3::do_step(double dt)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
 
+  clear_escaped_particles();
   init_weights();
 
   const Mesh* mesh = _P->mesh();
@@ -1140,8 +1172,7 @@ void advect_rk3::do_step(double dt)
         // convert to Eigen matrix
         std::vector<double> coeffs;
         Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs.data(), _space_dimension);
+        Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());
@@ -1189,12 +1220,12 @@ void advect_rk4::do_step(double dt)
   if (dt < 0.)
     dolfin_error("advect_particles.cpp::step", "set timestep.",
                  "Timestep should be > 0.");
-
+  clear_escaped_particles();
   init_weights();
 
   const Mesh* mesh = _P->mesh();
   const std::size_t gdim = mesh->geometry().dim();
-//  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
+  //  std::vector<std::vector<double>> coeffs_storage(mesh->num_cells());
   std::size_t num_substeps = 4;
 
   for (std::size_t step = 0; step < num_substeps; step++)
@@ -1216,8 +1247,7 @@ void advect_rk4::do_step(double dt)
         // Compute value at point using expansion coeffs and basis matrix
         std::vector<double> coeffs;
         Utils::return_expansion_coeffs(coeffs, *ci, &uh_step);
-        Eigen::Map<Eigen::VectorXd> exp_coeffs(
-            coeffs.data(), _space_dimension);
+        Eigen::Map<Eigen::VectorXd> exp_coeffs(coeffs.data(), _space_dimension);
         Eigen::VectorXd u_p = basis_mat * exp_coeffs;
 
         Point up(gdim, u_p.data());

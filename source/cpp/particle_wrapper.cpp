@@ -6,6 +6,7 @@
 
 #include <Eigen/Dense>
 #include <memory>
+#include <numeric>
 #include <vector>
 
 #include <pybind11/eigen.h>
@@ -56,98 +57,136 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("num_properties", &dolfin::particles::num_properties)
       .def("num_cell_particles", &dolfin::particles::num_cell_particles)
       .def("mesh", &dolfin::particles::mesh)
-      .def("ptemplate", &dolfin::particles::ptemplate)
+      .def("ptemplate", (unsigned int (dolfin::particles::*)(int) const)
+                            & dolfin::particles::ptemplate)
+      .def("ptemplate",
+           (std::vector<unsigned int>(dolfin::particles::*)() const)
+               & dolfin::particles::ptemplate)
       .def("add_particle", &dolfin::particles::add_particle)
       .def("delete_particle", &dolfin::particles::delete_particle)
-      .def("set_empty_cell_default_values", &dolfin::particles::set_empty_cell_default_values)
+      .def("set_empty_cell_default_values",
+           &dolfin::particles::set_empty_cell_default_values)
       .def("relocate",
            (void (dolfin::particles::*)()) & dolfin::particles::relocate);
 
   py::class_<dolfin::advect_particles>(m, "advect_particles")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<const dolfin::Function&(int, double)>, const std::string>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const std::string,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+                    std::function<const dolfin::Function&(int, double)>,
+                    const std::string>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const std::string,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                    std::function<const dolfin::Function&(int, double)>,
+                    const dolfin::MeshFunction<std::size_t>&>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_particles::do_step)
+      .def(
+          "get_escaped_particles",
+          [](dolfin::advect_particles& self) -> py::array_t<double>
+          {
+            const size_t n_escaped_particles
+                = self.get_escaped_particles_size();
+            const std::vector<unsigned int> particle_template
+                = self.get_particle_template();
+            const size_t n_particle_entries = std::accumulate(
+                particle_template.begin(), particle_template.end(), 0u);
+            py::array_t<double> buffer(
+                {n_escaped_particles, n_particle_entries});
+            self.get_escaped_particles(buffer.mutable_data());
+            return buffer;
+          },
+          "Return the particles that escaped through the open boundary. Buffer "
+          "of escaped particles is flushed each time step.")
       .def("update_facets_info", &dolfin::advect_particles::update_facets_info);
 
-  py::class_<dolfin::advect_rk2>(m, "advect_rk2")
+  py::class_<dolfin::advect_rk2, dolfin::advect_particles>(m, "advect_rk2")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<const dolfin::Function&(int, double)>, const std::string>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const std::string,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+                    std::function<const dolfin::Function&(int, double)>,
+                    const std::string>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const std::string,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                    std::function<const dolfin::Function&(int, double)>,
+                    const dolfin::MeshFunction<std::size_t>&>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk2::do_step)
       .def("update_facets_info", &dolfin::advect_rk2::update_facets_info);
 
-  py::class_<dolfin::advect_rk3>(m, "advect_rk3")
+  py::class_<dolfin::advect_rk3, dolfin::advect_particles>(m, "advect_rk3")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<const dolfin::Function&(int, double)>, const std::string>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const std::string,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+                    std::function<const dolfin::Function&(int, double)>,
+                    const std::string>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const std::string,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                    std::function<const dolfin::Function&(int, double)>,
+                    const dolfin::MeshFunction<std::size_t>&>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk3::do_step)
       .def("update_facets_info", &dolfin::advect_rk3::update_facets_info);
 
-  py::class_<dolfin::advect_rk4>(m, "advect_rk4")
+  py::class_<dolfin::advect_rk4, dolfin::advect_particles>(m, "advect_rk4")
       .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
-                    std::function<const dolfin::Function&(int, double)>, const std::string>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const std::string,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
-      .def(py::init<
-           dolfin::particles&, dolfin::FunctionSpace&,
-           std::function<const dolfin::Function&(int, double)>, const dolfin::MeshFunction<std::size_t>&,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
-           Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+                    std::function<const dolfin::Function&(int, double)>,
+                    const std::string>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const std::string,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                    std::function<const dolfin::Function&(int, double)>,
+                    const dolfin::MeshFunction<std::size_t>&>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
+      .def(
+          py::init<dolfin::particles&, dolfin::FunctionSpace&,
+                   std::function<const dolfin::Function&(int, double)>,
+                   const dolfin::MeshFunction<std::size_t>&,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>,
+                   Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>>>())
       .def("do_step", &dolfin::advect_rk4::do_step)
       .def("update_facets_info", &dolfin::advect_rk4::update_facets_info);
 
@@ -162,20 +201,32 @@ PYBIND11_MODULE(particle_wrapper, m)
       .def("project_cg", &dolfin::l2projection::project_cg);
 
   py::class_<dolfin::StokesStaticCondensation>(m, "StokesStaticCondensation")
-      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>>())
-      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
-      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
                     std::shared_ptr<const dolfin::Form>>())
-      .def(py::init<std::shared_ptr<const dolfin::Mesh>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
                     std::shared_ptr<const dolfin::Form>,
                     std::vector<std::shared_ptr<const dolfin::DirichletBC>>>())
       .def("assemble_global",
@@ -192,22 +243,31 @@ PYBIND11_MODULE(particle_wrapper, m)
                dolfin::Function&, dolfin::Function&, const std::string,
                const std::string))
                & dolfin::StokesStaticCondensation::solve_problem)
-      .def("get_global_lhs_matrix", &dolfin::StokesStaticCondensation::get_global_lhs_matrix)
-      .def("get_global_rhs_vector", &dolfin::StokesStaticCondensation::get_global_rhs_vector)
+      .def("get_global_lhs_matrix",
+           &dolfin::StokesStaticCondensation::get_global_lhs_matrix)
+      .def("get_global_rhs_vector",
+           &dolfin::StokesStaticCondensation::get_global_rhs_vector)
       .def("backsubstitute", &dolfin::StokesStaticCondensation::backsubstitute);
 
   py::class_<dolfin::PDEStaticCondensation>(m, "PDEStaticCondensation")
-      .def(
-          py::init<std::shared_ptr<const dolfin::Mesh>, dolfin::particles&, std::shared_ptr<const dolfin::Form>,
-                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                   std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                   std::shared_ptr<const dolfin::Form>, const std::size_t>())
       .def(py::init<std::shared_ptr<const dolfin::Mesh>, dolfin::particles&,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
-                    std::shared_ptr<const dolfin::Form>, std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>, const std::size_t>())
+      .def(py::init<std::shared_ptr<const dolfin::Mesh>, dolfin::particles&,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
+                    std::shared_ptr<const dolfin::Form>,
                     std::vector<std::shared_ptr<const dolfin::DirichletBC>>,
                     const std::size_t>())
       .def("assemble", &dolfin::PDEStaticCondensation::assemble)

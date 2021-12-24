@@ -112,7 +112,7 @@ def test_advect_open(advection_scheme):
     # Given time do_step:
     dt = 0.05
 
-    p = particles(x, [x, x], mesh)
+    p = particles(x, [np.ones(x.shape), np.ones(x.shape[0]) * 2, np.ones(x.shape) * 3], mesh)
 
     V = VectorFunctionSpace(mesh, "CG", 1)
     v = Function(V)
@@ -140,9 +140,22 @@ def test_advect_open(advection_scheme):
     else:
         assert False
 
-    # Do one timestep, particle must bounce from wall of
     ap.do_step(dt)
     num_particles = p.number_of_particles()
+
+    # Check number and properties of escaped particles
+    escaped_particles = comm.gather(ap.get_escaped_particles(), root=0)
+    if comm.rank == 0:
+        escaped_particles = np.float16(np.vstack(escaped_particles))
+        num_escaped_particles = len(escaped_particles)
+        assert num_escaped_particles == x.shape[0]
+    else:
+        escaped_particles = None
+    escaped_particles = comm.bcast(escaped_particles, root=0)
+    np.testing.assert_almost_equal(
+        escaped_particles[:, 3:10],
+        np.hstack((np.ones(x.shape), np.ones((x.shape[0], 1)) * 2, np.ones(x.shape) * 3)),
+    )
 
     # Check if all particles left domain
     if comm.rank == 0:

@@ -8,8 +8,8 @@
 #define ADVECT_PARTICLES_H
 
 #include <Eigen/Dense>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <dolfin/geometry/Point.h>
 
@@ -17,11 +17,12 @@
 
 namespace dolfin
 {
-  // Forward declarations
-  class FunctionSpace;
-  class Function;
-  class FiniteElement;
-  template<typename T> class MeshFunction;
+// Forward declarations
+class FunctionSpace;
+class Function;
+class FiniteElement;
+template <typename T>
+class MeshFunction;
 
 // enum for external facet types
 enum class facet_t : std::uint8_t
@@ -53,8 +54,7 @@ public:
   // Document
   advect_particles(
       particles& P, FunctionSpace& U,
-      std::function<const Function&(int, double)> uhi,
-      const std::string type1,
+      std::function<const Function&(int, double)> uhi, const std::string type1,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits);
 
   // Document
@@ -77,6 +77,15 @@ public:
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> pbc_limits,
       Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, 1>> bounded_limits);
 
+  // Assign escaped particles to buffer
+  void get_escaped_particles(double* buffer) const;
+
+  // Get number of escaped particles
+  size_t get_escaped_particles_size() const {return _escaped_particles.size();}
+
+  // Provide an interface to the particle template
+  std::vector<unsigned int> get_particle_template() const {return _P->ptemplate();}
+
   // Step forward in time dt
   void do_step(double dt);
 
@@ -91,6 +100,7 @@ public:
 protected:
   particles* _P;
 
+  void clear_escaped_particles() { _escaped_particles.clear(); }
   void set_bfacets(const std::string btype);
   void set_bfacets(const MeshFunction<std::size_t>& mesh_func);
 
@@ -147,7 +157,9 @@ protected:
   // Multi-stage scheme data
   std::size_t xp0_idx, up0_idx;
 
-  private:
+private:
+  // Collect the escaped particles
+  std::vector<particle> _escaped_particles;
 
   void update_particle_template()
   {
@@ -162,8 +174,6 @@ protected:
         _P->set_property(cidx, pidx, xp0_idx, _P->x(cidx, pidx));
     }
   }
-
-
 };
 
 class advect_rk2 : public advect_particles
@@ -205,7 +215,6 @@ public:
   void do_step(double dt);
 
 protected:
-
   void init_weights()
   {
     dti = {0.5, 0.5, 1.0, 1.0};
