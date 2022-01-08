@@ -282,6 +282,11 @@ PYBIND11_MODULE(particle_wrapper, m)
                dolfin::Function&, dolfin::Function&, dolfin::Function&,
                const std::string, const std::string))
                & dolfin::PDEStaticCondensation::solve_problem)
+      .def("solve_problem",
+           (void (dolfin::PDEStaticCondensation::*)(
+               dolfin::Function&, dolfin::Function&, const dolfin::Form&, double, double,
+               const std::string, const std::string))
+               & dolfin::PDEStaticCondensation::solve_problem)
       .def("apply_boundary", &dolfin::PDEStaticCondensation::apply_boundary);
 
   py::class_<dolfin::AddDelete>(m, "AddDelete")

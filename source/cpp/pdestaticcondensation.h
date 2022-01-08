@@ -61,6 +61,11 @@ public:
   void solve_problem(Function& Uglobal, Function& Ulocal, Function& Lambda,
                      const std::string solver = "none",
                      const std::string preconditioner = "default");
+  void solve_problem(Function& Uglobal, Function& Ulocal, const dolfin::Form& w,
+                     double lb, double ub,
+                     const std::string solver = "none",
+                     const std::string preconditioner = "default");
+
   void apply_boundary(DirichletBC& DBC);
 
 private:
@@ -68,6 +73,7 @@ private:
   void backsubtitute(const Function& Uglobal, Function& Ulocal);
   void backsubtitute(const Function& Uglobal, Function& Ulocal,
                      Function& Lambda);
+  void backsubtitute_bounded(const Function& Uglobal, Function& Ulocal, const Form& w, double lb, double ub);
 
   /* Comes from particles
   void get_particle_contributions(Eigen::Matrix<double, Eigen::Dynamic,

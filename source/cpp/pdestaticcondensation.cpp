@@ -25,18 +25,20 @@
 #include "formutils.h"
 #include "particles.h"
 
+#include "QuadProg++.hh"
 #include "pdestaticcondensation.h"
 
 using namespace dolfin;
 
-PDEStaticCondensation::PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, particles& P,
-                                             std::shared_ptr<const Form> N, std::shared_ptr<const Form> G,
-                                             std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
-                                             std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
-                                             std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
-                                             const std::size_t idx_pproperty)
-    : mesh(mesh), _P(&P), N(N), G(G), L(L), H(H), B(B), Q(Q), R(R),
-      S(S), mpi_comm(mesh->mpi_comm()), invKS_list(mesh->num_cells()),
+PDEStaticCondensation::PDEStaticCondensation(
+    std::shared_ptr<const Mesh> mesh, particles& P,
+    std::shared_ptr<const Form> N, std::shared_ptr<const Form> G,
+    std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
+    std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+    std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
+    const std::size_t idx_pproperty)
+    : mesh(mesh), _P(&P), N(N), G(G), L(L), H(H), B(B), Q(Q), R(R), S(S),
+      mpi_comm(mesh->mpi_comm()), invKS_list(mesh->num_cells()),
       LHe_list(mesh->num_cells()), Ge_list(mesh->num_cells()),
       Be_list(mesh->num_cells()), Re_list(mesh->num_cells()),
       QRe_list(mesh->num_cells()), _idx_pproperty(idx_pproperty)
@@ -82,8 +84,11 @@ PDEStaticCondensation::PDEStaticCondensation(std::shared_ptr<const Mesh> mesh, p
 }
 //-----------------------------------------------------------------------------
 PDEStaticCondensation::PDEStaticCondensation(
-    std::shared_ptr<const Mesh> mesh, particles& P, std::shared_ptr<const Form> N, std::shared_ptr<const Form> G, std::shared_ptr<const Form> L,
-    std::shared_ptr<const Form> H, std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q, std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
+    std::shared_ptr<const Mesh> mesh, particles& P,
+    std::shared_ptr<const Form> N, std::shared_ptr<const Form> G,
+    std::shared_ptr<const Form> L, std::shared_ptr<const Form> H,
+    std::shared_ptr<const Form> B, std::shared_ptr<const Form> Q,
+    std::shared_ptr<const Form> R, std::shared_ptr<const Form> S,
     std::vector<std::shared_ptr<const DirichletBC>> bcs,
     const std::size_t idx_pproperty)
     : PDEStaticCondensation::PDEStaticCondensation(mesh, P, N, G, L, H, B, Q, R,
@@ -299,6 +304,30 @@ void PDEStaticCondensation::solve_problem(Function& Uglobal, Function& Ulocal,
   backsubtitute(Uglobal, Ulocal, Lambda);
 }
 //-----------------------------------------------------------------------------
+void PDEStaticCondensation::solve_problem(Function& Uglobal,
+                                              Function& Ulocal, const dolfin::Form& w,
+                                              double lb, double ub,
+                                              const std::string solver,
+                                              const std::string preconditioner)
+{
+  // TODO: Check if Uglobal, Ulocal are correct
+  if (solver == "none")
+  {
+    // Direct solver
+    solve(A_g, *(Uglobal.vector()), f_g);
+  }
+  else
+  {
+    // Iterative solver
+    std::size_t num_it
+        = solve(A_g, *(Uglobal.vector()), f_g, solver, preconditioner);
+    if (MPI::rank(mpi_comm) == 0)
+      std::cout << "Number of iterations" << num_it << std::endl;
+  }
+  // Backsubtitution in Ulocal, check this carefully!
+  backsubtitute_bounded(Uglobal, Ulocal, w, lb, ub);
+}
+//-----------------------------------------------------------------------------
 void PDEStaticCondensation::apply_boundary(DirichletBC& DBC)
 {
   DBC.apply(A_g, f_g);
@@ -361,4 +390,81 @@ void PDEStaticCondensation::backsubtitute(const Function& Uglobal,
   }
   Ulocal.vector()->apply("insert");
   Lambda.vector()->apply("insert");
+}
+//-----------------------------------------------------------------------------
+void PDEStaticCondensation::backsubtitute_bounded(const Function& Uglobal,
+                                                  Function& Ulocal,
+                                                  const Form& w, double lb,
+                                                  double ub)
+{
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> CE;
+  Eigen::MatrixXd CI;
+  Eigen::VectorXd ce0, ci0;
+
+  // Inequality constraints are equal for "troubled" cells
+  CI.resize(_space_dimension, _space_dimension * _value_size_loc * 2);
+  CI.setZero();
+  ci0.resize(_space_dimension * _value_size_loc * 2);
+  ci0.setZero();
+  for (std::size_t i = 0; i < _space_dimension; i++)
+  {
+    CI(i, i) = 1.;
+    CI(i, i + _space_dimension) = -1;
+    ci0(i) = -lb;
+    ci0(i + _space_dimension) = ub;
+  }
+
+  for (CellIterator cell(*(this->mesh)); !cell.end(); ++cell)
+  {
+    // Backsubstitute global solution Uglobal to get local solution Ulocal
+    std::size_t nrowsQ, ncolsQ, nrowsS, ncolsS;
+    std::tie(nrowsQ, ncolsQ) = FormUtils::local_tensor_size(*Q, *cell);
+    std::tie(nrowsS, ncolsS) = FormUtils::local_tensor_size(*S, *cell);
+    auto cdof_rowsQ = Q->function_space(0)->dofmap()->cell_dofs(cell->index());
+    auto cdof_rowsS = S->function_space(0)->dofmap()->cell_dofs(cell->index());
+
+    Eigen::Matrix<double, Eigen::Dynamic, 1> Uglobal_e, Ulocal_e;
+    Uglobal_e.resize(nrowsS);
+
+    Uglobal.vector()->get_local(Uglobal_e.data(), nrowsS, cdof_rowsS.data());
+    Ulocal_e
+        = invKS_list[cell->index()]
+          * (QRe_list[cell->index()] - LHe_list[cell->index()] * Uglobal_e);
+
+    bool bounds_violated
+        = ((Ulocal_e.array() < lb).any() || (Ulocal_e.array() > ub).any());
+    if (bounds_violated)
+    {
+      // Particle contributions
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> q;
+      Eigen::Matrix<double, Eigen::Dynamic, 1> f;
+      Eigen::MatrixXd N_ep;
+      Eigen::VectorXd Q_ep;
+
+      size_t nrowsCE;
+      size_t ncolsCE;
+      std::tie(nrowsCE, ncolsCE) = FormUtils::local_tensor_size(w, *cell);
+      ce0.resize(ncolsCE);
+
+      _P->get_particle_contributions(q, f, *cell, _element, _space_dimension,
+                                     _value_size_loc, _idx_pproperty);
+      // Matrix and vector for l2 projection
+      N_ep = q * q.transpose();
+      Q_ep = -q * f;
+
+      // Assemble the equality constraint
+      FormUtils::local_assembler(CE, w, *cell, nrowsCE, ncolsCE);
+      ce0 = -CE.transpose() * Ulocal_e;
+
+      // Solve quadratic programme and add to vector
+      Eigen::VectorXd u_i;
+      quadprogpp::solve_quadprog(N_ep, Q_ep, CE, ce0, CI, ci0, u_i);
+      Ulocal.vector()->set_local(u_i.data(), nrowsQ, cdof_rowsQ.data());
+    }
+    else
+    {
+      Ulocal.vector()->set_local(Ulocal_e.data(), nrowsQ, cdof_rowsQ.data());
+    }
+  }
+  Ulocal.vector()->apply("insert");
 }

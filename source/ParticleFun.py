@@ -217,6 +217,7 @@ def _parse_advect_particles_args(args):
 
         def _default_velocity_return(step, dt):
             return uh_cpp
+
         args[2] = _default_velocity_return
     return args
 
@@ -486,9 +487,8 @@ class PDEStaticCondensation(compiled_module.PDEStaticCondensation):
         a = list(args)
         for i, arg in enumerate(a):
             # Check because number of functions is either 2 or 3
-            if not isinstance(arg, str):
-                if not isinstance(arg, cpp.function.Function):
-                    a[i] = a[i]._cpp_object
+            if not isinstance(arg, (str, int, float, cpp.fem.Form, cpp.function.Function)):
+                a[i] = a[i]._cpp_object
         super().solve_problem(*tuple(a))
 
     def __call__(self, *args):
