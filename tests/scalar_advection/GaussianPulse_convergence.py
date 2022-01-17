@@ -79,7 +79,7 @@ outdir_base = "./../../results/GaussianPulse_Rotation/"
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
     outdir = f"{outdir_base}k{k}l{l}kbar{kbar}_nproc{comm.Get_size()}/"
 
-    output_table = os.path.join(outdir, output_table.txt)
+    output_table = os.path.join(outdir, "output_table.txt")
     if comm.rank == 0:
         if not os.path.exists(outdir):
             os.makedirs(outdir)

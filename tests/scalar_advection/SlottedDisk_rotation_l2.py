@@ -29,6 +29,7 @@ from dolfin import (
 )
 from mpi4py import MPI as pyMPI
 import numpy as np
+import os
 
 # Load from package
 from leopart import (
