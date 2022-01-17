@@ -121,19 +121,8 @@ outdir_base = "./../../results/PeriodicPulse_Translation_adddelete/"
 # Then start the loop over the tests set-ups
 for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
     # Set information for output
-    outdir = (
-        outdir_base
-        + "k"
-        + str(k)
-        + "l"
-        + str(l)
-        + "kbar"
-        + str(kbar)
-        + "_nprocs"
-        + str(comm.Get_size())
-        + "/"
-    )
-    output_table = outdir + "output_table.txt"
+    outdir = f"{outdir_base}k{k}l{l}kbar{kbar}_nproc{comm.Get_size()}/"
+    output_table = os.path.join(outdir, "output_table.txt")
 
     if comm.rank == 0:
         if not os.path.exists(outdir):
@@ -153,9 +142,9 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
     for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
-            print("Starting computation with grid resolution " + str(nx))
+            print(f"Starting computation with grid resolution {nx}")
 
-        output_field = File(outdir + "psi_h" + "_nx" + str(nx) + ".pvd")
+        output_field = File(os.path.join(outdir, f"psi_h_nx{nx}.pvd"))
 
         # Compute num steps till completion
         num_steps = np.rint(Tend / float(dt))
@@ -256,7 +245,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         area_end = assemble(psi_h * dx)
 
         if comm.Get_rank() == 0:
-            print("l2 error " + str(l2_error))
+            print(f"l2 error {l2_error}")
 
             # Store in error error table
             num_cells_t = mesh.num_entities_global(2)

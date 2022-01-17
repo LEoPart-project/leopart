@@ -78,16 +78,16 @@ num_steps = np.rint(Tend / float(dt))
 
 # Output directory
 store_step = 5
-outdir = "./../../results/SlottedDisk_PDE_zeta" + str(int(float(zeta))) + "/"
+outdir = f"./../../results/SlottedDisk_PDE_zeta{int(float(zeta))}/"
 
 # Mesh
 mesh = Mesh("./../../meshes/circle_0.xml")
 mesh = refine(refine(refine(mesh)))
 
-outfile = XDMFFile(mesh.mpi_comm(), outdir + "psi_h.xdmf")
+outfile = XDMFFile(mesh.mpi_comm(), os.path.join(outdir, "psi_h.xdmf"))
 
 # Particle output
-fname_list = [outdir + "xp.pickle", outdir + "rhop.pickle"]
+fname_list = [os.path.join(outdir, "xp.pickle"), os.path.join(outdir, "rhop.pickle")]
 property_list = [0, 1]
 
 # Set slotted disk
@@ -163,7 +163,7 @@ while step < num_steps:
     t += float(dt)
 
     if comm.Get_rank() == 0:
-        print("Step " + str(step))
+        print(f"Step {step}")
 
     # Advect particles
     ap.do_step(float(dt))
@@ -195,12 +195,12 @@ area_end = assemble(psi_h * dx)
 num_part = p.number_of_particles()
 l2_error = np.sqrt(abs(assemble((psi_h00 - psi_h) * (psi_h00 - psi_h) * dx)))
 if comm.Get_rank() == 0:
-    print("Num cells " + str(mesh.num_entities_global(2)))
-    print("Num particles " + str(num_part))
-    print("Elapsed time " + str(timer.elapsed()[0]))
-    print("Area error " + str(abs(area_end - area_0)))
-    print("Error " + str(l2_error))
-    print("Min max phi {} {}".format(psi_h_min, psi_h_max))
-    print("Min max phibar {} {}".format(psibar_min, psibar_max))
+    print(f"Num cells {mesh.num_entities_global(2)}")
+    print(f"Num particles {num_part}")
+    print(f"Elapsed time {timer.elapsed()[0]}")
+    print(f"Area error {abs(area_end - area_0)}")
+    print(f"Error {l2_error}")
+    print(f"Min max phi {psi_h_min}, {psi_h_max}")
+    print(f"Min max phibar {psibar_min}, {psibar_max}")
 
 outfile.close()
