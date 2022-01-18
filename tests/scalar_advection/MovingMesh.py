@@ -37,6 +37,7 @@ from leopart import (
 )
 from mpi4py import MPI as pyMPI
 import numpy as np
+import os
 
 comm = pyMPI.COMM_WORLD
 
@@ -71,7 +72,7 @@ outdir_base = "./../../results/MovingMesh/"
 mesh = RectangleMesh(Point(xmin, ymin), Point(xmax, ymax), nx, ny)
 n = FacetNormal(mesh)
 
-outfile = File(mesh.mpi_comm(), outdir_base + "psi_h.pvd")
+outfile = File(mesh.mpi_comm(), os.path.join(outdir_base, "psi_h.pvd"))
 
 V = VectorFunctionSpace(mesh, "DG", 2)
 Vcg = VectorFunctionSpace(mesh, "CG", 1)
@@ -98,8 +99,8 @@ vy = "-pow(sin(pi*x[1]), 2) * sin(2*pi*x[0])"
 gt_plus = "0.5 * cos(pi*t)"
 gt_min = "-0.5 * cos(pi*t)"
 
-u_expr = Expression((ux + "*" + gt_min, vy + "*" + gt_min), degree=2, t=0.0)
-u_expre_neg = Expression((ux + "*" + gt_plus, vy + "*" + gt_plus), degree=2, t=0.0)
+u_expr = Expression((f"{ux}*{gt_min}", f"{vy}*{gt_min}"), degree=2, t=0.0)
+u_expre_neg = Expression((f"{ux}* {gt_plus}", f"{vy}*{gt_plus}"), degree=2, t=0.0)
 
 # Mesh velocity
 umesh = Function(Vcg)
@@ -178,6 +179,6 @@ for step in range(num_steps):
     assign(phih0, phih)
 
     # Global mass error, should be machine precision
-    print("Mass error " + str(new_area - old_area))
+    print(f"Mass error {new_area - old_area}")
 
     outfile << phih0

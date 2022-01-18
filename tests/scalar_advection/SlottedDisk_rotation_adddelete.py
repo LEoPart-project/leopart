@@ -29,6 +29,7 @@ from dolfin import (
 )
 from mpi4py import MPI as pyMPI
 import numpy as np
+import os
 
 # Load from package
 from leopart import (
@@ -103,7 +104,7 @@ mesh = refine(mesh)
 mesh = refine(mesh)
 mesh = refine(mesh)
 
-outfile = XDMFFile(mesh.mpi_comm(), outdir + "psi_h.xdmf")
+outfile = XDMFFile(mesh.mpi_comm(), os.path.join(outdir, "psi_h.xdmf"))
 
 # Set slotted disk
 psi0_expr = SlottedDisk(
@@ -144,7 +145,7 @@ while step < num_steps:
     t += float(dt)
 
     if comm.Get_rank() == 0:
-        print("Step " + str(step))
+        print(f"Step {step}")
 
     AD.do_sweep()
     ap.do_step(float(dt))
@@ -159,7 +160,7 @@ timer.stop()
 
 area_end = assemble(psi_h * dx)
 if comm.Get_rank() == 0:
-    print("Num cells " + str(mesh.num_entities_global(2)))
-    print("Num particles " + str(len(x)))
-    print("Elapsed time " + str(timer.elapsed()[0]))
-    print("Area error " + str(abs(area_end - area_0)))
+    print(f"Num cells {mesh.num_entities_global(2)}")
+    print(f"Num particles {len(x)}")
+    print(f"Elapsed time {timer.elapsed()[0]}")
+    print(f"Area error {abs(area_end - area_0)}")

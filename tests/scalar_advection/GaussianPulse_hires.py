@@ -78,24 +78,13 @@ dt_list = [Constant(0.08 / (pow(2, i))) for i in i_list]
 storestep_list = [1 * pow(2, i) for i in i_list]
 
 # Directory for output
-outdir_base = "./../../results/GaussianPulse_" + projection_type + "/"
+outdir_base = f"./../../results/GaussianPulse_{projection_type}/"
 
 # Then start the loop over the tests set-ups
 for (k, l, kbar) in zip(k_list, l_list, kbar_list):
-    outdir = (
-        outdir_base
-        + "k"
-        + str(k)
-        + "l"
-        + str(l)
-        + "kbar"
-        + str(kbar)
-        + "_nproc"
-        + str(comm.Get_size())
-        + "/"
-    )
+    outdir = f"{outdir_base}k{k}l{l}kbar{kbar}_nproc{comm.Get_size()}/"
 
-    output_table = outdir + "output_table.txt"
+    output_table = os.path.join(outdir, "output_table.txt")
     if comm.rank == 0:
         if not os.path.exists(outdir):
             os.makedirs(outdir)
@@ -117,7 +106,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
 
     for (nx, dt, pres, store_step) in zip(nx_list, dt_list, pres_list, storestep_list):
         if comm.Get_rank() == 0:
-            print("Starting computation with grid resolution " + str(nx))
+            print(f"Starting computation with grid resolution {nx}")
 
         # Compute num steps till completion
         num_steps = np.rint(Tend / float(dt))
@@ -129,7 +118,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             mesh = refine(mesh)
             n /= 2
 
-        output_field = XDMFFile(mesh.mpi_comm(), outdir + "psi_h_nx" + str(nx) + ".xdmf")
+        output_field = XDMFFile(mesh.mpi_comm(), os.path.join(outdir, f"psi_h_nx{nx}.xdmf"))
 
         # Velocity and initial condition
         V = VectorFunctionSpace(mesh, "DG", 3)
@@ -208,7 +197,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
             t += float(dt)
 
             if comm.rank == 0:
-                print("Step " + str(step))
+                print(f"Step {step}")
 
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
@@ -256,7 +245,7 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
         area_end = assemble(psi_h * dx)
 
         if comm.Get_rank() == 0:
-            print("l2 error " + str(l2_error))
+            print(f"l2 error {l2_error}")
 
             # Store in error error table
             num_cells_t = mesh.num_entities_global(2)
@@ -285,5 +274,5 @@ for (k, l, kbar) in zip(k_list, l_list, kbar_list):
                 )
 
         time_table = timings(TimingClear.keep, [TimingType.wall])
-        with open(outdir + "timings" + str(nx) + ".log", "w") as out:
+        with open(os.path.join(outdir, f"timings{nx}.log"), "w") as out:
             out.write(time_table.str(True))

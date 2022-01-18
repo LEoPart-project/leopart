@@ -133,19 +133,8 @@ outdir_base = "./../../results/SineHump_convergence_" + projection_type + "/"
 # Then start the loop over the tests set-ups
 for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
     # Set information for output
-    outdir = (
-        outdir_base
-        + "k"
-        + str(k)
-        + "l"
-        + str(l)
-        + "kbar"
-        + str(kbar)
-        + "_nprocs"
-        + str(comm.Get_size())
-        + "/"
-    )
-    output_table = outdir + "output_table.txt"
+    outdir = f"{outdir_base}k{k}l{l}kbar{kbar}_nproc{comm.Get_size()}/"
+    output_table = os.paht.join(outdir, "output_table.txt")
 
     if comm.rank == 0:
         if not os.path.exists(outdir):
@@ -168,12 +157,12 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
 
         # Particle output
         fname_list = [
-            outdir + "xp_nx" + str(nx) + ".pickle",
-            outdir + "rhop_nx" + str(nx) + ".pickle",
+            os.path.join(outdir, f"xp_nx{nx}.pickle"),
+            os.path.join(outdir, f"rhop_nx{nx}.pickle"),
         ]
         property_list = [0, 1]
 
-        conservation_data = outdir + "conservation_nx" + str(nx) + ".csv"
+        conservation_data = os.path.join(outdir, "conservation_nx{nx}.csv")
         if comm.rank == 0:
             with open(conservation_data, "w") as write_file:
                 writer = csv.writer(write_file)
@@ -186,7 +175,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         mesh = RectangleMesh.create(
             [Point(xmin, ymin), Point(xmax, ymax)], [nx, nx], CellType.Type.triangle
         )
-        output_field = XDMFFile(mesh.mpi_comm(), outdir + "psi_h" + "_nx" + str(nx) + ".xdmf")
+        output_field = XDMFFile(mesh.mpi_comm(), os.path.join(outdir, f"psi_h_nx{nx}.xdmf"))
 
         # Velocity and initial condition
         V = VectorFunctionSpace(mesh, "CG", 1)
@@ -255,7 +244,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
         while step < num_steps:
             step += 1
             if comm.rank == 0:
-                print("Step number" + str(step))
+                print(f"Step number {step}")
 
             # Advect particle, assemble and solve pde projection
             t1 = Timer("[P] Advect particles step")
@@ -293,7 +282,7 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                     with open(conservation_data, "a") as write_file:
                         data = [step * float(dt), area_n, area_error]
                         writer = csv.writer(write_file)
-                        writer.writerow(["{:10.7g}".format(val) for val in data])
+                        writer.writerow([f"{val:10.7g}" for val in data])
             del t1
         timer.stop()
         output_field.close()
@@ -324,5 +313,5 @@ for i, (k, l, kbar) in enumerate(zip(k_list, l_list, kbar_list)):
                 )
 
         time_table = timings(TimingClear.keep, [TimingType.wall])
-        with open(outdir + "timings" + str(nx) + ".log", "w") as out:
+        with open(os.path.join(outdir, "timings{nx}.log"), "w") as out:
             out.write(time_table.str(True))
