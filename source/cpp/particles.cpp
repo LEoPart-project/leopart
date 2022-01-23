@@ -80,6 +80,51 @@ int particles::add_particle(int c)
   return _cell2part[c].size() - 1;
 }
 //-----------------------------------------------------------------------------
+void particles::AddParticles(
+    Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic,
+                                  Eigen::RowMajor>>
+        p_array,const std::vector<unsigned int>& p_template) 
+{
+  // Note: p_array is 2D [num_particles, property_data]
+
+  // Get geometry dimension of mesh
+  _Ndim = 3;
+
+
+  // Calculate the offset for each particle property and overall size
+  std::vector<unsigned int> offset = {0};
+  for (const auto& p : p_template)
+    offset.push_back(offset.back() + p);
+  //_plen = offset.back();
+
+  // Loop over particles:
+  for (Eigen::Index i = 0; i < p_array.rows(); i++)
+  {
+    // Position and get hosting cell
+    Point xp(_Ndim, p_array.row(i).data());
+
+    unsigned int cell_id
+        = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
+    if (cell_id != std::numeric_limits<unsigned int>::max())
+    {
+      // Initialize particle with position
+      particle pnew = {xp};
+
+      for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+      {
+        Point property(_ptemplate[j], p_array.row(i).data() + offset[j]);
+        pnew.push_back(property);
+      }
+
+      // TO DO: FLIP type advection requires that particle also
+      // carries the old values
+
+      // Push back to particle structure
+      _cell2part[cell_id].push_back(pnew);
+    }
+  }
+}
+//-----------------------------------------------------------------------------
 void particles::interpolate(const Function& phih,
                             const std::size_t property_idx)
 {

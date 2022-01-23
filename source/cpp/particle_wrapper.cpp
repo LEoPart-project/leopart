@@ -38,6 +38,11 @@ PYBIND11_MODULE(particle_wrapper, m)
            Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic,
                                          Eigen::RowMajor>>,
            const std::vector<unsigned int>&, const dolfin::Mesh&>())
+      .def("AddParticles",
+           (void (dolfin::particles::*)(
+               Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic,Eigen::RowMajor>>,
+               const std::vector<unsigned int>&))
+               & dolfin::particles::AddParticles)
       .def("interpolate", &dolfin::particles::interpolate)
       .def("increment", (void (dolfin::particles::*)(const dolfin::Function&,
                                                      const dolfin::Function&,
