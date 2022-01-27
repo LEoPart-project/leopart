@@ -97,6 +97,9 @@ public:
     _cell2part[c].erase(_cell2part[c].begin() + i);
   }
 
+  // Add new particles
+  void AddParticles(Eigen::Ref<const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic,Eigen::RowMajor>>p_array,const std::vector<unsigned int>& p_template); 
+
   // Interpolate function to particles
   void interpolate(const Function& phih, const std::size_t property_idx);
 
