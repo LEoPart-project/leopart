@@ -34,6 +34,7 @@ from dolfin import (
 )
 import numpy as np
 from mpi4py import MPI as pyMPI
+import os
 from leopart import (
     particles,
     advect_rk3,
@@ -152,8 +153,8 @@ mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, n
 pbc = PeriodicBoundary(geometry)
 
 # xdmf output
-xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base + "u.xdmf")
-xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base + "p.xdmf")
+xdmf_u = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "u.xdmf"))
+xdmf_p = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "p.xdmf"))
 
 # Required elements
 W_E_2 = VectorElement("DG", mesh.ufl_cell(), k)
@@ -263,7 +264,7 @@ while step < num_steps:
     t += float(dt)
 
     if comm.Get_rank() == 0:
-        print("Step number " + str(step))
+        print(f"Step number {step}")
 
     t1 = Timer("[P] Sweep and step")
     # Limit number of particles
@@ -329,10 +330,10 @@ udiv = sqrt(assemble(div(Uh.sub(0)) * div(Uh.sub(0)) * dx))
 momentum = assemble((dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey)) * dx)
 
 if comm.Get_rank() == 0:
-    print("Velocity error " + str(u_error))
-    print("Pressure error " + str(p_error))
-    print("Momentum " + str(momentum))
-    print("Divergence " + str(udiv))
-    print("Elapsed time " + str(timer.elapsed()[0]))
+    print(f"Velocity error {u_error}")
+    print(f"Pressure error {p_error}")
+    print(f"Momentum {momentum}")
+    print(f"Divergence {udiv}")
+    print(f"Elapsed time {timer.elapsed()[0]}")
 
 list_timings(TimingClear.keep, [TimingType.wall])

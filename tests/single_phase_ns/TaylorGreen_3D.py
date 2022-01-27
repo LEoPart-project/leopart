@@ -33,6 +33,7 @@ from dolfin import (
 )
 import numpy as np
 from mpi4py import MPI as pyMPI
+import os
 from leopart import (
     particles,
     advect_rk3,
@@ -185,9 +186,9 @@ mesh = BoxMesh(MPI.comm_world, Point(xmin, ymin, zmin), Point(xmax, ymax, zmax),
 pbc = PeriodicBoundary(geometry)
 
 # xdmf output
-xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base + "u.xdmf")
-xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base + "p.xdmf")
-xdmf_curl = XDMFFile(mesh.mpi_comm(), outdir_base + "curl.xdmf")
+xdmf_u = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "u.xdmf"))
+xdmf_p = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "p.xdmf"))
+xdmf_curl = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "curl.xdmf"))
 
 # Required elements
 W_E_2 = VectorElement("DG", mesh.ufl_cell(), k)
@@ -299,7 +300,7 @@ while step < num_steps:
     step += 1
     t += float(dt)
     if comm.rank == 0:
-        print("Step number " + str(step))
+        print(f"Step number {step}")
 
     # Limit number of particles
     t1 = Timer("[P] advect particles")
@@ -364,7 +365,7 @@ ez = as_vector((0.0, 0.0, 1.0))
 momentum = assemble((dot(Uh.sub(0), ex) + dot(Uh.sub(0), ey) + dot(Uh.sub(0), ez)) * dx)
 
 if comm.Get_rank() == 0:
-    print("Momentum " + str(momentum))
-    print("Elapsed time " + str(timer.elapsed()[0]))
+    print(f"Momentum {momentum}" + str(momentum))
+    print(f"Elapsed time {timer.elapsed()[0]}")
 
 list_timings(TimingClear.keep, [TimingType.wall])

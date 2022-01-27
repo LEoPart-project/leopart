@@ -46,6 +46,7 @@ from mpi4py import MPI as pyMPI
 import numpy as np
 import pickle
 import shutil as sht
+import os
 
 
 """
@@ -164,28 +165,24 @@ num_steps = int(T_end // float(dt) + 1)
 print(num_steps)
 
 # Directory for output
-outdir_base = (
-    "./../../results/Dambreak_mu"
-    + str(float(mu))
-    + "_theta"
-    + str(float(theta_p))
-    + "_res_"
-    + res
-    + "/"
-)
+outdir_base = f"./../../results/Dambreak_mu{float(mu)}_theta{float(theta_p)}_res_{res}/"
 
 # Particle output
-fname_list = [outdir_base + "xp.pickle", outdir_base + "up.pickle", outdir_base + "rhop.pickle"]
+fname_list = [
+    os.path.join(outdir_base, "xp.pickle"),
+    os.path.join(outdir_base, "up.pickle"),
+    os.path.join(outdir_base, "rhop.pickle"),
+]
 property_list = [0, 2, 1]
-pressure_table = outdir_base + "wall_pressure.pickle"
+pressure_table = os.path.join(outdir_base, "wall_pressure.pickle")
 
 mesh = RectangleMesh(MPI.comm_world, Point(xmin, ymin), Point(xmax, ymax), nx, ny, "left")
 bbt = mesh.bounding_box_tree()
 
 # xdmf output
-xdmf_u = XDMFFile(mesh.mpi_comm(), outdir_base + "u.xdmf")
-xdmf_p = XDMFFile(mesh.mpi_comm(), outdir_base + "p.xdmf")
-xdmf_rho = XDMFFile(mesh.mpi_comm(), outdir_base + "rho.xdmf")
+xdmf_u = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "u.xdmf"))
+xdmf_p = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "p.xdmf"))
+xdmf_rho = XDMFFile(mesh.mpi_comm(), os.path.join(outdir_base, "rho.xdmf"))
 
 # Function Spaces density tracking/pressure
 T_1 = FunctionSpace(mesh, "DG", 0)
@@ -483,7 +480,7 @@ xdmf_rho.close()
 xdmf_p.close()
 
 time_table = timings(TimingClear.keep, [TimingType.wall])
-with open(outdir_base + "timings" + str(nx) + ".log", "w") as out:
+with open(os.path.join(outdir_base, f"timings{nx}.log"), "w") as out:
     out.write(time_table.str(True))
 
 if comm.rank == 0:
