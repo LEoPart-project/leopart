@@ -71,7 +71,7 @@ class particles(compiled_module.particles):
         compiled_module.particles.__init__(self, p_array, particle_template, mesh)
         self.ptemplate = particle_template
 
-    def AddParticles(self, xp, particle_properties):
+    def add_particles(self, xp, particle_properties):
         """
          Initialize additional particles.
         Parameters
@@ -81,13 +81,6 @@ class particles(compiled_module.particles):
         particle_properties: list
             List of np.ndarrays with particle properties.
         """
-        gdim =3
-        particle_template = [gdim]
-        for p in particle_properties:
-            if len(p.shape) == 1:
-                particle_template.append(1)
-            else:
-                particle_template.append(p.shape[1])
 
         p_array = xp
         for p_property in particle_properties:
@@ -97,9 +90,7 @@ class particles(compiled_module.particles):
                 p_array = np.append(p_array, np.array([p_property]).T, axis=1)
             else:
                 p_array = np.append(p_array, p_property, axis=1)
-
-        compiled_module.particles.AddParticles(self, p_array, particle_template)
-        self.ptemplate = np.vstack((self.ptemplate,particle_template)) 
+        compiled_module.particles.add_particles(self, p_array)
 
     def interpolate(self, *args):
         """
