@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-from source.ParticleFun import advect_particles
 from dolfin import (
     UnitSquareMesh,
     UnitCubeMesh,
@@ -181,7 +180,8 @@ def test_add_particles(mesh_dimension):
     assert p.number_of_particles() == x_0.shape[0] + x_1.shape[0]
     # Check scalar valued property after addition
     np.testing.assert_array_almost_equal(
-        5 * np.array(p.get_property(0)).reshape(-1, mesh_dimension)[:, 0], np.array(p.get_property(1))
+        5 * np.array(p.get_property(0)).reshape(-1, mesh_dimension)[:, 0],
+        np.array(p.get_property(1))
     )
     # Check vector valued property after addition
     np.testing.assert_array_almost_equal(
@@ -189,8 +189,8 @@ def test_add_particles(mesh_dimension):
     )
 
     # Initializing an advection class changes the particle template by
-    # adding entries for xp0 (position copies) and up0 (velocites at previous time step, initialized with 0).
-    # Check whether that behaves properly
+    # adding entries for xp0 (position copies) and up0 (velocites at previous time step,
+    # initialized with 0). Check whether that behaves properly
     V = VectorFunctionSpace(mesh, "CG", 1)
     v = Function(V)
     advect_particles(p, V, v, "closed")
