@@ -73,7 +73,9 @@ class particles(compiled_module.particles):
 
     def add_particles(self, xp, particle_properties):
         """
-         Initialize additional particles.
+        Add particles to existing set of particles. The particle lay-out
+        should be identical to the lay-out of the existing particles.
+
         Parameters
         ----------
         xp: np.ndarray
@@ -238,6 +240,7 @@ def _parse_advect_particles_args(args):
 
         def _default_velocity_return(step, dt):
             return uh_cpp
+
         args[2] = _default_velocity_return
     return args
 

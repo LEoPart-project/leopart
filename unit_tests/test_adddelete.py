@@ -135,6 +135,10 @@ def test_failsafe_sweep():
 
 @pytest.mark.parametrize("mesh_dimension", [2, 3])
 def test_add_particles(mesh_dimension):
+    """
+    Test adding particles on the fly with add_particles.
+    """
+
     interpolate_expression = Expression("5*x[0]", degree=1)
     if mesh_dimension == 2:
         mesh = UnitSquareMesh(5, 5)
@@ -181,7 +185,7 @@ def test_add_particles(mesh_dimension):
     # Check scalar valued property after addition
     np.testing.assert_array_almost_equal(
         5 * np.array(p.get_property(0)).reshape(-1, mesh_dimension)[:, 0],
-        np.array(p.get_property(1))
+        np.array(p.get_property(1)),
     )
     # Check vector valued property after addition
     np.testing.assert_array_almost_equal(

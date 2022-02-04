@@ -526,9 +526,6 @@ void particles::get_particle_contributions(
     const double default_value
         = (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
 
-    //    std::cout << "Found empty cell, filling with default value "
-    //              << default_value << std::endl;
-
     // Works with DG spaces only, assuming the (0, 0) entry is the
     // DoF associated with the constant basis function
     q.setIdentity(space_dimension, space_dimension);
