@@ -71,6 +71,29 @@ class particles(compiled_module.particles):
         compiled_module.particles.__init__(self, p_array, particle_template, mesh)
         self.ptemplate = particle_template
 
+    def add_particles(self, xp, particle_properties):
+        """
+        Add particles to existing set of particles. The particle lay-out
+        should be identical to the lay-out of the existing particles.
+
+        Parameters
+        ----------
+        xp: np.ndarray
+            Particle coordinates
+        particle_properties: list
+            List of np.ndarrays with particle properties.
+        """
+
+        p_array = xp
+        for p_property in particle_properties:
+            # Assert if correct size
+            assert p_property.shape[0] == xp.shape[0], "Incorrect particle property shape"
+            if len(p_property.shape) == 1:
+                p_array = np.append(p_array, np.array([p_property]).T, axis=1)
+            else:
+                p_array = np.append(p_array, p_property, axis=1)
+        compiled_module.particles.add_particles(self, p_array)
+
     def interpolate(self, *args):
         """
         Interpolate field to particles. Example usage for updating the first property
@@ -217,6 +240,7 @@ def _parse_advect_particles_args(args):
 
         def _default_velocity_return(step, dt):
             return uh_cpp
+
         args[2] = _default_velocity_return
     return args
 

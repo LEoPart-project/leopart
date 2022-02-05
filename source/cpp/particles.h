@@ -97,6 +97,10 @@ public:
     _cell2part[c].erase(_cell2part[c].begin() + i);
   }
 
+  // Add new particles. Input array is passed by value,
+  // since an internal copy is needed anyway.
+  void AddParticles(Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic,Eigen::RowMajor>p_array);
+
   // Interpolate function to particles
   void interpolate(const Function& phih, const std::size_t property_idx);
 

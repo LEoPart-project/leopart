@@ -80,6 +80,65 @@ int particles::add_particle(int c)
   return _cell2part[c].size() - 1;
 }
 //-----------------------------------------------------------------------------
+void particles::AddParticles(
+    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+        p_array)
+{
+  const size_t ptemplate_cumsum
+      = std::accumulate(_ptemplate.begin(), _ptemplate.end(), 0);
+
+  if (static_cast<size_t>(p_array.cols()) != ptemplate_cumsum
+      && static_cast<size_t>(p_array.cols()) != (ptemplate_cumsum - 2 * _Ndim))
+  {
+    throw std::runtime_error(
+        "Inconsistent particle layout provided for particle addition. "
+        "Make sure the particles that are added have the same layout as the "
+        "original particles.");
+  }
+
+  // Create space for two additional slots xp0 and up0, that were apparently
+  // initialized by a call to update_particle_template()
+  if (static_cast<size_t>(p_array.cols()) == (ptemplate_cumsum - 2 * _Ndim))
+  {
+    const size_t ncols_original = static_cast<size_t>(p_array.cols());
+    p_array.conservativeResize(Eigen::NoChange, ptemplate_cumsum);
+    // Copy xp0 positions
+    p_array.block(0, ncols_original, p_array.rows(), _Ndim)
+        = p_array.block(0, 0, p_array.rows(), _Ndim);
+    // Initialize up0 velocities to 0
+    p_array.block(0, ncols_original + _Ndim, p_array.rows(), _Ndim).setZero();
+  }
+
+  // Calculate the offset for each particle property and overall size
+  std::vector<unsigned int> offset = {0};
+  for (const auto& p : _ptemplate)
+    offset.push_back(offset.back() + p);
+
+  // Loop over particles:
+  for (Eigen::Index i = 0; i < p_array.rows(); i++)
+  {
+    // Position and get hosting cell
+    Point xp(_Ndim, p_array.row(i).data());
+
+    const unsigned int cell_id
+        = _mesh->bounding_box_tree()->compute_first_entity_collision(xp);
+    if (cell_id != std::numeric_limits<unsigned int>::max())
+    {
+      // Initialize particle with position
+      particle pnew = {xp};
+
+      for (std::size_t j = 1; j < _ptemplate.size(); ++j)
+      {
+        Point property(_ptemplate[j], p_array.row(i).data() + offset[j]);
+        pnew.push_back(property);
+      }
+
+      // Push back to particle structure
+      _cell2part[cell_id].push_back(pnew);
+    }
+  }
+}
+//-----------------------------------------------------------------------------
 void particles::interpolate(const Function& phih,
                             const std::size_t property_idx)
 {
@@ -464,17 +523,14 @@ void particles::get_particle_contributions(
   else if (_empty_cell_property_values[property_idx])
   {
     // We have a default value assigned for empty cells
-    const double default_value =
-        (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
-
-//    std::cout << "Found empty cell, filling with default value "
-//              << default_value << std::endl;
+    const double default_value
+        = (*(_empty_cell_property_values[property_idx]))[dolfin_cell];
 
     // Works with DG spaces only, assuming the (0, 0) entry is the
     // DoF associated with the constant basis function
     q.setIdentity(space_dimension, space_dimension);
     f.resize(space_dimension, 1);
-    f(0,0) = default_value;
+    f(0, 0) = default_value;
   }
   else
   {
